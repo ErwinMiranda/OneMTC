@@ -865,8 +865,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/clusterize.js@0.18.1/clusterize.min.js"></script>
     <script type="module">
-      import { requireLogin, logout } from "./auth.js";
-    requireLogin();
+      import {logout } from "./auth.js";
+  
     window.logout = logout; // 👈 exposes it globally
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
