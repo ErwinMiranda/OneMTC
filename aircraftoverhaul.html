@@ -908,7 +908,7 @@
       onAuthStateChanged(auth, (user) => {
         if (!user) {
           console.log("⚠️ No user signed in. Redirecting to login...");
-          window.location.href = "LoginEmail.html";
+          window.location.href = "index";
         } else {
           console.log(`✅ Logged in as: ${user.email || "Anonymous"}`);
           // Optionally show email in UI
