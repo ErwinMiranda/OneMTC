@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>One MTC</title>
     <script src="auth.js"></script>
-    <script>
-      import { requireLogin, logout } from "./auth.js";
-      requireLogin();
-      window.logout = logout;
-    </script>
+  
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -869,7 +865,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/clusterize.js@0.18.1/clusterize.min.js"></script>
     <script type="module">
-
+      import { requireLogin, logout } from "./auth.js";
+    requireLogin();
+    window.logout = logout; // 👈 exposes it globally
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
         getFirestore,
