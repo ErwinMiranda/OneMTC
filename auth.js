@@ -23,14 +23,14 @@ export function requireLogin() {
   onAuthStateChanged(auth, (user) => {
     if (!user) {
       console.warn("🚫 No user signed in — redirecting to login.");
-      window.location.href = "LoginEmail.html";
+      window.location.href = "index";
       return;
     }
 
     if (!user.emailVerified) {
       alert("⚠️ Please verify your email before accessing this page.");
       signOut(auth);
-      window.location.href = "LoginEmail.html";
+      window.location.href = "index";
       return;
     }
 
@@ -43,5 +43,5 @@ export function requireLogin() {
 export async function logout() {
   await signOut(auth);
   localStorage.clear();
-  window.location.href = "LoginEmail.html";
+  window.location.href = "index.html";
 }
