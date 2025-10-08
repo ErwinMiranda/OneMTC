@@ -1029,7 +1029,7 @@
             });
           },
           (error) => {
-            console.error("❌ History listener error:", error);
+           // console.error("❌ History listener error:", error);
             historyListEl.innerHTML = `<li>Error loading history</li>`;
           }
         );
@@ -1944,7 +1944,7 @@
           (err) => {
             console.error(err);
             hideLoading();
-            alert("Error loading tasks.");
+           // alert("Error loading tasks.");
           }
         );
       }
