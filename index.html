@@ -228,120 +228,154 @@
     </form>
 
     <!-- Firebase Logic -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-      import {
-        getAuth,
-        signInWithEmailAndPassword,
-        createUserWithEmailAndPassword,
-        sendPasswordResetEmail,
-        setPersistence,
-        browserLocalPersistence,
-        browserSessionPersistence,
-      } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+   <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import {
+    getAuth,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
+    sendEmailVerification,
+    signOut,
+    setPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence,
+  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyDCpHhUL8x4rs-fom1xyaNdWm5prSGf57U",
-        authDomain: "onemtc-2222c.firebaseapp.com",
-        projectId: "onemtc-2222c",
-        storageBucket: "onemtc-2222c.firebasestorage.app",
-        messagingSenderId: "447271556426",
-        appId: "1:447271556426:web:562ba4d72e40b754599db3",
-      };
+  // ==============================
+  // Firebase Config & Init
+  // ==============================
+  const firebaseConfig = {
+    apiKey: "AIzaSyDCpHhUL8x4rs-fom1xyaNdWm5prSGf57U",
+    authDomain: "onemtc-2222c.firebaseapp.com",
+    projectId: "onemtc-2222c",
+    storageBucket: "onemtc-2222c.firebasestorage.app",
+    messagingSenderId: "447271556426",
+    appId: "1:447271556426:web:562ba4d72e40b754599db3",
+  };
 
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
 
-      // DOM elements
-      const form = document.getElementById("loginForm");
-      const email = document.getElementById("email");
-      const password = document.getElementById("password");
-      const togglePw = document.getElementById("togglePw");
-      const errorMsg = document.getElementById("errorMsg");
-      const capsWarn = document.getElementById("capsWarn");
-      const remember = document.getElementById("remember");
-      const signupBtn = document.getElementById("signupBtn");
-      const forgotPwLink = document.getElementById("forgotPwLink");
+  // ==============================
+  // DOM Elements
+  // ==============================
+  const form = document.getElementById("loginForm");
+  const email = document.getElementById("email");
+  const password = document.getElementById("password");
+  const togglePw = document.getElementById("togglePw");
+  const errorMsg = document.getElementById("errorMsg");
+  const capsWarn = document.getElementById("capsWarn");
+  const remember = document.getElementById("remember");
+  const signupBtn = document.getElementById("signupBtn");
+  const forgotPwLink = document.getElementById("forgotPwLink");
 
-      // Show/hide password
-      togglePw.addEventListener("click", () => {
-        const isPwd = password.type === "password";
-        password.type = isPwd ? "text" : "password";
-        togglePw.textContent = isPwd ? "Hide" : "Show";
-      });
+  // ==============================
+  // UI Behaviors
+  // ==============================
+  togglePw.addEventListener("click", () => {
+    const isPwd = password.type === "password";
+    password.type = isPwd ? "text" : "password";
+    togglePw.textContent = isPwd ? "Hide" : "Show";
+  });
 
-      // Caps lock warning
-      password.addEventListener("keydown", (e) => {
-        capsWarn.style.display = e.getModifierState("CapsLock")
-          ? "block"
-          : "none";
-      });
+  password.addEventListener("keydown", (e) => {
+    capsWarn.style.display = e.getModifierState("CapsLock") ? "block" : "none";
+  });
 
-      // Login handler
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        errorMsg.style.display = "none";
+  // ==============================
+  // LOGIN
+  // ==============================
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorMsg.style.display = "none";
 
-        const persistenceType = remember.checked
-          ? browserLocalPersistence
-          : browserSessionPersistence;
+    const persistenceType = remember.checked
+      ? browserLocalPersistence
+      : browserSessionPersistence;
 
-        try {
-          await setPersistence(auth, persistenceType);
-          const userCredential = await signInWithEmailAndPassword(
-            auth,
-            email.value,
-            password.value
-          );
-          
-          window.location.href = "aircraftoverhaul"; // redirect to your page
-        } catch (error) {
-          console.error(error);
-          errorMsg.style.display = "block";
-          errorMsg.textContent = error.message.includes("auth/user-not-found")
-            ? "No account found. Please create one."
-            : "Invalid email or password.";
-        }
-      });
+    try {
+      await setPersistence(auth, persistenceType);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email.value,
+        password.value
+      );
+      const user = userCredential.user;
 
-      // Sign-up handler
-      signupBtn.addEventListener("click", async () => {
-        const newEmail = email.value;
-        const newPass = password.value;
-        if (!newEmail || !newPass)
-          return alert("Enter email & password first!");
-        try {
-          const userCredential = await createUserWithEmailAndPassword(
-            auth,
-            newEmail,
-            newPass
-          );
-          alert(`Account created for ${userCredential.user.email}`);
-          window.location.href = "aircraftoverhaul";
-        } catch (error) {
-          console.error(error);
-          alert(error.message);
-        }
-      });
+      // ✅ Check if email verified
+      if (!user.emailVerified) {
+        alert("Please verify your email before signing in.");
+        await signOut(auth);
+        return;
+      }
 
-      // Forgot password handler
-      forgotPwLink.addEventListener("click", async () => {
-        const emailAddress = email.value.trim();
-        if (!emailAddress) {
-          return alert("Please enter your email above first.");
-        }
-        try {
-          await sendPasswordResetEmail(auth, emailAddress);
-          alert(`A password reset email has been sent to ${emailAddress}.`);
-        } catch (error) {
-          console.error(error);
-          alert(
-            error.message.includes("auth/user-not-found")
-              ? "No account found with that email."
-              : error.message
-          );
-        }
-      });
-    </script>
+      // ✅ Save user for session
+      localStorage.setItem("username", user.email);
+      window.location.href = "aircraftoverhaul.html";
+    } catch (error) {
+      console.error(error);
+      errorMsg.style.display = "block";
+      errorMsg.textContent = error.message.includes("auth/user-not-found")
+        ? "No account found. Please create one."
+        : "Invalid email or password.";
+    }
+  });
+
+  // ==============================
+  // SIGN UP
+  // ==============================
+  signupBtn.addEventListener("click", async () => {
+    const newEmail = email.value.trim();
+    const newPass = password.value;
+    if (!newEmail || !newPass) {
+      alert("Enter email & password first!");
+      return;
+    }
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        newEmail,
+        newPass
+      );
+      const user = userCredential.user;
+
+      // ✅ Send verification email
+      await sendEmailVerification(user);
+      alert(
+        `A verification email has been sent to ${newEmail}. Please verify before logging in.`
+      );
+
+      await signOut(auth); // Sign out so user can verify
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    }
+  });
+
+  // ==============================
+  // PASSWORD RESET
+  // ==============================
+  forgotPwLink.addEventListener("click", async () => {
+    const emailAddress = email.value.trim();
+    if (!emailAddress) {
+      return alert("Please enter your email first.");
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, emailAddress);
+      alert(`A password reset email has been sent to ${emailAddress}.`);
+    } catch (error) {
+      console.error(error);
+      alert(
+        error.message.includes("auth/user-not-found")
+          ? "No account found with that email."
+          : error.message
+      );
+    }
+  });
+</script>
+
   </body>
 </html>
