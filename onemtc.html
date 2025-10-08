@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>One MTC</title>
-
+    <script src="auth.js"></script>
+    <script>
+      requireLogin();
+    </script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -864,6 +867,19 @@
 
     <script src="https://cdn.jsdelivr.net/npm/clusterize.js@0.18.1/clusterize.min.js"></script>
     <script type="module">
+            const SESSION_KEY = "demo_session";
+      const savedSession = JSON.parse(
+        localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY)
+      );
+      if (!savedSession) {
+        location.href = "index.html"; // not logged in
+      } else {
+        // Role-based access check
+        const page = location.pathname.split("/").pop(); // current file name
+        if (savedSession.page !== page) {
+          location.href = "index.html"; // redirect if wrong user for this page
+        }
+      }
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
         getFirestore,
