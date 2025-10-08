@@ -43,5 +43,5 @@ export function requireLogin() {
 export async function logout() {
   await signOut(auth);
   localStorage.clear();
-  window.location.href = "index.html";
+  window.location.href = "index";
 }
