@@ -325,34 +325,37 @@
   // ==============================
   // SIGN UP
   // ==============================
-  signupBtn.addEventListener("click", async () => {
-    const newEmail = email.value.trim();
-    const newPass = password.value;
-    if (!newEmail || !newPass) {
-      alert("Enter email & password first!");
-      return;
-    }
+ signupBtn.addEventListener("click", async () => {
+  const newEmail = email.value;
+  const newPass = password.value;
 
-    try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        newEmail,
-        newPass
-      );
-      const user = userCredential.user;
+  if (!newEmail || !newPass) {
+    alert("Enter email & password first!");
+    return;
+  }
 
-      // ✅ Send verification email
-      await sendEmailVerification(user);
-      alert(
-        `A verification email has been sent to ${newEmail}. Please verify before logging in.`
-      );
+  try {
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      newEmail,
+      newPass
+    );
 
-      await signOut(auth); // Sign out so user can verify
-    } catch (error) {
-      console.error(error);
-      alert(error.message);
-    }
-  });
+    // 🔹 Send email verification link
+    await sendEmailVerification(userCredential.user);
+
+    alert(
+      `✅ Account created for ${newEmail}.\n\nA verification email has been sent — please verify before logging in.`
+    );
+
+    // 🔹 Log the user out until they verify
+    await signOut(auth);
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+});
 
   // ==============================
   // PASSWORD RESET
