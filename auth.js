@@ -1,6 +1,6 @@
 // auth.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // ✅ Firebase Configuration
 const firebaseConfig = {
@@ -41,4 +41,17 @@ export function requireLogin() {
 
     console.log(`✅ Authenticated as: ${user.email}`);
   });
+}
+export function logout() {
+  const auth = getAuth();
+  signOut(auth)
+    .then(() => {
+      console.log("🚪 User signed out.");
+      localStorage.removeItem("demo_session");
+      sessionStorage.removeItem("demo_session");
+      location.href = "index.html";
+    })
+    .catch((error) => {
+      console.error("❌ Logout error:", error);
+    });
 }
