@@ -186,67 +186,6 @@
         transform: scale(1.05);
       }
 
-      /* 🪟 Popup Modal */
-      .modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.45);
-        backdrop-filter: blur(4px);
-        justify-content: center;
-        align-items: center;
-        z-index: 999;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      }
-
-      .modal.active {
-        display: flex;
-        opacity: 1;
-      }
-
-      .modal-content {
-        background: var(--card-bg);
-        padding: 28px;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        width: 320px;
-        text-align: center;
-        transform: scale(0.95);
-        opacity: 0;
-        transition: all 0.35s ease;
-      }
-
-      .modal.active .modal-content {
-        transform: scale(1);
-        opacity: 1;
-      }
-
-      .modal-content h2 {
-        margin-bottom: 16px;
-        font-size: 1.2rem;
-        font-weight: 600;
-      }
-
-      .modal-content input {
-        width: 100%;
-        padding: 8px 10px;
-        margin-bottom: 10px;
-        border-radius: 6px;
-        border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--text);
-        font-size: 0.9rem;
-      }
-
-      .modal-content button {
-        width: 100%;
-        margin-top: 8px;
-      }
-
       @media (max-width: 700px) {
         .controls {
           flex-direction: column;
@@ -298,7 +237,7 @@
   </head>
 
   <body>
-    <button id="authBtn" class="auth-btn">Login</button>
+    <button onclick="logout()" class="auth-btn">Logout</button>
 
     <h1>One MTC Uploader</h1>
     <div class="small">
