@@ -4,11 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>One MTC Loader</title>
-        <script type="module">
-  import { requireLogin, logout } from "./auth.js";
-  requireLogin();
-  window.logout = logout;
-</script>
+    <script type="module">
+      import { requireLogin, logout } from "./auth.js";
+      requireLogin();
+      window.logout = logout;
+    </script>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
@@ -265,17 +265,6 @@
       </div>
     </div>
 
-    <!-- 🔐 Login Modal -->
-    <div id="loginModal" class="modal">
-      <div class="modal-content">
-        <h2>Login</h2>
-        <input type="email" id="email" placeholder="Email" />
-        <input type="password" id="password" placeholder="Password" />
-        <button id="loginSubmit" class="primary">Login</button>
-        <button id="cancelLogin" style="margin-top: 6px">Cancel</button>
-      </div>
-    </div>
-
     <div id="loadingOverlay">
       <div class="loader">
         <div class="spinner"></div>
@@ -288,9 +277,9 @@
 
     <!-- ✅ Fixed Firebase Logic -->
     <script type="module">
-           import {logout } from "./auth.js";
-  
-    window.logout = logout; // 👈 exposes it globally
+      import { logout } from "./auth.js";
+
+      window.logout = logout; // 👈 exposes it globally
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
         getFirestore,
@@ -324,7 +313,17 @@
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
-
+      onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          console.log("⚠️ No user signed in. Redirecting to login...");
+          window.location.href = "index";
+        } else {
+          console.log(`✅ Logged in as: ${user.email || "Anonymous"}`);
+          // Optionally show email in UI
+          const userDisplay = document.getElementById("userDisplay");
+          if (userDisplay) userDisplay.textContent = user.email || "Anonymous";
+        }
+      });
       const authBtn = document.getElementById("authBtn");
       const loginModal = document.getElementById("loginModal");
       const loginSubmit = document.getElementById("loginSubmit");
@@ -374,68 +373,6 @@
           "✅ Upload complete. Firestore updated with last uploader info."
         );
       }
-
-      // Auth buttons
-      authBtn.addEventListener("click", () => {
-        if (auth.currentUser) signOut(auth);
-        else loginModal.classList.add("active");
-      });
-
-      cancelLogin.addEventListener("click", () => {
-        loginModal.classList.remove("active");
-        emailInput.value = "";
-        passwordInput.value = "";
-      });
-
-      loginSubmit.addEventListener("click", async () => {
-        const email = emailInput.value.trim();
-        const pass = passwordInput.value.trim();
-        if (!email || !pass) return setStatus("Enter email & password", true);
-        try {
-          await signInWithEmailAndPassword(auth, email, pass);
-          loginModal.classList.remove("active");
-          setStatus("✅ Logged in as " + email);
-        } catch (err) {
-          setStatus(err.message, true);
-        }
-      });
-
-      onAuthStateChanged(auth, (user) => {
-        if (user) authBtn.textContent = "Logout";
-        else {
-          authBtn.textContent = "Login";
-          setStatus("Not signed in");
-        }
-      });
-
-      let firebaseReady = false;
-
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          setStatus(`✅ Logged in as ${user.email || "User"}`);
-          authBtn.textContent = "Logout";
-          firebaseReady = true;
-          attachRealtimeListener(); // Start listening
-        } else {
-          setStatus("Not signed in. Please log in.");
-          authBtn.textContent = "Login";
-          firebaseReady = false;
-
-          // 🛑 Stop the old realtime listener if it exists
-          if (unsubscribeListener) {
-            unsubscribeListener();
-            unsubscribeListener = null;
-          }
-
-          // 🧹 Clear the table
-          const headerRow = document.getElementById("headerRow");
-          const tasksBody = document.getElementById("tasksBody");
-          if (headerRow) headerRow.innerHTML = "";
-          if (tasksBody)
-            tasksBody.innerHTML =
-              '<tr><td colspan="5" class="small">Please log in to view data.</td></tr>';
-        }
-      });
 
       const fileInput = document.getElementById("file");
       const uploadBtn = document.getElementById("uploadBtn");
