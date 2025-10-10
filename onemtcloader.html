@@ -322,6 +322,11 @@
           // Optionally show email in UI
           const userDisplay = document.getElementById("userDisplay");
           if (userDisplay) userDisplay.textContent = user.email || "Anonymous";
+             // ✅ Attach your Firestore realtime listener here
+    attachRealtimeListener();
+
+    // ✅ Update UI
+    setStatus("✅ Connected to One MTC , loading data...");
         }
       });
       const authBtn = document.getElementById("authBtn");
