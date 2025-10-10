@@ -615,21 +615,23 @@
         }
       }
 
-      async function uploadRowsToFirestore(mappedRows) {
-  if (!firebaseReady) throw new Error("Firebase not ready");
-
+     async function uploadRowsToFirestore(mappedRows) {
+  const db = getFirestore();
   const auth = getAuth();
   const user = auth.currentUser;
   const userEmail = user?.email || user?.displayName || "Unknown User";
 
   const totalRows = mappedRows.length;
-  if (totalRows === 0) return setStatus("No rows to upload.", true);
+  if (totalRows === 0) {
+    setStatus("No rows to upload.", true);
+    return;
+  }
 
-  // 🧩 1️⃣ Collect unique WOs
+  // 🧩 1️⃣ Collect all unique work orders
   const workOrders = [...new Set(mappedRows.map((r) => r.wo).filter(Boolean))];
-  setStatus(`🔍 Checking existing records for ${workOrders.length} work orders...`);
+  setStatus(`🔍 Checking existing records for ${workOrders.length} work order(s)...`);
 
-  // 🚀 2️⃣ Pull all existing IDs in parallel (up to 10 at once)
+  // 🚀 2️⃣ Pull all existing doc IDs (parallel)
   const existingIds = new Set();
   const chunkSize = 10;
   for (let i = 0; i < workOrders.length; i += chunkSize) {
@@ -643,16 +645,17 @@
 
   console.log(`Found ${existingIds.size} existing taskcards.`);
 
-  // 🧠 3️⃣ Filter out duplicates (same WO + TaskCard)
+  // 🧠 3️⃣ Filter only new (non-duplicate) taskcards
   const newRows = mappedRows.filter((r) => !existingIds.has(r.id));
-  const duplicates = mappedRows.filter((r) => existingIds.has(r.id));
+  const skipped = mappedRows.filter((r) => existingIds.has(r.id));
 
   if (newRows.length === 0) {
     setStatus("✅ All taskcards already exist. Nothing new to add.");
+    console.log("No new records found. Skipped all duplicates.");
     return;
   }
 
-  // ⚙️ 4️⃣ Batch upload new ones safely
+  // ⚙️ 4️⃣ Batch upload
   const totalChunks = Math.ceil(newRows.length / BATCH_LIMIT);
   let uploaded = 0;
 
@@ -660,9 +663,10 @@
     const start = i * BATCH_LIMIT;
     const end = start + BATCH_LIMIT;
     const chunk = newRows.slice(start, end);
-    const batch = writeBatch(db);
 
+    const batch = writeBatch(db);
     for (const row of chunk) {
+      if (!row.id) continue;
       const docRef = doc(db, TASKS_COLLECTION, row.id);
       batch.set(
         docRef,
@@ -672,19 +676,19 @@
           uploadedAt: new Date().toISOString(),
           createdAt: serverTimestamp(),
         },
-        { merge: false } // never overwrite, always new only
+        { merge: false } // don’t overwrite
       );
     }
 
     await batch.commit();
     uploaded += chunk.length;
-    setStatus(`📤 Batch ${i + 1}/${totalChunks} uploaded (${uploaded}/${newRows.length})`);
+    setStatus(`📤 Uploaded batch ${i + 1}/${totalChunks} (${uploaded}/${newRows.length})`);
   }
 
-  // ✅ 5️⃣ Final summary
-  const summaryMsg = `🎉 Upload done! Added ${uploaded} new, skipped ${duplicates.length} existing.`;
-  setStatus(summaryMsg);
-  console.log(summaryMsg);
+  // ✅ 5️⃣ Summary
+  const msg = `🎉 Upload complete! Added ${uploaded} new, skipped ${skipped.length} existing.`;
+  setStatus(msg);
+  console.log(msg);
 }
 
 
