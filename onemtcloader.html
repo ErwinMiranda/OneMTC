@@ -681,15 +681,20 @@ async function uploadRowsToFirestore(mappedRows) {
       }, { merge: false });
 
       // Only log to history if WO already exists
-      if (existingWOSet.has(row.wo)) {
-        const historyRef = doc(collection(db, "history"));
-        batch.set(historyRef, {
-          ...row,
-          uploadedBy: userEmail,
-          uploadedAt: new Date().toISOString(),
-          type: "new task added to existing WO",
-        });
-      }
+if (existingWOSet.has(row.wo)) {
+  const historyRef = doc(collection(db, "history"));
+  batch.set(historyRef, {
+    wo: row.wo || "N/A",
+    seq: row.seq || "N/A",
+    skill: row.skill || "N/A",
+    phase: row.phase || "N/A",
+    task_card: row.task_card || "N/A",
+    status: "NEWLY ADDED",
+    modified_by: userEmail,
+    timestamp: serverTimestamp(),
+  });
+}
+
     }
 
     await batch.commit();
