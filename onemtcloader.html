@@ -632,7 +632,7 @@
         }
       }
 
- async function uploadRowsToFirestore(mappedRows) {
+async function uploadRowsToFirestore(mappedRows) {
   const db = getFirestore();
   const auth = getAuth();
   const user = auth.currentUser;
@@ -644,25 +644,33 @@
     return;
   }
 
-  // 🧩 1️⃣ Collect all unique work orders
+  // 🧩 1️⃣ Collect unique Work Orders
   const workOrders = [...new Set(mappedRows.map((r) => r.wo).filter(Boolean))];
   setStatus(`🔍 Checking existing records for ${workOrders.length} work order(s)...`);
 
-  // 🚀 2️⃣ Pull all existing taskcard IDs in parallel
+  // ⚙️ 2️⃣ Preload all existing WOs and taskcard IDs (in chunks)
   const existingIds = new Set();
+  const existingWOs = new Set();
   const chunkSize = 10;
+
   for (let i = 0; i < workOrders.length; i += chunkSize) {
     const chunk = workOrders.slice(i, i + chunkSize);
     const queries = chunk.map((wo) =>
       getDocs(query(collection(db, TASKS_COLLECTION), where("wo", "==", wo)))
     );
     const results = await Promise.all(queries);
-    results.forEach((snap) => snap.forEach((docSnap) => existingIds.add(docSnap.id)));
+
+    results.forEach((snap) => {
+      if (!snap.empty) {
+        existingWOs.add(snap.docs[0].data().wo);
+        snap.forEach((docSnap) => existingIds.add(docSnap.id));
+      }
+    });
   }
 
-  console.log(`Found ${existingIds.size} existing taskcards.`);
+  console.log(`Found ${existingWOs.size} existing workorders and ${existingIds.size} existing taskcards.`);
 
-  // 🧠 3️⃣ Filter only new (non-duplicate) taskcards
+  // 🧠 3️⃣ Filter only new taskcards
   const newRows = mappedRows.filter((r) => !existingIds.has(r.id));
   const skipped = mappedRows.filter((r) => existingIds.has(r.id));
 
@@ -672,7 +680,7 @@
     return;
   }
 
-  // ⚙️ 4️⃣ Batch upload
+  // ⚡️ 4️⃣ Batch upload (fast, minimal Firestore reads)
   const totalChunks = Math.ceil(newRows.length / BATCH_LIMIT);
   let uploaded = 0;
 
@@ -680,19 +688,13 @@
     const start = i * BATCH_LIMIT;
     const end = start + BATCH_LIMIT;
     const chunk = newRows.slice(start, end);
-
     const batch = writeBatch(db);
 
     for (const row of chunk) {
       if (!row.id) continue;
       const docRef = doc(db, TASKS_COLLECTION, row.id);
 
-      // 🔍 Check if WO already exists
-      const woQuery = query(collection(db, TASKS_COLLECTION), where("wo", "==", row.wo));
-      const woSnap = await getDocs(woQuery);
-      const isExistingWO = !woSnap.empty;
-
-      // ✳️ Always upload the taskcard
+      // ✳️ Always upload the main task record
       batch.set(
         docRef,
         {
@@ -704,8 +706,9 @@
         { merge: false }
       );
 
-      // 🕒 Add to history only if WO already exists (means this is a new task under known WO)
-      if (isExistingWO) {
+      // 🧠 Check cached WO list
+      if (existingWOs.has(row.wo)) {
+        // ✅ Existing WO → add to history
         await addDoc(collection(db, "history"), {
           wo: row.wo,
           task_card: row.task_card,
@@ -715,8 +718,10 @@
           modified_by: userEmail,
           timestamp: serverTimestamp(),
         });
-        console.log(`🟢 History added for new taskcard: ${row.task_card} (WO: ${row.wo})`);
+        console.log(`🟢 Added history for new taskcard: ${row.task_card} (WO: ${row.wo})`);
       } else {
+        // 🟡 New WO → skip history (and mark WO as now existing)
+        existingWOs.add(row.wo);
         console.log(`🟡 Skipped history for brand new WO: ${row.wo}`);
       }
     }
@@ -727,10 +732,11 @@
   }
 
   // ✅ 5️⃣ Summary
-  const msg = `🎉 Upload complete! Added ${uploaded} new, skipped ${skipped.length} existing.`;
+  const msg = `🎉 Upload complete! Added ${uploaded} new taskcards, skipped ${skipped.length} existing.`;
   setStatus(msg);
   console.log(msg);
 }
+
 
 
 
