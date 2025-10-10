@@ -616,60 +616,77 @@
       }
 
       async function uploadRowsToFirestore(mappedRows) {
-        if (!firebaseReady) throw new Error("Firebase not ready");
+  if (!firebaseReady) throw new Error("Firebase not ready");
 
-        const auth = getAuth();
-        const user = auth.currentUser;
-        const userEmail = user?.email || user?.displayName || "Unknown User";
+  const auth = getAuth();
+  const user = auth.currentUser;
+  const userEmail = user?.email || user?.displayName || "Unknown User";
 
-        const totalRows = mappedRows.length;
-        const totalChunks = Math.ceil(totalRows / BATCH_LIMIT);
-        let uploaded = 0;
+  const totalRows = mappedRows.length;
+  if (totalRows === 0) return setStatus("No rows to upload.", true);
 
-        for (let i = 0; i < totalChunks; i++) {
-          const start = i * BATCH_LIMIT;
-          const end = start + BATCH_LIMIT;
-          const chunk = mappedRows.slice(start, end);
+  // 🧩 1️⃣ Collect unique WOs
+  const workOrders = [...new Set(mappedRows.map((r) => r.wo).filter(Boolean))];
+  setStatus(`🔍 Checking existing records for ${workOrders.length} work orders...`);
 
-          const batch = writeBatch(db);
+  // 🚀 2️⃣ Pull all existing IDs in parallel (up to 10 at once)
+  const existingIds = new Set();
+  const chunkSize = 10;
+  for (let i = 0; i < workOrders.length; i += chunkSize) {
+    const chunk = workOrders.slice(i, i + chunkSize);
+    const queries = chunk.map((wo) =>
+      getDocs(query(collection(db, TASKS_COLLECTION), where("wo", "==", wo)))
+    );
+    const results = await Promise.all(queries);
+    results.forEach((snap) => snap.forEach((docSnap) => existingIds.add(docSnap.id)));
+  }
 
-          for (const row of chunk) {
-            if (!row.id) {
-              console.warn("Row missing ID, skipping:", row);
-              continue;
-            }
-            const docId = String(row.id);
-            batch.set(
-              doc(db, TASKS_COLLECTION, docId),
-              {
-                ...row,
-                uploadedBy: userEmail,
-                uploadedAt: new Date().toISOString(),
-                updatedAt: serverTimestamp(),
-              },
-              { merge: true }
-            );
-          }
+  console.log(`Found ${existingIds.size} existing taskcards.`);
 
-          setStatus(
-            `⏳ Uploading batch ${
-              i + 1
-            } of ${totalChunks}... (${uploaded}/${totalRows})`
-          );
-          await batch.commit();
-          uploaded += chunk.length;
-          setStatus(
-            `✅ Batch ${
-              i + 1
-            }/${totalChunks} committed (${uploaded}/${totalRows})`
-          );
-          console.log(
-            `Batch ${i + 1}/${totalChunks} committed (${chunk.length} docs)`
-          );
-        }
+  // 🧠 3️⃣ Filter out duplicates (same WO + TaskCard)
+  const newRows = mappedRows.filter((r) => !existingIds.has(r.id));
+  const duplicates = mappedRows.filter((r) => existingIds.has(r.id));
 
-        setStatus(`🎉 Upload complete! (${totalRows} rows processed)`);
-      }
+  if (newRows.length === 0) {
+    setStatus("✅ All taskcards already exist. Nothing new to add.");
+    return;
+  }
+
+  // ⚙️ 4️⃣ Batch upload new ones safely
+  const totalChunks = Math.ceil(newRows.length / BATCH_LIMIT);
+  let uploaded = 0;
+
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * BATCH_LIMIT;
+    const end = start + BATCH_LIMIT;
+    const chunk = newRows.slice(start, end);
+    const batch = writeBatch(db);
+
+    for (const row of chunk) {
+      const docRef = doc(db, TASKS_COLLECTION, row.id);
+      batch.set(
+        docRef,
+        {
+          ...row,
+          uploadedBy: userEmail,
+          uploadedAt: new Date().toISOString(),
+          createdAt: serverTimestamp(),
+        },
+        { merge: false } // never overwrite, always new only
+      );
+    }
+
+    await batch.commit();
+    uploaded += chunk.length;
+    setStatus(`📤 Batch ${i + 1}/${totalChunks} uploaded (${uploaded}/${newRows.length})`);
+  }
+
+  // ✅ 5️⃣ Final summary
+  const summaryMsg = `🎉 Upload done! Added ${uploaded} new, skipped ${duplicates.length} existing.`;
+  setStatus(summaryMsg);
+  console.log(summaryMsg);
+}
+
 
       function attachRealtimeListener() {
         const q = query(
