@@ -348,23 +348,7 @@
         if (msg) msg.textContent = message;
         overlay.style.display = "flex";
       }
-      //Helper
-      async function logHistory(db, task, userEmail) {
-  const historyRef = collection(db, "history");
-  await addDoc(historyRef, {
-    wo: task.wo,
-    task_card: task.task_card,
-    seq: task.seq || "N/A",
-    phase: task.phase || "N/A",
-    skill: task.skill || "N/A",
-    status: "NEWLY ADDED",
-    modified_by: userEmail,
-    timestamp: serverTimestamp(),
-  });
-}
 
-
-      
       function hideLoading() {
         document.getElementById("loadingOverlay").style.display = "none";
       }
@@ -671,7 +655,7 @@
     return;
   }
 
-  // ⚙️ 4️⃣ Batch upload + log history
+  // ⚙️ 4️⃣ Batch upload
   const totalChunks = Math.ceil(newRows.length / BATCH_LIMIT);
   let uploaded = 0;
 
@@ -684,7 +668,6 @@
     for (const row of chunk) {
       if (!row.id) continue;
       const docRef = doc(db, TASKS_COLLECTION, row.id);
-
       batch.set(
         docRef,
         {
@@ -695,10 +678,6 @@
         },
         { merge: false } // don’t overwrite
       );
-
-      // 🟢 STEP 2: Log new task to history (outside the batch)
-      // Add this call:
-      await logHistory(db, row, userEmail);
     }
 
     await batch.commit();
@@ -711,7 +690,6 @@
   setStatus(msg);
   console.log(msg);
 }
-
 
 
       function attachRealtimeListener() {
