@@ -632,7 +632,7 @@
         }
       }
 
-     async function uploadRowsToFirestore(mappedRows) {
+ async function uploadRowsToFirestore(mappedRows) {
   const db = getFirestore();
   const auth = getAuth();
   const user = auth.currentUser;
@@ -648,7 +648,7 @@
   const workOrders = [...new Set(mappedRows.map((r) => r.wo).filter(Boolean))];
   setStatus(`🔍 Checking existing records for ${workOrders.length} work order(s)...`);
 
-  // 🚀 2️⃣ Pull all existing doc IDs (parallel)
+  // 🚀 2️⃣ Pull all existing taskcard IDs in parallel
   const existingIds = new Set();
   const chunkSize = 10;
   for (let i = 0; i < workOrders.length; i += chunkSize) {
@@ -672,7 +672,7 @@
     return;
   }
 
-  // ⚙️ 4️⃣ Batch upload + log history
+  // ⚙️ 4️⃣ Batch upload
   const totalChunks = Math.ceil(newRows.length / BATCH_LIMIT);
   let uploaded = 0;
 
@@ -682,10 +682,17 @@
     const chunk = newRows.slice(start, end);
 
     const batch = writeBatch(db);
+
     for (const row of chunk) {
       if (!row.id) continue;
       const docRef = doc(db, TASKS_COLLECTION, row.id);
 
+      // 🔍 Check if WO already exists
+      const woQuery = query(collection(db, TASKS_COLLECTION), where("wo", "==", row.wo));
+      const woSnap = await getDocs(woQuery);
+      const isExistingWO = !woSnap.empty;
+
+      // ✳️ Always upload the taskcard
       batch.set(
         docRef,
         {
@@ -694,12 +701,24 @@
           uploadedAt: new Date().toISOString(),
           createdAt: serverTimestamp(),
         },
-        { merge: false } // don’t overwrite
+        { merge: false }
       );
 
-      // 🟢 STEP 2: Log new task to history (outside the batch)
-      // Add this call:
-      await logHistory(db, row, userEmail);
+      // 🕒 Add to history only if WO already exists (means this is a new task under known WO)
+      if (isExistingWO) {
+        await addDoc(collection(db, "history"), {
+          wo: row.wo,
+          task_card: row.task_card,
+          status: "CREATED",
+          skill: row.skill || "N/A",
+          phase: row.phase || "N/A",
+          modified_by: userEmail,
+          timestamp: serverTimestamp(),
+        });
+        console.log(`🟢 History added for new taskcard: ${row.task_card} (WO: ${row.wo})`);
+      } else {
+        console.log(`🟡 Skipped history for brand new WO: ${row.wo}`);
+      }
     }
 
     await batch.commit();
@@ -712,6 +731,7 @@
   setStatus(msg);
   console.log(msg);
 }
+
 
 
 
