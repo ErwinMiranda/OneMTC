@@ -678,54 +678,47 @@ async function uploadRowsToFirestore(mappedRows) {
 
   // Prepare for history batching
   const newHistory = [];
-  const totalChunks = Math.ceil(newRows.length / BATCH_LIMIT);
-  let uploaded = 0;
+  const BATCH_LIMIT = 500; // Firestore max per batch
+const totalChunks = Math.ceil(newRows.length / BATCH_LIMIT);
 
-  // 🧱 Step 3: Upload new tasks in chunks
-  for (let i = 0; i < totalChunks; i++) {
-    const start = i * BATCH_LIMIT;
-    const end = start + BATCH_LIMIT;
-    const chunk = newRows.slice(start, end);
+for (let i = 0; i < totalChunks; i++) {
+  const start = i * BATCH_LIMIT;
+  const end = Math.min(start + BATCH_LIMIT, newRows.length);
+  const chunk = newRows.slice(start, end);
 
-    const batch = writeBatch(db);
+  const batch = writeBatch(db);
 
-    for (const row of chunk) {
-      if (!row.id) continue;
-      const docRef = doc(db, TASKS_COLLECTION, row.id);
+  for (const row of chunk) {
+    if (!row.id) continue;
+    const docRef = doc(db, TASKS_COLLECTION, row.id);
 
-      // 🧩 Check if WO existed before
-      const isExistingWO = existingWOs.has(row.wo);
+    const isExistingWO = existingWOs.has(row.wo);
+    batch.set(docRef, {
+      ...row,
+      uploadedBy: userEmail,
+      uploadedAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
+    });
 
-      // ✅ Write main record
-      batch.set(
-        docRef,
-        {
-          ...row,
-          uploadedBy: userEmail,
-          uploadedAt: new Date().toISOString(),
-          createdAt: serverTimestamp(),
-        },
-        { merge: false }
-      );
-
-      // 🕒 Only log to history if WO already existed
-      if (isExistingWO) {
-        newHistory.push({
-          wo: row.wo,
-          task_card: row.task_card,
-          status: "CREATED",
-          skill: row.skill || "N/A",
-          phase: row.phase || "N/A",
-          modified_by: userEmail,
-          timestamp: serverTimestamp(),
-        });
-      }
+    if (isExistingWO) {
+      newHistory.push({
+        wo: row.wo,
+        task_card: row.task_card,
+        status: "CREATED",
+        skill: row.skill || "N/A",
+        phase: row.phase || "N/A",
+        modified_by: userEmail,
+        timestamp: serverTimestamp(),
+      });
     }
-
-    await batch.commit();
-    uploaded += chunk.length;
-    updateProgress(uploaded, newRows.length);
   }
+
+  await batch.commit();
+  uploaded += chunk.length;
+  updateProgress(uploaded, newRows.length);
+  console.log(`✅ Batch ${i + 1}/${totalChunks} committed (${chunk.length} rows).`);
+}
+
 
   // 🧠 Step 4: Batch-write history for new taskcards only
   if (newHistory.length > 0) {
