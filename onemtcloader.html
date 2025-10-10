@@ -644,57 +644,59 @@ async function uploadRowsToFirestore(mappedRows) {
     return;
   }
 
-  // 🧩 1️⃣ Collect unique Work Orders
   const workOrders = [...new Set(mappedRows.map((r) => r.wo).filter(Boolean))];
   setStatus(`🔍 Checking existing records for ${workOrders.length} work order(s)...`);
 
-  // ⚙️ 2️⃣ Preload all existing WOs and taskcard IDs (in chunks)
   const existingIds = new Set();
-  const existingWOs = new Set();
+  const existingWOs = new Set(); // 👈 track WOs that already exist
   const chunkSize = 10;
 
+  // 🧠 Step 1: Find existing WO and IDs
   for (let i = 0; i < workOrders.length; i += chunkSize) {
     const chunk = workOrders.slice(i, i + chunkSize);
     const queries = chunk.map((wo) =>
       getDocs(query(collection(db, TASKS_COLLECTION), where("wo", "==", wo)))
     );
     const results = await Promise.all(queries);
-
     results.forEach((snap) => {
-      if (!snap.empty) {
-        existingWOs.add(snap.docs[0].data().wo);
-        snap.forEach((docSnap) => existingIds.add(docSnap.id));
-      }
+      if (!snap.empty) existingWOs.add(snap.docs[0].data().wo);
+      snap.forEach((docSnap) => existingIds.add(docSnap.id));
     });
   }
 
-  console.log(`Found ${existingWOs.size} existing workorders and ${existingIds.size} existing taskcards.`);
+  console.log(`Found ${existingIds.size} existing taskcards.`);
+  console.log(`Existing WOs: ${Array.from(existingWOs).join(", ")}`);
 
-  // 🧠 3️⃣ Filter only new taskcards
+  // 🧩 Step 2: Filter for new (non-duplicate) taskcards
   const newRows = mappedRows.filter((r) => !existingIds.has(r.id));
   const skipped = mappedRows.filter((r) => existingIds.has(r.id));
 
   if (newRows.length === 0) {
     setStatus("✅ All taskcards already exist. Nothing new to add.");
-    console.log("No new records found. Skipped all duplicates.");
     return;
   }
 
-  // ⚡️ 4️⃣ Batch upload (fast, minimal Firestore reads)
+  // Prepare for history batching
+  const newHistory = [];
   const totalChunks = Math.ceil(newRows.length / BATCH_LIMIT);
   let uploaded = 0;
 
+  // 🧱 Step 3: Upload new tasks in chunks
   for (let i = 0; i < totalChunks; i++) {
     const start = i * BATCH_LIMIT;
     const end = start + BATCH_LIMIT;
     const chunk = newRows.slice(start, end);
+
     const batch = writeBatch(db);
 
     for (const row of chunk) {
       if (!row.id) continue;
       const docRef = doc(db, TASKS_COLLECTION, row.id);
 
-      // ✳️ Always upload the main task record
+      // 🧩 Check if WO existed before
+      const isExistingWO = existingWOs.has(row.wo);
+
+      // ✅ Write main record
       batch.set(
         docRef,
         {
@@ -706,10 +708,9 @@ async function uploadRowsToFirestore(mappedRows) {
         { merge: false }
       );
 
-      // 🧠 Check cached WO list
-      if (existingWOs.has(row.wo)) {
-        // ✅ Existing WO → add to history
-        await addDoc(collection(db, "history"), {
+      // 🕒 Only log to history if WO already existed
+      if (isExistingWO) {
+        newHistory.push({
           wo: row.wo,
           task_card: row.task_card,
           status: "CREATED",
@@ -718,24 +719,28 @@ async function uploadRowsToFirestore(mappedRows) {
           modified_by: userEmail,
           timestamp: serverTimestamp(),
         });
-        console.log(`🟢 Added history for new taskcard: ${row.task_card} (WO: ${row.wo})`);
-      } else {
-        // 🟡 New WO → skip history (and mark WO as now existing)
-        existingWOs.add(row.wo);
-        console.log(`🟡 Skipped history for brand new WO: ${row.wo}`);
       }
     }
 
     await batch.commit();
     uploaded += chunk.length;
-    setStatus(`📤 Uploaded batch ${i + 1}/${totalChunks} (${uploaded}/${newRows.length})`);
+    updateProgress(uploaded, newRows.length);
   }
 
-  // ✅ 5️⃣ Summary
-  const msg = `🎉 Upload complete! Added ${uploaded} new taskcards, skipped ${skipped.length} existing.`;
+  // 🧠 Step 4: Batch-write history for new taskcards only
+  if (newHistory.length > 0) {
+    console.log(`🕓 Writing ${newHistory.length} history records...`);
+    await writeHistoryBatch(db, newHistory);
+  } else {
+    console.log("🟡 No history to record (all new WOs).");
+  }
+
+  // ✅ Step 5: Done
+  const msg = `🎉 Upload complete! Added ${uploaded} new, skipped ${skipped.length} existing.`;
   setStatus(msg);
   console.log(msg);
 }
+
 
 
 
