@@ -615,47 +615,49 @@
         }
       }
 
-     async function uploadRowsToFirestore(mappedRows) {
+async function uploadRowsToFirestore(mappedRows) {
   const db = getFirestore();
   const auth = getAuth();
   const user = auth.currentUser;
   const userEmail = user?.email || user?.displayName || "Unknown User";
 
-  const totalRows = mappedRows.length;
-  if (totalRows === 0) {
+  if (mappedRows.length === 0) {
     setStatus("No rows to upload.", true);
     return;
   }
 
-  // 🧩 1️⃣ Collect all unique work orders
-  const workOrders = [...new Set(mappedRows.map((r) => r.wo).filter(Boolean))];
-  setStatus(`🔍 Checking existing records for ${workOrders.length} work order(s)...`);
+  // 1️⃣ Collect unique WOs
+  const workOrders = [...new Set(mappedRows.map(r => r.wo).filter(Boolean))];
+  setStatus(`Checking existing records for ${workOrders.length} work order(s)...`);
 
-  // 🚀 2️⃣ Pull all existing doc IDs (parallel)
+  // 2️⃣ Find existing WOs and existing task IDs
   const existingIds = new Set();
+  const existingWOSet = new Set();
+
   const chunkSize = 10;
   for (let i = 0; i < workOrders.length; i += chunkSize) {
     const chunk = workOrders.slice(i, i + chunkSize);
-    const queries = chunk.map((wo) =>
+    const queries = chunk.map(wo =>
       getDocs(query(collection(db, TASKS_COLLECTION), where("wo", "==", wo)))
     );
     const results = await Promise.all(queries);
-    results.forEach((snap) => snap.forEach((docSnap) => existingIds.add(docSnap.id)));
+
+    results.forEach((snap, index) => {
+      if (!snap.empty) existingWOSet.add(chunk[index]); // mark existing WO
+      snap.forEach(docSnap => existingIds.add(docSnap.id)); // mark existing taskcards
+    });
   }
 
-  console.log(`Found ${existingIds.size} existing taskcards.`);
-
-  // 🧠 3️⃣ Filter only new (non-duplicate) taskcards
-  const newRows = mappedRows.filter((r) => !existingIds.has(r.id));
-  const skipped = mappedRows.filter((r) => existingIds.has(r.id));
+  // 3️⃣ Split rows
+  const newRows = mappedRows.filter(r => !existingIds.has(r.id));
+  const skippedRows = mappedRows.filter(r => existingIds.has(r.id));
 
   if (newRows.length === 0) {
-    setStatus("✅ All taskcards already exist. Nothing new to add.");
-    console.log("No new records found. Skipped all duplicates.");
+    setStatus("✅ No new taskcards to add.");
     return;
   }
 
-  // ⚙️ 4️⃣ Batch upload
+  // 4️⃣ Upload in batches
   const totalChunks = Math.ceil(newRows.length / BATCH_LIMIT);
   let uploaded = 0;
 
@@ -665,31 +667,40 @@
     const chunk = newRows.slice(start, end);
 
     const batch = writeBatch(db);
+
     for (const row of chunk) {
       if (!row.id) continue;
+
+      // Upload taskcard
       const docRef = doc(db, TASKS_COLLECTION, row.id);
-      batch.set(
-        docRef,
-        {
+      batch.set(docRef, {
+        ...row,
+        uploadedBy: userEmail,
+        uploadedAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+      }, { merge: false });
+
+      // Only log to history if WO already exists
+      if (existingWOSet.has(row.wo)) {
+        const historyRef = doc(collection(db, "history"));
+        batch.set(historyRef, {
           ...row,
           uploadedBy: userEmail,
           uploadedAt: new Date().toISOString(),
-          createdAt: serverTimestamp(),
-        },
-        { merge: false } // don’t overwrite
-      );
+          type: "new task added to existing WO",
+        });
+      }
     }
 
     await batch.commit();
     uploaded += chunk.length;
-    setStatus(`📤 Uploaded batch ${i + 1}/${totalChunks} (${uploaded}/${newRows.length})`);
+    setStatus(`Uploaded batch ${i + 1}/${totalChunks} (${uploaded}/${newRows.length})`);
   }
 
-  // ✅ 5️⃣ Summary
-  const msg = `🎉 Upload complete! Added ${uploaded} new, skipped ${skipped.length} existing.`;
-  setStatus(msg);
-  console.log(msg);
+  setStatus(`🎉 Upload complete! Added ${uploaded} new, skipped ${skippedRows.length} existing.`);
+  console.log(`Added ${uploaded}, skipped ${skippedRows.length}`);
 }
+
 
 
       function attachRealtimeListener() {
