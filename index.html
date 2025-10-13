@@ -264,174 +264,191 @@
     </div>
 
     <!-- Firebase -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-      import {
-        getAuth,
-        signInWithEmailAndPassword,
-        createUserWithEmailAndPassword,
-        sendPasswordResetEmail,
-        sendEmailVerification,
-        signOut,
-        setPersistence,
-        browserLocalPersistence,
-        browserSessionPersistence,
-      } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import {
+    getAuth,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
+    sendEmailVerification,
+    signOut,
+    setPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence,
+  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyDCpHhUL8x4rs-fom1xyaNdWm5prSGf57U",
-        authDomain: "onemtc-2222c.firebaseapp.com",
-        projectId: "onemtc-2222c",
-        storageBucket: "onemtc-2222c.firebasestorage.app",
-        messagingSenderId: "447271556426",
-        appId: "1:447271556426:web:562ba4d72e40b754599db3",
-      };
+  // ✅ Firebase config stays but this is fine (public, not secret)
+  const firebaseConfig = {
+    apiKey: "AIzaSyDCpHhUL8x4rs-fom1xyaNdWm5prSGf57U",
+    authDomain: "onemtc-2222c.firebaseapp.com",
+    projectId: "onemtc-2222c",
+    storageBucket: "onemtc-2222c.firebasestorage.app",
+    messagingSenderId: "447271556426",
+    appId: "1:447271556426:web:562ba4d72e40b754599db3",
+  };
 
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const CHECK_ACCESS_URL = "https://us-central1-onemtc-2222c.cloudfunctions.net/checkAccess";
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
 
-async function verifyAccess(email) {
-  try {
-    const response = await fetch(`${CHECK_ACCESS_URL}?email=${encodeURIComponent(email)}`);
-    const data = await response.json();
-    return data.allowed;
-  } catch (err) {
-    console.error("Access check failed:", err);
-    return false;
+  // ✅ Call your Cloud Function securely
+  const CHECK_ACCESS_URL = "https://us-central1-onemtc-2222c.cloudfunctions.net/checkAccess";
+
+  async function verifyAccess(email) {
+    try {
+      const response = await fetch(`${CHECK_ACCESS_URL}?email=${encodeURIComponent(email)}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        mode: "cors", // 👈 ensures proper CORS handling
+      });
+
+      if (!response.ok) {
+        console.error("Access check failed with status:", response.status);
+        return false;
+      }
+
+      const data = await response.json();
+      return data.allowed === true;
+    } catch (err) {
+      console.error("Access check failed:", err);
+      return false;
+    }
   }
-}
 
+  const form = document.getElementById("loginForm");
+  const email = document.getElementById("email");
+  const password = document.getElementById("password");
+  const togglePw = document.getElementById("togglePw");
+  const errorMsg = document.getElementById("errorMsg");
+  const capsWarn = document.getElementById("capsWarn");
+  const remember = document.getElementById("remember");
+  const signupBtn = document.getElementById("signupBtn");
+  const forgotPwLink = document.getElementById("forgotPwLink");
+  const roleModal = document.getElementById("roleModal");
+  const reportBtn = document.getElementById("reportBtn");
+  const uploaderBtn = document.getElementById("uploaderBtn");
 
-      const form = document.getElementById("loginForm");
-      const email = document.getElementById("email");
-      const password = document.getElementById("password");
-      const togglePw = document.getElementById("togglePw");
-      const errorMsg = document.getElementById("errorMsg");
-      const capsWarn = document.getElementById("capsWarn");
-      const remember = document.getElementById("remember");
-      const signupBtn = document.getElementById("signupBtn");
-      const forgotPwLink = document.getElementById("forgotPwLink");
-      const roleModal = document.getElementById("roleModal");
-      const reportBtn = document.getElementById("reportBtn");
-      const uploaderBtn = document.getElementById("uploaderBtn");
+  // Show/hide password
+  togglePw.addEventListener("click", () => {
+    const isPwd = password.type === "password";
+    password.type = isPwd ? "text" : "password";
+    togglePw.textContent = isPwd ? "Hide" : "Show";
+  });
 
-      // Show/hide password
-      togglePw.addEventListener("click", () => {
-        const isPwd = password.type === "password";
-        password.type = isPwd ? "text" : "password";
-        togglePw.textContent = isPwd ? "Hide" : "Show";
-      });
+  password.addEventListener("keydown", (e) => {
+    capsWarn.style.display = e.getModifierState("CapsLock")
+      ? "block"
+      : "none";
+  });
 
-      password.addEventListener("keydown", (e) => {
-        capsWarn.style.display = e.getModifierState("CapsLock")
-          ? "block"
-          : "none";
-      });
+  // Sign In
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorMsg.style.display = "none";
 
-      // Sign In
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        errorMsg.style.display = "none";
+    const persistenceType = remember.checked
+      ? browserLocalPersistence
+      : browserSessionPersistence;
 
-        const persistenceType = remember.checked
-          ? browserLocalPersistence
-          : browserSessionPersistence;
+    try {
+      await setPersistence(auth, persistenceType);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email.value,
+        password.value
+      );
+      const user = userCredential.user;
 
-        try {
-          await setPersistence(auth, persistenceType);
-          const userCredential = await signInWithEmailAndPassword(
-            auth,
-            email.value,
-            password.value
-          );
-          const user = userCredential.user;
+      if (!user.emailVerified) {
+        alert("Please verify your email before signing in.");
+        await signOut(auth);
+        return;
+      }
 
-          if (!user.emailVerified) {
-            alert("Please verify your email before signing in.");
-            await signOut(auth);
-            return;
-          }
+      localStorage.setItem("username", user.email);
+      sessionStorage.setItem("justLoggedIn", "true");
 
-          localStorage.setItem("username", user.email);
-          sessionStorage.setItem("justLoggedIn", "true"); // mark fresh login
-        const allowed = await verifyAccess(user.email);
+      // ✅ checkAccess via secure Cloud Function
+      const allowed = await verifyAccess(user.email);
 
-if (allowed && sessionStorage.getItem("justLoggedIn") === "true") {
-  roleModal.style.display = "flex";
+      if (allowed && sessionStorage.getItem("justLoggedIn") === "true") {
+        roleModal.style.display = "flex";
 
-  reportBtn.onclick = () => {
-    sessionStorage.removeItem("justLoggedIn");
-    window.location.href = "aircraftoverhaul";
-  };
-  uploaderBtn.onclick = () => {
-    sessionStorage.removeItem("justLoggedIn");
-    window.location.href = "onemtcloader";
-  };
-} else if (!allowed) {
-  alert("🚫 You are not authorized to access this page.");
-  await signOut(auth);
-  return;
-} else {
-  window.location.href = "aircraftoverhaul";
-}
+        reportBtn.onclick = () => {
+          sessionStorage.removeItem("justLoggedIn");
+          window.location.href = "aircraftoverhaul";
+        };
 
-    
-        } catch (error) {
-          console.error(error);
-          errorMsg.style.display = "block";
-          const code = error.code;
-          if (code === "auth/user-not-found")
-            errorMsg.textContent = "No account found. Please create one.";
-          else if (code === "auth/wrong-password")
-            errorMsg.textContent = "Incorrect password.";
-          else errorMsg.textContent = "Invalid email or password.";
-        }
-      });
+        uploaderBtn.onclick = () => {
+          sessionStorage.removeItem("justLoggedIn");
+          window.location.href = "onemtcloader";
+        };
+      } else if (!allowed) {
+        alert("🚫 You are not authorized to access this page.");
+        await signOut(auth);
+        return;
+      } else {
+        window.location.href = "aircraftoverhaul";
+      }
 
-      // Sign Up
-      signupBtn.addEventListener("click", async () => {
-        const newEmail = email.value;
-        const newPass = password.value;
-        if (!newEmail || !newPass) {
-          alert("Enter email & password first!");
-          return;
-        }
+    } catch (error) {
+      console.error(error);
+      errorMsg.style.display = "block";
+      const code = error.code;
+      if (code === "auth/user-not-found")
+        errorMsg.textContent = "No account found. Please create one.";
+      else if (code === "auth/wrong-password")
+        errorMsg.textContent = "Incorrect password.";
+      else errorMsg.textContent = "Invalid email or password.";
+    }
+  });
 
-        try {
-          const userCredential = await createUserWithEmailAndPassword(
-            auth,
-            newEmail,
-            newPass
-          );
-          await sendEmailVerification(userCredential.user);
-          alert(
-            `✅ Account created for ${newEmail}. A verification email has been sent.`
-          );
-          await signOut(auth);
-        } catch (error) {
-          console.error(error);
-          alert(error.message);
-        }
-      });
+  // Sign Up
+  signupBtn.addEventListener("click", async () => {
+    const newEmail = email.value;
+    const newPass = password.value;
+    if (!newEmail || !newPass) {
+      alert("Enter email & password first!");
+      return;
+    }
 
-      // Password Reset
-      forgotPwLink.addEventListener("click", async () => {
-        const emailAddress = email.value.trim();
-        if (!emailAddress) return alert("Please enter your email first.");
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        newEmail,
+        newPass
+      );
+      await sendEmailVerification(userCredential.user);
+      alert(
+        `✅ Account created for ${newEmail}. A verification email has been sent.`
+      );
+      await signOut(auth);
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    }
+  });
 
-        try {
-          await sendPasswordResetEmail(auth, emailAddress);
-          alert(`A password reset email has been sent to ${emailAddress}.`);
-        } catch (error) {
-          console.error(error);
-          alert(
-            error.message.includes("auth/user-not-found")
-              ? "No account found with that email."
-              : error.message
-          );
-        }
-      });
-    </script>
+  // Password Reset
+  forgotPwLink.addEventListener("click", async () => {
+    const emailAddress = email.value.trim();
+    if (!emailAddress) return alert("Please enter your email first.");
+
+    try {
+      await sendPasswordResetEmail(auth, emailAddress);
+      alert(`A password reset email has been sent to ${emailAddress}.`);
+    } catch (error) {
+      console.error(error);
+      alert(
+        error.message.includes("auth/user-not-found")
+          ? "No account found with that email."
+          : error.message
+      );
+    }
+  });
+</script>
+
   </body>
 </html>
