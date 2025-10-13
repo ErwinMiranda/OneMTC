@@ -358,7 +358,7 @@ form.addEventListener("submit", async (e) => {
     if (userSnap.exists() && userSnap.data().active === true) {
       const userRole = userSnap.data().role || "default";
 
-      if (userRole === "admin" || userRole === "reporter" || userRole === "uploader") {
+      if (userRole === "admin" || userRole === "planning" || userRole === "jobcard") {
         roleModal.style.display = "flex";
 
         reportBtn.onclick = () => {
