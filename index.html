@@ -276,6 +276,9 @@
         setPersistence,
         browserLocalPersistence,
         browserSessionPersistence,
+        getFirestore,
+        doc,
+        getDoc
       } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
       const firebaseConfig = {
@@ -289,11 +292,9 @@
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
-      const specialEmails = [
-        "u560249@lht-philippines.com",
-        "admin@lht-philippines.com",
-        "reporter@onemtc.com",
-      ];
+      const db = getFirestore(app);
+
+     
 
       const form = document.getElementById("loginForm");
       const email = document.getElementById("email");
@@ -322,62 +323,71 @@
       });
 
       // Sign In
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        errorMsg.style.display = "none";
+     // Sign In
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errorMsg.style.display = "none";
 
-        const persistenceType = remember.checked
-          ? browserLocalPersistence
-          : browserSessionPersistence;
+  const persistenceType = remember.checked
+    ? browserLocalPersistence
+    : browserSessionPersistence;
 
-        try {
-          await setPersistence(auth, persistenceType);
-          const userCredential = await signInWithEmailAndPassword(
-            auth,
-            email.value,
-            password.value
-          );
-          const user = userCredential.user;
+  try {
+    await setPersistence(auth, persistenceType);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email.value,
+      password.value
+    );
+    const user = userCredential.user;
 
-          if (!user.emailVerified) {
-            alert("Please verify your email before signing in.");
-            await signOut(auth);
-            return;
-          }
+    if (!user.emailVerified) {
+      alert("Please verify your email before signing in.");
+      await signOut(auth);
+      return;
+    }
 
-          localStorage.setItem("username", user.email);
-          sessionStorage.setItem("justLoggedIn", "true"); // mark fresh login
+    // ✅ Check if user is allowed
+    const userRef = doc(db, "allowedUsers", user.email.toLowerCase());
+    const userSnap = await getDoc(userRef);
 
-          if (
-            specialEmails
-              .map((e) => e.toLowerCase())
-              .includes(user.email.toLowerCase()) &&
-            sessionStorage.getItem("justLoggedIn") === "true"
-          ) {
-            roleModal.style.display = "flex";
+    localStorage.setItem("username", user.email);
+    sessionStorage.setItem("justLoggedIn", "true");
 
-            reportBtn.onclick = () => {
-              sessionStorage.removeItem("justLoggedIn");
-              window.location.href = "aircraftoverhaul";
-            };
-            uploaderBtn.onclick = () => {
-              sessionStorage.removeItem("justLoggedIn");
-              window.location.href = "onemtcloader";
-            };
-          } else {
-            window.location.href = "aircraftoverhaul";
-          }
-        } catch (error) {
-          console.error(error);
-          errorMsg.style.display = "block";
-          const code = error.code;
-          if (code === "auth/user-not-found")
-            errorMsg.textContent = "No account found. Please create one.";
-          else if (code === "auth/wrong-password")
-            errorMsg.textContent = "Incorrect password.";
-          else errorMsg.textContent = "Invalid email or password.";
-        }
-      });
+    if (userSnap.exists() && userSnap.data().active === true) {
+      const userRole = userSnap.data().role || "default";
+
+      if (userRole === "admin" || userRole === "reporter" || userRole === "uploader") {
+        roleModal.style.display = "flex";
+
+        reportBtn.onclick = () => {
+          sessionStorage.removeItem("justLoggedIn");
+          window.location.href = "aircraftoverhaul";
+        };
+        uploaderBtn.onclick = () => {
+          sessionStorage.removeItem("justLoggedIn");
+          window.location.href = "onemtcloader";
+        };
+      } else {
+        // normal user
+        window.location.href = "aircraftoverhaul";
+      }
+    } else {
+      alert("Access denied. You are not in the allowed users list.");
+      await signOut(auth);
+    }
+  } catch (error) {
+    console.error(error);
+    errorMsg.style.display = "block";
+    const code = error.code;
+    if (code === "auth/user-not-found")
+      errorMsg.textContent = "No account found. Please create one.";
+    else if (code === "auth/wrong-password")
+      errorMsg.textContent = "Incorrect password.";
+    else errorMsg.textContent = "Invalid email or password.";
+  }
+});
+
 
       // Sign Up
       signupBtn.addEventListener("click", async () => {
