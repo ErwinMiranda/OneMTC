@@ -289,11 +289,19 @@
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
-      const specialEmails = [
-        "u560249@lht-philippines.com",
-        "admin@lht-philippines.com",
-        "reporter@onemtc.com",
-      ];
+      const CHECK_ACCESS_URL = "https://us-central1-onemtc-2222c.cloudfunctions.net/checkAccess";
+
+async function verifyAccess(email) {
+  try {
+    const response = await fetch(`${CHECK_ACCESS_URL}?email=${encodeURIComponent(email)}`);
+    const data = await response.json();
+    return data.allowed;
+  } catch (err) {
+    console.error("Access check failed:", err);
+    return false;
+  }
+}
+
 
       const form = document.getElementById("loginForm");
       const email = document.getElementById("email");
@@ -347,26 +355,28 @@
 
           localStorage.setItem("username", user.email);
           sessionStorage.setItem("justLoggedIn", "true"); // mark fresh login
+        const allowed = await verifyAccess(user.email);
 
-          if (
-            specialEmails
-              .map((e) => e.toLowerCase())
-              .includes(user.email.toLowerCase()) &&
-            sessionStorage.getItem("justLoggedIn") === "true"
-          ) {
-            roleModal.style.display = "flex";
+if (allowed && sessionStorage.getItem("justLoggedIn") === "true") {
+  roleModal.style.display = "flex";
 
-            reportBtn.onclick = () => {
-              sessionStorage.removeItem("justLoggedIn");
-              window.location.href = "aircraftoverhaul";
-            };
-            uploaderBtn.onclick = () => {
-              sessionStorage.removeItem("justLoggedIn");
-              window.location.href = "onemtcloader";
-            };
-          } else {
-            window.location.href = "aircraftoverhaul";
-          }
+  reportBtn.onclick = () => {
+    sessionStorage.removeItem("justLoggedIn");
+    window.location.href = "aircraftoverhaul";
+  };
+  uploaderBtn.onclick = () => {
+    sessionStorage.removeItem("justLoggedIn");
+    window.location.href = "onemtcloader";
+  };
+} else if (!allowed) {
+  alert("🚫 You are not authorized to access this page.");
+  await signOut(auth);
+  return;
+} else {
+  window.location.href = "aircraftoverhaul";
+}
+
+    
         } catch (error) {
           console.error(error);
           errorMsg.style.display = "block";
