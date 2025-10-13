@@ -400,9 +400,6 @@ form.addEventListener("submit", async (e) => {
         sessionStorage.removeItem("justLoggedIn");
         window.location.href = "onemtcloader";
       };
-    } else {
-      alert("Access denied. You are not in the allowed users list.");
-      await signOut(auth);
     }
   } catch (error) {
     console.error(error);
