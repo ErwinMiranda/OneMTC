@@ -323,36 +323,6 @@
           : "none";
       });
 
-  import {
-  getAuth,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-  setPersistence,
-  browserLocalPersistence,
-  browserSessionPersistence,
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-
-import {
-  getFirestore,
-  doc,
-  getDoc
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-// Firebase setup
-const auth = getAuth();
-const db = getFirestore();
-
-// Elements
-const form = document.getElementById("loginForm");
-const email = document.getElementById("email");
-const password = document.getElementById("password");
-const remember = document.getElementById("remember");
-const errorMsg = document.getElementById("errorMsg");
-const roleModal = document.getElementById("roleModal");
-const reportBtn = document.getElementById("reportBtn");
-const uploaderBtn = document.getElementById("uploaderBtn");
-
 // ✅ Check if user already signed in
 onAuthStateChanged(auth, async (user) => {
   if (user) {
