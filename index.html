@@ -323,8 +323,7 @@
           ? "block"
           : "none";
       });
-
-// ✅ Check if user already signed in
+    // ✅ Check if user already signed in
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     try {
@@ -338,7 +337,7 @@ onAuthStateChanged(auth, async (user) => {
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists() && userSnap.data().active === true) {
-        // ✅ Show app selection for all allowed users
+        // ✅ Allowed user — show app selection
         roleModal.style.display = "flex";
 
         reportBtn.onclick = () => {
@@ -348,7 +347,7 @@ onAuthStateChanged(auth, async (user) => {
           window.location.href = "onemtcloader";
         };
       } else {
-        // Not allowed
+        // ✅ Not in allowedUsers — still allow access to aircraftoverhaul
         window.location.href = "aircraftoverhaul";
       }
     } catch (err) {
@@ -389,7 +388,7 @@ form.addEventListener("submit", async (e) => {
     sessionStorage.setItem("justLoggedIn", "true");
 
     if (userSnap.exists() && userSnap.data().active === true) {
-      // ✅ Show app selection for all allowed users
+      // ✅ Allowed user — show app selection
       roleModal.style.display = "flex";
 
       reportBtn.onclick = () => {
@@ -400,6 +399,9 @@ form.addEventListener("submit", async (e) => {
         sessionStorage.removeItem("justLoggedIn");
         window.location.href = "onemtcloader";
       };
+    } else {
+      // ✅ Not in allowedUsers — still go to aircraftoverhaul
+      window.location.href = "aircraftoverhaul";
     }
   } catch (error) {
     console.error(error);
@@ -412,8 +414,6 @@ form.addEventListener("submit", async (e) => {
     else errorMsg.textContent = "Invalid email or password.";
   }
 });
-
-
 
       // Sign Up
       signupBtn.addEventListener("click", async () => {
