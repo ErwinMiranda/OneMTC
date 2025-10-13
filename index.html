@@ -4,7 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BM Planning Login</title>
-    <link rel="icon" type="image/png" href="010587cf-41a4-4a60-9e9e-a02b07e4e0a0.png" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="010587cf-41a4-4a60-9e9e-a02b07e4e0a0.png"
+    />
 
     <style>
       :root {
@@ -20,7 +24,6 @@
         box-sizing: border-box;
         font-family: "Segoe UI", Roboto, system-ui, sans-serif;
       }
-
       body {
         margin: 0;
         min-height: 100vh;
@@ -28,7 +31,6 @@
         place-items: center;
         background: linear-gradient(to bottom, var(--bg-top), var(--bg-bottom));
       }
-
       .card {
         width: min(400px, 92vw);
         background: var(--card);
@@ -40,7 +42,6 @@
         animation: fadeIn 0.6s ease;
         text-align: center;
       }
-
       @keyframes fadeIn {
         from {
           opacity: 0;
@@ -51,7 +52,6 @@
           transform: translateY(0);
         }
       }
-
       .logo img {
         max-width: 140px;
         height: auto;
@@ -68,7 +68,6 @@
         color: var(--muted);
         font-size: 0.95rem;
       }
-
       .field {
         margin-bottom: 18px;
         text-align: left;
@@ -79,7 +78,6 @@
         font-size: 0.88rem;
         color: #cbd5e1;
       }
-
       .input-wrap {
         position: relative;
       }
@@ -99,7 +97,6 @@
       input:focus {
         border-color: var(--accent);
       }
-
       .toggle {
         position: absolute;
         right: 8px;
@@ -111,7 +108,6 @@
         font-size: 0.85rem;
         cursor: pointer;
       }
-
       .caps,
       .error,
       .lock {
@@ -128,7 +124,6 @@
       .lock {
         color: #f87171;
       }
-
       .row {
         display: flex;
         justify-content: space-between;
@@ -148,7 +143,6 @@
         text-decoration: none;
         cursor: pointer;
       }
-
       button[type="submit"],
       button.secondary {
         width: 100%;
@@ -170,7 +164,6 @@
         opacity: 0.6;
         cursor: not-allowed;
       }
-
       .stripe {
         margin-top: 28px;
         border-top: 1px dashed rgba(255, 255, 255, 0.25);
@@ -179,6 +172,47 @@
         color: #9ca3af;
         letter-spacing: 1px;
         text-transform: uppercase;
+      }
+
+      /* Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-content {
+        background: #1e293b;
+        padding: 24px;
+        border-radius: 14px;
+        text-align: center;
+        color: #f1f5f9;
+        width: min(300px, 80vw);
+        animation: fadeIn 0.4s ease;
+      }
+      .modal-content h2 {
+        margin-bottom: 16px;
+      }
+      .modal-content button {
+        padding: 12px 20px;
+        margin: 8px;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        background: #ffcc00;
+        color: #111;
+        transition: background 0.25s;
+      }
+      .modal-content button:hover {
+        background: #eab308;
       }
     </style>
   </head>
@@ -194,13 +228,7 @@
       <div class="field">
         <label for="email">Email</label>
         <div class="input-wrap">
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autocomplete="off"
-            required
-          />
+          <input id="email" name="email" type="email" required />
         </div>
       </div>
 
@@ -223,162 +251,177 @@
       <button type="button" class="secondary" id="signupBtn">
         Create Account
       </button>
-
       <div class="stripe">Lufthansa Technik Philippines • Base Maintenance</div>
     </form>
 
-    <!-- Firebase Logic -->
-   <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import {
-    getAuth,
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    sendPasswordResetEmail,
-    sendEmailVerification,
-    signOut,
-    setPersistence,
-    browserLocalPersistence,
-    browserSessionPersistence,
-  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    <!-- Modal -->
+    <div id="roleModal" class="modal">
+      <div class="modal-content">
+        <h2>Select App</h2>
+        <button id="reportBtn">ONE MTC </button>
+        <button id="uploaderBtn">UPLOADER</button>
+      </div>
+    </div>
 
-  // ==============================
-  // Firebase Config & Init
-  // ==============================
-  const firebaseConfig = {
-    apiKey: "AIzaSyDCpHhUL8x4rs-fom1xyaNdWm5prSGf57U",
-    authDomain: "onemtc-2222c.firebaseapp.com",
-    projectId: "onemtc-2222c",
-    storageBucket: "onemtc-2222c.firebasestorage.app",
-    messagingSenderId: "447271556426",
-    appId: "1:447271556426:web:562ba4d72e40b754599db3",
-  };
+    <!-- Firebase -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+        createUserWithEmailAndPassword,
+        sendPasswordResetEmail,
+        sendEmailVerification,
+        signOut,
+        setPersistence,
+        browserLocalPersistence,
+        browserSessionPersistence,
+      } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+      const firebaseConfig = {
+        apiKey: "AIzaSyDCpHhUL8x4rs-fom1xyaNdWm5prSGf57U",
+        authDomain: "onemtc-2222c.firebaseapp.com",
+        projectId: "onemtc-2222c",
+        storageBucket: "onemtc-2222c.firebasestorage.app",
+        messagingSenderId: "447271556426",
+        appId: "1:447271556426:web:562ba4d72e40b754599db3",
+      };
 
-  // ==============================
-  // DOM Elements
-  // ==============================
-  const form = document.getElementById("loginForm");
-  const email = document.getElementById("email");
-  const password = document.getElementById("password");
-  const togglePw = document.getElementById("togglePw");
-  const errorMsg = document.getElementById("errorMsg");
-  const capsWarn = document.getElementById("capsWarn");
-  const remember = document.getElementById("remember");
-  const signupBtn = document.getElementById("signupBtn");
-  const forgotPwLink = document.getElementById("forgotPwLink");
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const specialEmails = [
+        "u560249@lht-philippines.com",
+        "admin@lht-philippines.com",
+        "reporter@onemtc.com",
+      ];
 
-  // ==============================
-  // UI Behaviors
-  // ==============================
-  togglePw.addEventListener("click", () => {
-    const isPwd = password.type === "password";
-    password.type = isPwd ? "text" : "password";
-    togglePw.textContent = isPwd ? "Hide" : "Show";
-  });
+      const form = document.getElementById("loginForm");
+      const email = document.getElementById("email");
+      const password = document.getElementById("password");
+      const togglePw = document.getElementById("togglePw");
+      const errorMsg = document.getElementById("errorMsg");
+      const capsWarn = document.getElementById("capsWarn");
+      const remember = document.getElementById("remember");
+      const signupBtn = document.getElementById("signupBtn");
+      const forgotPwLink = document.getElementById("forgotPwLink");
+      const roleModal = document.getElementById("roleModal");
+      const reportBtn = document.getElementById("reportBtn");
+      const uploaderBtn = document.getElementById("uploaderBtn");
 
-  password.addEventListener("keydown", (e) => {
-    capsWarn.style.display = e.getModifierState("CapsLock") ? "block" : "none";
-  });
+      // Show/hide password
+      togglePw.addEventListener("click", () => {
+        const isPwd = password.type === "password";
+        password.type = isPwd ? "text" : "password";
+        togglePw.textContent = isPwd ? "Hide" : "Show";
+      });
 
-  // ==============================
-  // LOGIN
-  // ==============================
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    errorMsg.style.display = "none";
+      password.addEventListener("keydown", (e) => {
+        capsWarn.style.display = e.getModifierState("CapsLock")
+          ? "block"
+          : "none";
+      });
 
-    const persistenceType = remember.checked
-      ? browserLocalPersistence
-      : browserSessionPersistence;
+      // Sign In
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorMsg.style.display = "none";
 
-    try {
-      await setPersistence(auth, persistenceType);
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email.value,
-        password.value
-      );
-      const user = userCredential.user;
+        const persistenceType = remember.checked
+          ? browserLocalPersistence
+          : browserSessionPersistence;
 
-      // ✅ Check if email verified
-      if (!user.emailVerified) {
-        alert("Please verify your email before signing in.");
-        await signOut(auth);
-        return;
-      }
+        try {
+          await setPersistence(auth, persistenceType);
+          const userCredential = await signInWithEmailAndPassword(
+            auth,
+            email.value,
+            password.value
+          );
+          const user = userCredential.user;
 
-      // ✅ Save user for session
-      localStorage.setItem("username", user.email);
-      window.location.href = "aircraftoverhaul";
-    } catch (error) {
-      console.error(error);
-      errorMsg.style.display = "block";
-      errorMsg.textContent = error.message.includes("auth/user-not-found")
-        ? "No account found. Please create one."
-        : "Invalid email or password.";
-    }
-  });
+          if (!user.emailVerified) {
+            alert("Please verify your email before signing in.");
+            await signOut(auth);
+            return;
+          }
 
-  // ==============================
-  // SIGN UP
-  // ==============================
- signupBtn.addEventListener("click", async () => {
-  const newEmail = email.value;
-  const newPass = password.value;
+          localStorage.setItem("username", user.email);
+          sessionStorage.setItem("justLoggedIn", "true"); // mark fresh login
 
-  if (!newEmail || !newPass) {
-    alert("Enter email & password first!");
-    return;
-  }
+          if (
+            specialEmails
+              .map((e) => e.toLowerCase())
+              .includes(user.email.toLowerCase()) &&
+            sessionStorage.getItem("justLoggedIn") === "true"
+          ) {
+            roleModal.style.display = "flex";
 
-  try {
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      newEmail,
-      newPass
-    );
+            reportBtn.onclick = () => {
+              sessionStorage.removeItem("justLoggedIn");
+              window.location.href = "aircraftoverhaul";
+            };
+            uploaderBtn.onclick = () => {
+              sessionStorage.removeItem("justLoggedIn");
+              window.location.href = "onemtcloader";
+            };
+          } else {
+            window.location.href = "aircraftoverhaul";
+          }
+        } catch (error) {
+          console.error(error);
+          errorMsg.style.display = "block";
+          const code = error.code;
+          if (code === "auth/user-not-found")
+            errorMsg.textContent = "No account found. Please create one.";
+          else if (code === "auth/wrong-password")
+            errorMsg.textContent = "Incorrect password.";
+          else errorMsg.textContent = "Invalid email or password.";
+        }
+      });
 
-    // 🔹 Send email verification link
-    await sendEmailVerification(userCredential.user);
+      // Sign Up
+      signupBtn.addEventListener("click", async () => {
+        const newEmail = email.value;
+        const newPass = password.value;
+        if (!newEmail || !newPass) {
+          alert("Enter email & password first!");
+          return;
+        }
 
-    alert(
-      `✅ Account created for ${newEmail}.\n\nA verification email has been sent — please verify before logging in.`
-    );
+        try {
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            newEmail,
+            newPass
+          );
+          await sendEmailVerification(userCredential.user);
+          alert(
+            `✅ Account created for ${newEmail}. A verification email has been sent.`
+          );
+          await signOut(auth);
+        } catch (error) {
+          console.error(error);
+          alert(error.message);
+        }
+      });
 
-    // 🔹 Log the user out until they verify
-    await signOut(auth);
+      // Password Reset
+      forgotPwLink.addEventListener("click", async () => {
+        const emailAddress = email.value.trim();
+        if (!emailAddress) return alert("Please enter your email first.");
 
-  } catch (error) {
-    console.error(error);
-    alert(error.message);
-  }
-});
-
-  // ==============================
-  // PASSWORD RESET
-  // ==============================
-  forgotPwLink.addEventListener("click", async () => {
-    const emailAddress = email.value.trim();
-    if (!emailAddress) {
-      return alert("Please enter your email first.");
-    }
-
-    try {
-      await sendPasswordResetEmail(auth, emailAddress);
-      alert(`A password reset email has been sent to ${emailAddress}.`);
-    } catch (error) {
-      console.error(error);
-      alert(
-        error.message.includes("auth/user-not-found")
-          ? "No account found with that email."
-          : error.message
-      );
-    }
-  });
-</script>
-
+        try {
+          await sendPasswordResetEmail(auth, emailAddress);
+          alert(`A password reset email has been sent to ${emailAddress}.`);
+        } catch (error) {
+          console.error(error);
+          alert(
+            error.message.includes("auth/user-not-found")
+              ? "No account found with that email."
+              : error.message
+          );
+        }
+      });
+    </script>
   </body>
 </html>
