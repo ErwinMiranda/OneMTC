@@ -323,8 +323,71 @@
           : "none";
       });
 
-      // Sign In
-     // Sign In
+  import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+// Firebase setup
+const auth = getAuth();
+const db = getFirestore();
+
+// Elements
+const form = document.getElementById("loginForm");
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const remember = document.getElementById("remember");
+const errorMsg = document.getElementById("errorMsg");
+const roleModal = document.getElementById("roleModal");
+const reportBtn = document.getElementById("reportBtn");
+const uploaderBtn = document.getElementById("uploaderBtn");
+
+// ✅ Check if user already signed in
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    try {
+      if (!user.emailVerified) {
+        alert("Please verify your email before accessing the app.");
+        await signOut(auth);
+        return;
+      }
+
+      const userRef = doc(db, "allowedUsers", user.email.toLowerCase());
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists() && userSnap.data().active === true) {
+        // ✅ Show app selection for all allowed users
+        roleModal.style.display = "flex";
+
+        reportBtn.onclick = () => {
+          window.location.href = "aircraftoverhaul";
+        };
+        uploaderBtn.onclick = () => {
+          window.location.href = "onemtcloader";
+        };
+      } else {
+        // Not allowed
+        window.location.href = "aircraftoverhaul";
+      }
+    } catch (err) {
+      console.error("Auto-login check failed:", err);
+      await signOut(auth);
+    }
+  }
+});
+
+// ✅ Sign In Process
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   errorMsg.style.display = "none";
@@ -348,7 +411,6 @@ form.addEventListener("submit", async (e) => {
       return;
     }
 
-    // ✅ Check if user is allowed
     const userRef = doc(db, "allowedUsers", user.email.toLowerCase());
     const userSnap = await getDoc(userRef);
 
@@ -356,23 +418,17 @@ form.addEventListener("submit", async (e) => {
     sessionStorage.setItem("justLoggedIn", "true");
 
     if (userSnap.exists() && userSnap.data().active === true) {
-      const userRole = userSnap.data().role || "default";
+      // ✅ Show app selection for all allowed users
+      roleModal.style.display = "flex";
 
-      if (userRole === "admin" || userRole === "planning" || userRole === "jobcard") {
-        roleModal.style.display = "flex";
-
-        reportBtn.onclick = () => {
-          sessionStorage.removeItem("justLoggedIn");
-          window.location.href = "aircraftoverhaul";
-        };
-        uploaderBtn.onclick = () => {
-          sessionStorage.removeItem("justLoggedIn");
-          window.location.href = "onemtcloader";
-        };
-      } else {
-        // normal user
+      reportBtn.onclick = () => {
+        sessionStorage.removeItem("justLoggedIn");
         window.location.href = "aircraftoverhaul";
-      }
+      };
+      uploaderBtn.onclick = () => {
+        sessionStorage.removeItem("justLoggedIn");
+        window.location.href = "onemtcloader";
+      };
     } else {
       alert("Access denied. You are not in the allowed users list.");
       await signOut(auth);
@@ -388,6 +444,7 @@ form.addEventListener("submit", async (e) => {
     else errorMsg.textContent = "Invalid email or password.";
   }
 });
+
 
 
       // Sign Up
