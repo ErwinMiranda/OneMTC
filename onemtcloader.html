@@ -585,35 +585,49 @@
       }
 
       async function handleDeleteWO(wo, ac, userEmail) {
-        if (!confirm(`Delete all taskcards for WO: ${wo}?`)) return;
+  if (!confirm(`Delete all taskcards and history for WO: ${wo}?`)) return;
 
-        try {
-          showLoading(`Deleting ${wo}…`);
+  try {
+    showLoading(`Deleting ${wo}…`);
 
-          const q = query(
-            collection(db, TASKS_COLLECTION),
-            where("wo", "==", wo)
-          );
-          const snapshot = await getDocs(q);
+    // Delete from main tasks collection
+    const tasksQuery = query(
+      collection(db, TASKS_COLLECTION),
+      where("wo", "==", wo)
+    );
+    const tasksSnap = await getDocs(tasksQuery);
 
-          if (snapshot.empty) {
-            alert("No matching documents found.");
-            hideLoading();
-            return;
-          }
+    // Delete from history collection
+    const historyQuery = query(
+      collection(db, "history"),
+      where("wo", "==", wo)
+    );
+    const historySnap = await getDocs(historyQuery);
 
-          const batch = writeBatch(db);
-          snapshot.forEach((docSnap) => batch.delete(docSnap.ref));
-          await batch.commit();
+    if (tasksSnap.empty && historySnap.empty) {
+      alert("No matching documents found in either collection.");
+      hideLoading();
+      return;
+    }
 
-          hideLoading();
-          alert(`✅ Deleted ${snapshot.size} records for WO: ${wo}`);
-          console.log(`${userEmail} deleted ${snapshot.size} docs for ${wo}`);
-        } catch (err) {
-          hideLoading();
-          alert("❌ Delete failed: " + err.message);
-        }
-      }
+    // Use batch delete for both collections
+    const batch = writeBatch(db);
+
+    tasksSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+    historySnap.forEach((docSnap) => batch.delete(docSnap.ref));
+
+    await batch.commit();
+
+    hideLoading();
+    alert(`✅ Deleted ${tasksSnap.size} taskcards and ${historySnap.size} history records for WO: ${wo}`);
+    console.log(`${userEmail} deleted ${tasksSnap.size} tasks and ${historySnap.size} history docs for ${wo}`);
+  } catch (err) {
+    hideLoading();
+    alert("❌ Delete failed: " + err.message);
+    console.error("Delete failed:", err);
+  }
+}
+
 
 async function uploadRowsToFirestore(mappedRows) {
   const db = getFirestore();
