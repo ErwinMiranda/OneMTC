@@ -574,6 +574,64 @@
           border: 1px solid #ddd;
         }
       }
+      /* status  glow */
+      @keyframes pulseGlowGreen {
+        0% {
+          background-color: #e8f5e9;
+          box-shadow: 0 0 10px 2px #81c784;
+        }
+        50% {
+          background-color: #c8e6c9;
+          box-shadow: 0 0 20px 5px #66bb6a;
+        }
+        100% {
+          background-color: #e8f5e9;
+          box-shadow: 0 0 10px 2px #81c784;
+        }
+      }
+
+      .pulse-glow-green {
+        animation: pulseGlowGreen 1.8s ease-in-out infinite;
+        transition: background-color 0.5s ease, box-shadow 0.5s ease;
+      }
+      @keyframes pulseGlowBlue {
+        0% {
+          background-color: #fde8e3;
+          box-shadow: 0 0 10px 2px #f66464;
+        }
+        50% {
+          background-color: #fbbbbb;
+          box-shadow: 0 0 20px 5px #f54242;
+        }
+        100% {
+          background-color: #fde3e3;
+          box-shadow: 0 0 10px 2px #f66464;
+        }
+      }
+
+      .pulse-glow-blue {
+        animation: pulseGlowBlue 1.8s ease-in-out infinite;
+        transition: background-color 0.5s ease, box-shadow 0.5s ease;
+      }
+      @keyframes pulseGlowAmber {
+        0% {
+          background-color: #fff8e1;
+          box-shadow: 0 0 10px 2px #ffca28;
+        }
+        50% {
+          background-color: #ffecb3;
+          box-shadow: 0 0 20px 5px #ffc107;
+        }
+        100% {
+          background-color: #fff8e1;
+          box-shadow: 0 0 10px 2px #ffca28;
+        }
+      }
+
+      .pulse-glow-amber {
+        animation: pulseGlowAmber 1.8s ease-in-out infinite;
+        transition: background-color 0.5s ease, box-shadow 0.5s ease;
+      }
     </style>
   </head>
   <body>
@@ -854,6 +912,7 @@
 
       <!-- Right side history panel -->
       <div class="history">
+        <button id="clearNotifBtn" class="pill-btn">Clear Notification</button>
         <h3>Updates</h3>
         <ul id="historyList" class="history-list">
           <li>Waiting for updates...</li>
@@ -997,7 +1056,7 @@
 
       let unsubscribeHistory = null; // store listener cleanup reference
 
-      function listenToHistoryForWO(workorder) {
+     function listenToHistoryForWO(workorder) {
         if (unsubscribeHistory) {
           unsubscribeHistory();
           unsubscribeHistory = null;
@@ -1005,7 +1064,6 @@
 
         historyListEl.innerHTML = `<li>Loading history for ${workorder}...</li>`;
 
-        // Detect WO type
         const workorderValue = isNaN(workorder) ? workorder : Number(workorder);
 
         const qHistory = query(
@@ -1015,28 +1073,133 @@
           limit(50)
         );
 
+        let initialLoad = true;
+
         unsubscribeHistory = onSnapshot(
           qHistory,
           (snapshot) => {
-            historyListEl.innerHTML = ""; // clear old list
-
             if (snapshot.empty) {
               historyListEl.innerHTML = `<li>No history yet for ${workorder}</li>`;
               return;
             }
 
-            snapshot.docs.forEach((docSnap) => {
-              const data = docSnap.data();
+            if (initialLoad) {
+              historyListEl.innerHTML = "";
+              snapshot.docs.forEach((docSnap) => {
+                const data = docSnap.data();
+                const li = renderHistoryItem(data);
+                li.dataset.id = docSnap.id;
+                historyListEl.appendChild(li);
+              });
 
-              const li = renderHistoryItem(data);
-              historyListEl.appendChild(li);
+              // 🔹 Restore any previously glowing items
+              restoreGlow();
+
+              initialLoad = false;
+              return;
+            }
+
+            // 🔹 After first load: handle live changes
+            snapshot.docChanges().forEach((change) => {
+              const data = change.doc.data();
+              const id = change.doc.id;
+
+              if (change.type === "added") {
+                clearGlow();
+
+                const li = renderHistoryItem(data);
+                li.dataset.id = id;
+
+                // Choose glow color by type
+                let glowClass = "";
+                if (data.status === "CLOSED") {
+                  glowClass = "pulse-glow-green";
+                } else if (data.status === "OPEN") {
+                  glowClass = "pulse-glow-blue";
+                } else if (
+                  data.status === "Warning" ||
+                  data.status === "Error"
+                ) {
+                  glowClass = "pulse-glow-amber";
+                }
+
+                if (glowClass) {
+                  li.classList.add(glowClass);
+                  saveGlowState(id, glowClass); // 🔹 Save glow info
+                }
+
+                historyListEl.prepend(li);
+              }
+
+              if (change.type === "removed") {
+                const li = historyListEl.querySelector(`[data-id="${id}"]`);
+                if (li) li.remove();
+              }
             });
           },
           (error) => {
-           // console.error("❌ History listener error:", error);
+            console.error("❌ History listener error:", error);
             historyListEl.innerHTML = `<li>Error loading history</li>`;
           }
         );
+
+        // 🧹 Helper: remove all glowing states
+        function clearGlow() {
+          document
+            .querySelectorAll(".pulse-glow")
+            .forEach((el) => el.classList.remove("pulse-glow"));
+        }
+
+        // 🖱️ Remove glow on user interaction
+        const removeGlowOnUserAction = () => {
+          clearGlow();
+          document.removeEventListener("click", removeGlowOnUserAction);
+          document.removeEventListener("keydown", removeGlowOnUserAction);
+          document.removeEventListener("scroll", removeGlowOnUserAction);
+        };
+
+        document.addEventListener("click", removeGlowOnUserAction);
+        document.addEventListener("keydown", removeGlowOnUserAction);
+        document.addEventListener("scroll", removeGlowOnUserAction);
+      }
+      function clearGlow() {
+        document
+          .querySelectorAll(
+            ".pulse-glow-green, .pulse-glow-blue, .pulse-glow-amber"
+          )
+          .forEach((el) => {
+            el.classList.remove(
+              "pulse-glow-green",
+              "pulse-glow-blue",
+              "pulse-glow-amber"
+            );
+          });
+      }
+      document.getElementById("clearNotifBtn").addEventListener("click", () => {
+        clearGlow();
+        clearGlowState();
+      });
+
+      function saveGlowState(id, glowClass) {
+        const glowData = JSON.parse(localStorage.getItem("glowState") || "{}");
+        glowData[id] = glowClass;
+        localStorage.setItem("glowState", JSON.stringify(glowData));
+      }
+
+      function loadGlowState() {
+        return JSON.parse(localStorage.getItem("glowState") || "{}");
+      }
+
+      function clearGlowState() {
+        localStorage.removeItem("glowState");
+      }
+
+      function restoreGlow() {
+        const glowData = loadGlowState();
+        for (const [id, glowClass] of Object.entries(glowData)) {
+          const li = document.querySelector(`[data-id="${id}"]`);
+          if (li) li.classList.add(glowClass);
+        }
       }
 
       document.getElementById("woSearchBtn").addEventListener("click", () => {
