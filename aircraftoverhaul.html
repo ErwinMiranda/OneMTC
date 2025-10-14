@@ -632,6 +632,21 @@
         animation: pulseGlowAmber 1.8s ease-in-out infinite;
         transition: background-color 0.5s ease, box-shadow 0.5s ease;
       }
+      .logbook-btn {
+  background-color: #003366; /* Lufthansa blue */
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  margin-left: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+.logbook-btn:hover {
+  background-color: #002147;
+}
+
     </style>
   </head>
   <body>
@@ -807,6 +822,8 @@
         <button onclick="printFullTable()" class="printable">
           🖨️ Print This Table
         </button>
+        <button id="logbookBtn" class="logbook-btn">Digital Logbook</button>
+
         <!-- Scan Modal -->
         <div
           id="scanModal"
@@ -2523,6 +2540,20 @@
       if (!lastWO) {
         hideLoading();
       }
+      // Digital Logbook Button
+document.getElementById("logbookBtn").addEventListener("click", () => {
+  const currentWO = document.getElementById("woInput").value?.trim();
+  const selectedSkill = document.getElementById("skillDropdown")?.value || "";
+
+  if (!currentWO) {
+    alert("Please select or enter a Work Order first.");
+    return;
+  }
+
+  const url = `turnover.html?wo=${encodeURIComponent(currentWO)}&skill=${encodeURIComponent(selectedSkill)}`;
+  window.open(url, "_blank");
+});
+
     </script>
   </body>
 </html>
