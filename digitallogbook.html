@@ -129,6 +129,10 @@
       .grid{grid-template-columns:1fr}
       .toolbar{flex-direction:column;align-items:stretch}
     }
+       #summary ul li {
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 4px;
+      }
   </style>
 </head>
 <body>
@@ -464,7 +468,6 @@
 
         // Build query: equality filters for WO, skill and date string
         const col = collection(db, "turnover");
-        // We store a 'date' field as YYYY-MM-DD to make date filtering simple
         const q = query(
           col,
           where("wo", "==", currentWO),
@@ -472,8 +475,8 @@
           where("date", "==", date),
           orderBy("modified_at", "asc")
         );
-        const snap = await getDocs(q);
 
+        const snap = await getDocs(q);
         listEl.innerHTML = "";
         let count = 0;
         const rows = [];
@@ -496,6 +499,9 @@
         if (filtered.length === 0) {
           listEl.innerHTML = `<div style="text-align:center;color:var(--muted);padding:18px">No logs for ${currentWO} · ${currentSkill} · ${date}</div>`;
           countInfo.textContent = `0 entries`;
+
+          // also clear summary when no data
+          updateShiftSummary([]);
           return;
         }
 
@@ -504,31 +510,36 @@
           const item = document.createElement("div");
           item.className = "log-item";
           item.innerHTML = `
-          <div class="meta">
-            <div class="meta-left">
-              <div style="font-weight:700">${r.seq_or_nr || "—"}</div>
-              <div class="chip">${r.skill}</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:0.9rem;color:var(--muted)">${
-                r.logged_by || r.modified_by || "—"
-              }</div>
-              <div style="font-size:0.85rem;color:var(--muted)">${
-                r.modified_at
-                  ? new Date(r.modified_at.seconds * 1000).toLocaleString()
-                  : "-"
-              }</div>
-            </div>
+      <div class="meta">
+        <div class="meta-left">
+          <div style="font-weight:700">${r.seq_or_nr || "—"}</div>
+          <div class="chip">${r.skill}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:0.9rem;color:var(--muted)">
+            ${r.logged_by || r.modified_by || "—"}
           </div>
-          <div class="remarks">${escapeHtml(r.remarks || "")}</div>
-          <div style="display:flex;justify-content:flex-end;margin-top:8px">
-            <button class="edit-btn" data-id="${r.__id}">Edit</button>
+          <div style="font-size:0.85rem;color:var(--muted)">
+            ${
+              r.modified_at
+                ? new Date(r.modified_at.seconds * 1000).toLocaleString()
+                : "-"
+            }
           </div>
-        `;
+        </div>
+      </div>
+      <div class="remarks">${escapeHtml(r.remarks || "")}</div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="edit-btn" data-id="${r.__id}">Edit</button>
+      </div>
+    `;
           listEl.appendChild(item);
         });
 
-        countInfo.textContent = `${count} entries`;
+        countInfo.textContent = `${count} entr${count > 1 ? "ies" : "y"}`;
+
+        // 🔹 FIXED: call summary function with the actual array
+        updateShiftSummary(filtered);
       }
 
       // Save quick form
@@ -790,6 +801,41 @@
 
       // expose loadLogs globally for convenience
       window.loadTurnoverLogs = loadLogs;
+      function updateShiftSummary(turnovers) {
+        const summaryEl = document.getElementById("summary");
+
+        if (!turnovers || turnovers.length === 0) {
+          summaryEl.innerHTML = "No turnovers logged for this shift.";
+          return;
+        }
+
+        // Group by skill and find latest remark
+        const grouped = {};
+        turnovers.forEach((t) => {
+          const skill = t.skill || "Unspecified";
+          if (!grouped[skill]) grouped[skill] = [];
+          grouped[skill].push(t);
+        });
+
+        let html = "<ul style='list-style:none; padding:0; margin:0;'>";
+        for (const [skill, entries] of Object.entries(grouped)) {
+          // Sort by modified or date field (if exists)
+          entries.sort((a, b) => (b.modified_at || 0) - (a.modified_at || 0));
+          const latest = entries[0];
+          const latestRemark = latest.remarks || "(no remarks)";
+          html += `
+      <li style="margin-bottom: 8px">
+        <strong>${skill}</strong><br>
+        <span style="font-size: 0.9rem; color: var(--muted)">
+          ${latestRemark}
+        </span>
+      </li>
+    `;
+        }
+        html += "</ul>";
+
+        summaryEl.innerHTML = html;
+      }
     </script>
   </body>
 </html>
