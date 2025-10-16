@@ -1882,7 +1882,7 @@
               .forEach((b) => b.classList.remove("active"));
             btn.classList.add("active");
             activeSkill = btn.dataset.skill;
-
+            localStorage.setItem("activeSkill", activeSkill);
             if (activeSkill === "CLEAR") {
               scannedSeqs = [];
               seqFilterValues = [];
