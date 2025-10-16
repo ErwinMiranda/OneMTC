@@ -132,130 +132,168 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="left">
-      <h1>Digital Turnover Logbook</h1>
-      <div class="small" id="header-wo">—</div>
-    </div>
-    <div class="small">Last modified logs are editable</div>
-  </header>
+ <header>
+      <div class="left">
+        <h1>Digital Turnover Logbook</h1>
+        <div class="small" id="header-wo">—</div>
+      </div>
+      <div class="small">Last modified logs are editable</div>
+    </header>
 
-  <!-- Toolbar / Filters -->
-  <div class="toolbar">
-    <div class="controls">
-      <input type="text" id="input-wo" placeholder="Workorder (auto)" readonly />
-      <select id="select-skill">
-        <!-- preset skills, also supports custom -->
-        <option value="">— Select Skill —</option>
-        <option>GEN</option>
-        <option>AVI</option>
-        <option>CRG</option>
-        <option>ENG-E</option>
-        <option>ENG-F</option>
-        <option>CAB</option>
-        <option>LDG</option>
-        <option>FLC-W</option>
-        <option>FLC-T</option>
-        <option>STR</option>
-      </select>
-      <input type="date" id="input-date" />
-      <button class="btn" id="btn-load">Load</button>
-    </div>
+    <!-- Toolbar / Filters -->
+    <div class="toolbar">
+      <div class="controls">
+        <input
+          type="text"
+          id="input-wo"
+          placeholder="Workorder (auto)"
+          readonly
+        />
+        <input type="text" id="select-skill" readonly />
 
-    <div class="controls">
-      <input type="text" id="input-filter" placeholder="Search seq / NR / remarks..." />
-      <button class="ghost" id="btn-export">Export CSV</button>
-      <button class="primary-yellow" id="btn-add">+ Add Turnover</button>
-    </div>
-  </div>
-
-  <main>
-    <div class="grid">
-      <!-- left: logs -->
-      <div class="panel">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-weight:600">Turnover entries</div>
-          <div style="font-size:0.9rem;color:var(--muted)" id="count-info">—</div>
-        </div>
-
-        <div class="log-list" id="log-list">
-          <div style="text-align:center;color:var(--muted)">No logs loaded. Select WO / skill / date and click Load.</div>
-        </div>
+        <input type="date" id="input-date" />
+        <button class="btn" id="btn-load">Load</button>
       </div>
 
-      <!-- right: quick form & summary -->
-      <div class="panel">
-        <div style="font-weight:600;margin-bottom:8px">Quick Add</div>
-        <div class="form-row">
-          <label>WO</label>
-          <input type="text" id="form-wo" placeholder="Workorder (auto)" readonly />
-        </div>
-        <div class="form-row">
-          <label>Skill</label>
-          <select id="form-skill">
-            <option value="">— Select Skill —</option>
-            <option>GEN</option><option>AVI</option><option>CRG</option><option>ENG-E</option><option>ENG-F</option><option>CAB</option><option>LDG</option><option>FLC-W</option><option>FLC-T</option><option>STR</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Seq / NR (e.g., 123 or NR-00001)</label>
-          <input type="text" id="form-seq" placeholder="Seq or NR-" />
-        </div>
-        <div class="form-row">
-          <label>Remarks</label>
-          <textarea id="form-remarks" placeholder="Enter turnover notes..."></textarea>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn" id="form-save">Save</button>
-          <button class="ghost" id="form-clear">Clear</button>
-        </div>
-
-        <hr style="margin:14px 0;border:none;border-top:1px solid var(--border)">
-
-        <div style="font-weight:600;margin-bottom:8px">Shift Summary (by skill)</div>
-        <div id="summary" style="font-size:0.95rem;color:var(--muted)">—</div>
+      <div class="controls">
+        <input
+          type="text"
+          id="input-filter"
+          placeholder="Search seq / NR / remarks..."
+        />
+        <button class="ghost" id="btn-export">Export CSV</button>
+        <button class="primary-yellow" id="btn-add">+ Add Turnover</button>
       </div>
     </div>
-  </main>
 
-  <!-- Add/Edit Modal -->
-  <div class="modal" id="modal">
-    <div class="modal-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-weight:700" id="modal-title">New Turnover</div>
-        <button id="modal-close" class="ghost" style="padding:6px 8px">Close</button>
+    <main>
+      <div class="grid">
+        <!-- left: logs -->
+        <div class="panel">
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 10px;
+            "
+          >
+            <div style="font-weight: 600">Turnover entries</div>
+            <div style="font-size: 0.9rem; color: var(--muted)" id="count-info">
+              —
+            </div>
+          </div>
+
+          <div class="log-list" id="log-list">
+            <div style="text-align: center; color: var(--muted)">
+              No logs loaded. Select WO / skill / date and click Load.
+            </div>
+          </div>
+        </div>
+
+        <!-- right: quick form & summary -->
+        <div class="panel">
+          <div style="font-weight: 600; margin-bottom: 8px">Quick Add</div>
+          <div class="form-row">
+            <label>WO</label>
+            <input
+              type="text"
+              id="form-wo"
+              placeholder="Workorder (auto)"
+              readonly
+            />
+          </div>
+          <div class="form-row">
+            <label>Skill</label>
+            <input type="text" id="form-skill" readonly />
+          </div>
+          <div class="form-row">
+            <label>Seq / NR (e.g., 123 or NR-00001)</label>
+            <input type="text" id="form-seq" placeholder="Seq or NR-" />
+          </div>
+          <div class="form-row">
+            <label>Remarks</label>
+            <textarea
+              id="form-remarks"
+              placeholder="Enter turnover notes..."
+            ></textarea>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 8px">
+            <button class="btn" id="form-save">Save</button>
+            <button class="ghost" id="form-clear">Clear</button>
+          </div>
+
+          <hr
+            style="
+              margin: 14px 0;
+              border: none;
+              border-top: 1px solid var(--border);
+            "
+          />
+
+          <div style="font-weight: 600; margin-bottom: 8px">
+            Shift Summary (by skill)
+          </div>
+          <div id="summary" style="font-size: 0.95rem; color: var(--muted)">
+            —
+          </div>
+        </div>
       </div>
+    </main>
 
-      <div class="modal-grid">
-        <div class="modal-row">
-          <label>WO</label>
-          <input id="m-wo" type="text" readonly />
-        </div>
-        <div class="modal-row">
-          <label>Skill</label>
-          <select id="m-skill">
-            <option value="">— Select Skill —</option>
-            <option>GEN</option><option>AVI</option><option>CRG</option><option>ENG-E</option><option>ENG-F</option><option>CAB</option><option>LDG</option><option>FLC-W</option><option>FLC-T</option><option>STR</option>
-          </select>
+    <!-- Add/Edit Modal -->
+    <div class="modal" id="modal">
+      <div class="modal-card">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+          "
+        >
+          <div style="font-weight: 700" id="modal-title">New Turnover</div>
+          <button id="modal-close" class="ghost" style="padding: 6px 8px">
+            Close
+          </button>
         </div>
 
-        <div class="modal-row" style="grid-column:1 / -1">
-          <label>Seq or NR</label>
-          <input id="m-seq" type="text" />
+        <div class="modal-grid">
+          <div class="modal-row">
+            <label>WO</label>
+            <input id="m-wo" type="text" readonly />
+          </div>
+          <div class="modal-row">
+            <label>Skill</label>
+            <input type="text" id="m-skill" readonly />
+          </div>
+
+          <div class="modal-row" style="grid-column: 1 / -1">
+            <label>Seq or NR</label>
+            <input id="m-seq" type="text" />
+          </div>
+
+          <div class="modal-row" style="grid-column: 1 / -1">
+            <label>Remarks</label>
+            <textarea id="m-remarks" rows="6"></textarea>
+          </div>
         </div>
 
-        <div class="modal-row" style="grid-column:1 / -1">
-          <label>Remarks</label>
-          <textarea id="m-remarks" rows="6"></textarea>
+        <div
+          style="
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 12px;
+          "
+        >
+          <button id="modal-delete" class="ghost" style="color: #b00">
+            Delete
+          </button>
+          <button id="modal-save" class="btn">Save</button>
         </div>
-      </div>
-
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
-        <button id="modal-delete" class="ghost" style="color:#b00">Delete</button>
-        <button id="modal-save" class="btn">Save</button>
       </div>
     </div>
-  </div>
 
   <!-- Firestore + App script -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -277,6 +315,10 @@
         orderBy,
         getDocs,
         serverTimestamp,
+        addDoc,
+        updateDoc,
+        deleteDoc,
+        getDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
       import {
         getAuth,
@@ -298,361 +340,456 @@
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
+
+      // ✅ Redirect user to login page if not signed in
       onAuthStateChanged(auth, (user) => {
         if (!user) {
           console.log("⚠️ No user signed in. Redirecting to login...");
           window.location.href = "index";
         } else {
           console.log(`✅ Logged in as: ${user.email || "Anonymous"}`);
+          localStorage.setItem("userEmail", user.email || "Anonymous");
+
           // Optionally show email in UI
           const userDisplay = document.getElementById("userDisplay");
           if (userDisplay) userDisplay.textContent = user.email || "Anonymous";
-             // ✅ Attach your Firestore realtime listener here
-    attachRealtimeListener();
-
-    // ✅ Update UI
-    setStatus("✅ Connected to One MTC , loading data...");
         }
       });
-  
 
-    /* ---------- Helpers & state ---------- */
-    const $ = id => document.getElementById(id);
-    const inputWO = $('input-wo');
-    const selectSkill = $('select-skill');
-    const inputDate = $('input-date');
-    const btnLoad = $('btn-load');
-    const listEl = $('log-list');
-    const countInfo = $('count-info');
-    const filterInput = $('input-filter');
-    const btnAdd = $('btn-add');
-    const btnExport = $('btn-export');
+      /* ---------- Helpers & state ---------- */
+      const $ = (id) => document.getElementById(id);
+      const inputWO = $("input-wo");
+      const selectSkill = $("select-skill");
+      const inputDate = $("input-date");
+      const btnLoad = $("btn-load");
+      const listEl = $("log-list");
+      const countInfo = $("count-info");
+      const filterInput = $("input-filter");
+      const btnAdd = $("btn-add");
+      const btnExport = $("btn-export");
 
-    const formWO = $('form-wo');
-    const formSkill = $('form-skill');
-    const formSeq = $('form-seq');
-    const formRemarks = $('form-remarks');
-    const formSave = $('form-save');
-    const formClear = $('form-clear');
+      const formWO = $("form-wo");
+      const formSkill = $("form-skill");
+      const formSeq = $("form-seq");
+      const formRemarks = $("form-remarks");
+      const formSave = $("form-save");
+      const formClear = $("form-clear");
 
-    const modal = $('modal');
-    const modalClose = $('modal-close');
-    const modalTitle = $('modal-title');
-    const mWo = $('m-wo');
-    const mSkill = $('m-skill');
-    const mSeq = $('m-seq');
-    const mRemarks = $('m-remarks');
-    const modalSave = $('modal-save');
-    const modalDelete = $('modal-delete');
+      const modal = $("modal");
+      const modalClose = $("modal-close");
+      const modalTitle = $("modal-title");
+      const mWo = $("m-wo");
+      const mSkill = $("m-skill");
+      const mSeq = $("m-seq");
+      const mRemarks = $("m-remarks");
+      const modalSave = $("modal-save");
+      const modalDelete = $("modal-delete");
 
-    let editingDocId = null;
-    let currentWO = null;
-    let currentSkill = null;
+      let editingDocId = null;
+      let currentWO = null;
+      let currentSkill = null;
 
-    // read WO & skill from URL params or fallback to localStorage
-    const urlParams = new URLSearchParams(window.location.search);
-    const paramWO = urlParams.get('wo');
-    const paramSkill = urlParams.get('skill');
+      // read WO & skill from URL params or fallback to localStorage
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramWO = urlParams.get("wo");
+      const paramSkill = urlParams.get("skill");
 
-    // try localStorage fallback keys (from your monitoring app you may store lastWorkorder/currentWO/activeSkill)
-    const lsWO = localStorage.getItem('lastWorkorder') || localStorage.getItem('currentWO') || null;
-    const lsSkill = localStorage.getItem('activeSkill') || null;
+      // try localStorage fallback keys (from your monitoring app you may store lastWorkorder/currentWO/activeSkill)
+      const lsWO =
+        localStorage.getItem("lastWorkorder") ||
+        localStorage.getItem("currentWO") ||
+        null;
 
-    currentWO = paramWO || lsWO || "";
-    currentSkill = paramSkill || lsSkill || "";
+      // ✅ Read skill from localStorage (and nullify CLEAR)
+      let localSkill = localStorage.getItem("activeSkill");
+      if (localSkill === "CLEAR") localSkill = null;
 
-    inputWO.value = currentWO;
-    formWO.value = currentWO;
-    $('header-wo')?.textContent && (document.getElementById('header-wo').textContent = currentWO ? `WO: ${currentWO}` : 'No WO');
+      // ✅ Determine the active skill (param overrides localStorage)
+      currentSkill = paramSkill || localSkill || null;
+      currentWO = paramWO || lsWO || "";
 
-    // auto-select skill but keep dropdown editable
-    if (currentSkill) {
-      // if option exists, select; otherwise add it and select
-      const exists = Array.from(selectSkill.options).some(o => o.value === currentSkill);
-      if (!exists) {
-        const opt = document.createElement('option'); opt.value = currentSkill; opt.textContent = currentSkill;
-        selectSkill.appendChild(opt);
-        formSkill.appendChild(opt.cloneNode(true));
+      // ✅ Update all visible skill fields
+
+      const skillDisplay = currentSkill || "No Skill";
+      document.getElementById("select-skill").value = skillDisplay;
+      document.getElementById("form-skill").value = skillDisplay;
+      document.getElementById("m-skill").value = skillDisplay;
+
+      // ✅ Update WO header
+      inputWO.value = currentWO;
+      formWO.value = currentWO;
+      $("header-wo").textContent = currentWO ? `WO: ${currentWO}` : "No WO";
+
+      // default date = today
+      const today = new Date();
+      function toYMD(d) {
+        const z = (n) => (n < 10 ? "0" + n : n);
+        return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
       }
-      selectSkill.value = currentSkill;
-      formSkill.value = currentSkill;
-      mSkill.value = currentSkill;
-    }
+      inputDate.value = toYMD(today);
 
-    // default date = today
-    const today = new Date();
-    function toYMD(d){ const z = n => n<10?'0'+n:n; return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; }
-    inputDate.value = toYMD(today);
+      // search debounce helper
+      let searchTimer = null;
 
-    // search debounce helper
-    let searchTimer = null;
+      /* ---------- Firestore operations ---------- */
+      async function loadLogs() {
+        const wo = inputWO.value.trim();
+        const skill =
+          localStorage.getItem("activeSkill") === "CLEAR"
+            ? null
+            : localStorage.getItem("activeSkill");
 
-    /* ---------- Firestore operations ---------- */
-    async function loadLogs() {
-      const wo = inputWO.value.trim();
-      const skill = selectSkill.value;
-      const date = inputDate.value;
-      const search = filterInput.value.trim().toLowerCase();
+        const date = inputDate.value;
+        const search = filterInput.value.trim().toLowerCase();
 
-      if (!wo) { alert('Please set WO (from monitoring app or URL).'); return; }
-      if (!skill) { alert('Please pick a Skill to view.'); return; }
-      if (!date) { alert('Please pick a Date.'); return; }
+        if (!wo) {
+          alert("Please set WO (from monitoring app or URL).");
+          return;
+        }
+        if (!skill) {
+          alert("Please pick a Skill to view.");
+          return;
+        }
+        if (!date) {
+          alert("Please pick a Date.");
+          return;
+        }
 
-      currentWO = wo;
-      currentSkill = skill;
+        currentWO = wo;
+        currentSkill = skill;
 
-      // Save to localStorage so next time the monitoring app can re-use
-      localStorage.setItem('lastWorkorder', currentWO);
-      localStorage.setItem('activeSkill', currentSkill);
+        // Save to localStorage so next time the monitoring app can re-use
+        localStorage.setItem("lastWorkorder", currentWO);
+        localStorage.setItem("activeSkill", currentSkill);
 
-      // Build query: equality filters for WO, skill and date string
-      const col = collection(db, 'turnover');
-      // We store a 'date' field as YYYY-MM-DD to make date filtering simple
-      const q = query(col, where('wo','==', currentWO), where('skill','==', currentSkill), where('date','==', date), orderBy('modified_at','asc'));
-      const snap = await getDocs(q);
+        // Build query: equality filters for WO, skill and date string
+        const col = collection(db, "turnover");
+        // We store a 'date' field as YYYY-MM-DD to make date filtering simple
+        const q = query(
+          col,
+          where("wo", "==", currentWO),
+          where("skill", "==", currentSkill),
+          where("date", "==", date),
+          orderBy("modified_at", "asc")
+        );
+        const snap = await getDocs(q);
 
-      listEl.innerHTML = '';
-      let count = 0;
-      const rows = [];
+        listEl.innerHTML = "";
+        let count = 0;
+        const rows = [];
 
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        data.__id = docSnap.id;
-        rows.push(data);
-      });
+        snap.forEach((docSnap) => {
+          const data = docSnap.data();
+          data.__id = docSnap.id;
+          rows.push(data);
+        });
 
-      // client-side search filter if search text present (search seq_or_nr and remarks)
-      const filtered = rows.filter(r => {
-        if (!search) return true;
-        const concat = `${r.seq_or_nr || ''} ${r.remarks || ''}`.toLowerCase();
-        return concat.includes(search);
-      });
+        // client-side search filter if search text present (search seq_or_nr and remarks)
+        const filtered = rows.filter((r) => {
+          if (!search) return true;
+          const concat = `${r.seq_or_nr || ""} ${
+            r.remarks || ""
+          }`.toLowerCase();
+          return concat.includes(search);
+        });
 
-      if (filtered.length === 0) {
-        listEl.innerHTML = `<div style="text-align:center;color:var(--muted);padding:18px">No logs for ${currentWO} · ${currentSkill} · ${date}</div>`;
-        countInfo.textContent = `0 entries`;
-        return;
-      }
+        if (filtered.length === 0) {
+          listEl.innerHTML = `<div style="text-align:center;color:var(--muted);padding:18px">No logs for ${currentWO} · ${currentSkill} · ${date}</div>`;
+          countInfo.textContent = `0 entries`;
+          return;
+        }
 
-      filtered.forEach(r => {
-        count++;
-        const item = document.createElement('div');
-        item.className = 'log-item';
-        item.innerHTML = `
+        filtered.forEach((r) => {
+          count++;
+          const item = document.createElement("div");
+          item.className = "log-item";
+          item.innerHTML = `
           <div class="meta">
             <div class="meta-left">
-              <div style="font-weight:700">${r.seq_or_nr || '—'}</div>
+              <div style="font-weight:700">${r.seq_or_nr || "—"}</div>
               <div class="chip">${r.skill}</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:0.9rem;color:var(--muted)">${r.logged_by || r.modified_by || '—'}</div>
-              <div style="font-size:0.85rem;color:var(--muted)">${r.modified_at ? new Date(r.modified_at.seconds*1000).toLocaleString() : '-'}</div>
+              <div style="font-size:0.9rem;color:var(--muted)">${
+                r.logged_by || r.modified_by || "—"
+              }</div>
+              <div style="font-size:0.85rem;color:var(--muted)">${
+                r.modified_at
+                  ? new Date(r.modified_at.seconds * 1000).toLocaleString()
+                  : "-"
+              }</div>
             </div>
           </div>
-          <div class="remarks">${escapeHtml(r.remarks || '')}</div>
+          <div class="remarks">${escapeHtml(r.remarks || "")}</div>
           <div style="display:flex;justify-content:flex-end;margin-top:8px">
             <button class="edit-btn" data-id="${r.__id}">Edit</button>
           </div>
         `;
-        listEl.appendChild(item);
-      });
+          listEl.appendChild(item);
+        });
 
-      countInfo.textContent = `${count} entries`;
-    }
-
-    // Save quick form
-    formSave.addEventListener('click', async () => {
-      const wo = formWO.value.trim() || inputWO.value.trim();
-      const skill = formSkill.value.trim();
-      const seq = formSeq.value.trim();
-      const remarks = formRemarks.value.trim();
-      const date = inputDate.value;
-
-      if (!wo || !skill || !date || !remarks) { alert('Please fill WO, skill, date and remarks.'); return; }
-
-      const payload = {
-        wo,
-        skill,
-        seq_or_nr: seq || '',
-        remarks,
-        logged_by: localStorage.getItem('userEmail') || 'Unknown',
-        modified_by: localStorage.getItem('userEmail') || 'Unknown',
-        date,
-        modified_at: serverTimestamp()
-      };
-
-      await addDoc(collection(db, 'turnover'), payload);
-      // clear quick form
-      formSeq.value=''; formRemarks.value='';
-      // reload
-      loadLogs();
-    });
-
-    formClear.addEventListener('click', ()=> {
-      formSeq.value=''; formRemarks.value=''; formSkill.value = selectSkill.value || '';
-    });
-
-    // Open add modal
-    btnAdd.addEventListener('click', ()=> {
-      editingDocId = null;
-      modalTitle.textContent = 'New Turnover Entry';
-      mWo.value = inputWO.value || formWO.value || '';
-      mSkill.value = selectSkill.value || formSkill.value || '';
-      mSeq.value = '';
-      mRemarks.value = '';
-      modal.classList.add('show');
-    });
-
-    // Modal close & save & delete
-    modalClose.addEventListener('click', ()=> modal.classList.remove('show'));
-
-    modalSave.addEventListener('click', async ()=> {
-      const wo = mWo.value.trim();
-      const skill = mSkill.value.trim();
-      const seq = mSeq.value.trim();
-      const remarks = mRemarks.value.trim();
-      const date = inputDate.value;
-
-      if (!wo || !skill || !date || !remarks) { alert('Please fill WO, skill, date and remarks.'); return; }
-
-      const payload = {
-        wo, skill, seq_or_nr: seq || '', remarks,
-        modified_by: localStorage.getItem('userEmail') || 'Unknown',
-        date,
-        modified_at: serverTimestamp()
-      };
-
-      if (editingDocId) {
-        // update
-        const ref = doc(db, 'turnover', editingDocId);
-        await updateDoc(ref, payload);
-      } else {
-        await addDoc(collection(db,'turnover'), payload);
+        countInfo.textContent = `${count} entries`;
       }
 
-      modal.classList.remove('show');
-      loadLogs();
-    });
+      // Save quick form
+      formSave.addEventListener("click", async () => {
+        const wo = formWO.value.trim() || inputWO.value.trim();
+        const skill =
+          localStorage.getItem("activeSkill") === "CLEAR"
+            ? null
+            : localStorage.getItem("activeSkill");
 
-    // Delete button in modal
-    modalDelete.addEventListener('click', async ()=> {
-      if (!editingDocId) return;
-      if (!confirm('Delete this turnover entry?')) return;
-      await deleteDoc(doc(db,'turnover', editingDocId));
-      modal.classList.remove('show');
-      loadLogs();
-    });
+        const seq = formSeq.value.trim();
+        const remarks = formRemarks.value.trim();
+        const date = inputDate.value;
 
-    // open edit workflow - uses doc id
-    async function openEdit(docId){
-      editingDocId = docId;
-      modalTitle.textContent = 'Edit Turnover Entry';
-      // fetch doc
-      // get single doc via getDocs with where("__name__","==",docId) is possible but better to use doc + getDoc
-      try {
-        const dRef = doc(db, 'turnover', docId);
-        // dynamic import of getDoc
-        const { getDoc } = await import('https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js');
-        const snap = await getDoc(dRef);
-        if (!snap.exists()) { alert('Document not found'); return; }
-        const data = snap.data();
-        mWo.value = data.wo || inputWO.value || formWO.value || '';
-        mSkill.value = data.skill || data.skill || selectSkill.value || formSkill.value || '';
-        mSeq.value = data.seq_or_nr || data.seq || '';
-        mRemarks.value = data.remarks || '';
-        modal.classList.add('show');
-      } catch(err){
-        console.error(err); alert('Failed to load entry for edit');
-      }
-    }
-
-    // delegate edit button clicks in the log list
-    listEl.addEventListener('click', (e) => {
-      const btn = e.target.closest('button.edit-btn');
-      if (!btn) return;
-      const id = btn.dataset.id;
-      if (!id) return;
-      openEdit(id);
-    });
-
-    // search debounce
-    filterInput.addEventListener('input', ()=> {
-      clearTimeout(searchTimer);
-      searchTimer = setTimeout(loadLogs, 350);
-    });
-
-    // binding load button
-    btnLoad.addEventListener('click', loadLogs);
-
-    // Export CSV
-    btnExport.addEventListener('click', async ()=> {
-      const wo = inputWO.value.trim();
-      const skill = selectSkill.value;
-      const date = inputDate.value;
-      if (!wo || !skill || !date) { alert('Please pick WO/skill/date before exporting'); return; }
-      const col = collection(db,'turnover');
-      const q = query(col, where('wo','==',wo), where('skill','==',skill), where('date','==',date), orderBy('modified_at','asc'));
-      const snap = await getDocs(q);
-      const rows = [];
-      snap.forEach(s => {
-        const d = s.data();
-        rows.push([d.seq_or_nr||'', d.skill||'', (d.remarks||'').replace(/\n/g,' '), d.logged_by||d.modified_by||'', d.date||'', d.modified_at ? new Date(d.modified_at.seconds*1000).toLocaleString() : '']);
-      });
-      if (rows.length===0){ alert('No data to export'); return; }
-      // CSV
-      const header = ['Seq/NR','Skill','Remarks','User','Date','Modified At'];
-      const csv = [header, ...rows].map(r => r.map(cell => `"${String(cell||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `turnover_${wo}_${skill}_${date}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
-
-    // keyboard: Enter in quick form saves
-    formRemarks.addEventListener('keydown', (e)=> { if(e.ctrlKey && e.key==='Enter') formSave.click(); });
-
-    // utility: escape HTML when rendering remarks
-    function escapeHtml(str){ if(!str) return ''; return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s])); }
-
-    // initial UI population
-    (function init(){
-      // map incoming skill param into dropdown if custom
-      if (paramSkill){
-        let found=false;
-        Array.from(selectSkill.options).forEach(o=>{ if (o.value===paramSkill) found=true; });
-        if (!found){
-          const opt=document.createElement('option'); opt.value=paramSkill; opt.textContent=paramSkill; selectSkill.appendChild(opt);
-          formSkill.appendChild(opt.cloneNode(true));
+        if (!wo || !skill || !date || !remarks) {
+          alert("Please fill WO, skill, date and remarks.");
+          return;
         }
-        selectSkill.value=paramSkill;
-        formSkill.value=paramSkill;
-        mSkill.value=paramSkill;
+
+        const payload = {
+          wo,
+          skill,
+          seq_or_nr: seq || "",
+          remarks,
+          logged_by: localStorage.getItem("userEmail") || "Unknown",
+          modified_by: localStorage.getItem("userEmail") || "Unknown",
+          date,
+          modified_at: serverTimestamp(),
+        };
+
+        await addDoc(collection(db, "turnover"), payload);
+        // clear quick form
+        formSeq.value = "";
+        formRemarks.value = "";
+        // reload
+        loadLogs();
+      });
+
+      formClear.addEventListener("click", () => {
+        formSeq.value = "";
+        formRemarks.value = "";
+        formSkill.value = selectSkill.value || "";
+      });
+
+      // Open add modal
+      btnAdd.addEventListener("click", () => {
+        editingDocId = null;
+        modalTitle.textContent = "New Turnover Entry";
+        mWo.value = inputWO.value || formWO.value || "";
+        mSkill.value = selectSkill.value || formSkill.value || "";
+        mSeq.value = "";
+        mRemarks.value = "";
+        modal.classList.add("show");
+      });
+
+      // Modal close & save & delete
+      modalClose.addEventListener("click", () =>
+        modal.classList.remove("show")
+      );
+
+      modalSave.addEventListener("click", async () => {
+        const wo = mWo.value.trim();
+        const skill = mSkill.value.trim();
+        const seq = mSeq.value.trim();
+        const remarks = mRemarks.value.trim();
+        const date = inputDate.value;
+
+        if (!wo || !skill || !date || !remarks) {
+          alert("Please fill WO, skill, date and remarks.");
+          return;
+        }
+
+        const payload = {
+          wo,
+          skill,
+          seq_or_nr: seq || "",
+          remarks,
+          modified_by: localStorage.getItem("userEmail") || "Unknown",
+          date,
+          modified_at: serverTimestamp(),
+        };
+
+        if (editingDocId) {
+          // update
+          const ref = doc(db, "turnover", editingDocId);
+          await updateDoc(ref, payload);
+        } else {
+          await addDoc(collection(db, "turnover"), payload);
+        }
+
+        modal.classList.remove("show");
+        loadLogs();
+      });
+
+      // Delete button in modal
+      modalDelete.addEventListener("click", async () => {
+        if (!editingDocId) return;
+        if (!confirm("Delete this turnover entry?")) return;
+        await deleteDoc(doc(db, "turnover", editingDocId));
+        modal.classList.remove("show");
+        loadLogs();
+      });
+
+      // open edit workflow - uses doc id
+      async function openEdit(docId) {
+        editingDocId = docId;
+        modalTitle.textContent = "Edit Turnover Entry";
+
+        try {
+          const dRef = doc(db, "turnover", docId);
+          const snap = await getDoc(dRef);
+
+          if (!snap.exists()) {
+            alert("Document not found");
+            return;
+          }
+
+          // ✅ define data only after snapshot is retrieved
+          const data = snap.data();
+
+          mWo.value = data.wo || inputWO.value || formWO.value || "";
+          mSkill.value =
+            data.skill || localStorage.getItem("activeSkill") || "No Skill";
+          mSeq.value = data.seq_or_nr || "";
+          mRemarks.value = data.remarks || "";
+
+          modal.classList.add("show");
+        } catch (err) {
+          console.error("Error loading document for edit:", err);
+          alert("Failed to load entry for edit");
+        }
       }
 
-      // set WO fields
-      if (currentWO){
-        inputWO.value = currentWO;
-        formWO.value = currentWO;
-        mWo.value = currentWO;
+      // delegate edit button clicks in the log list
+      listEl.addEventListener("click", (e) => {
+        const btn = e.target.closest("button.edit-btn");
+        if (!btn) return;
+        const id = btn.dataset.id;
+        if (!id) return;
+        openEdit(id);
+      });
+
+      // search debounce
+      filterInput.addEventListener("input", () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(loadLogs, 350);
+      });
+
+      // binding load button
+      btnLoad.addEventListener("click", loadLogs);
+
+      // Export CSV
+      btnExport.addEventListener("click", async () => {
+        const wo = inputWO.value.trim();
+        const skill =
+          localStorage.getItem("activeSkill") === "CLEAR"
+            ? null
+            : localStorage.getItem("activeSkill");
+
+        const date = inputDate.value;
+        if (!wo || !skill || !date) {
+          alert("Please pick WO/skill/date before exporting");
+          return;
+        }
+        const col = collection(db, "turnover");
+        const q = query(
+          col,
+          where("wo", "==", wo),
+          where("skill", "==", skill),
+          where("date", "==", date),
+          orderBy("modified_at", "asc")
+        );
+        const snap = await getDocs(q);
+        const rows = [];
+        snap.forEach((s) => {
+          const d = s.data();
+          rows.push([
+            d.seq_or_nr || "",
+            d.skill || "",
+            (d.remarks || "").replace(/\n/g, " "),
+            d.logged_by || d.modified_by || "",
+            d.date || "",
+            d.modified_at
+              ? new Date(d.modified_at.seconds * 1000).toLocaleString()
+              : "",
+          ]);
+        });
+        if (rows.length === 0) {
+          alert("No data to export");
+          return;
+        }
+        // CSV
+        const header = [
+          "Seq/NR",
+          "Skill",
+          "Remarks",
+          "User",
+          "Date",
+          "Modified At",
+        ];
+        const csv = [header, ...rows]
+          .map((r) =>
+            r
+              .map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`)
+              .join(",")
+          )
+          .join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `turnover_${wo}_${skill}_${date}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+
+      // keyboard: Enter in quick form saves
+      formRemarks.addEventListener("keydown", (e) => {
+        if (e.ctrlKey && e.key === "Enter") formSave.click();
+      });
+
+      // utility: escape HTML when rendering remarks
+      function escapeHtml(str) {
+        if (!str) return "";
+        return String(str).replace(
+          /[&<>"']/g,
+          (s) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            }[s])
+        );
       }
 
-      // ensure date default
-      if (!inputDate.value) inputDate.value = toYMD(new Date());
+      // initial UI population
+      (function init() {
+        // map incoming skill param into dropdown if custom
 
-      // load initial list if enough inputs are set
-      // We won't auto-load unless user clicks Load to avoid accidental heavy reads
-    })();
+        // set WO fields
+        if (currentWO) {
+          inputWO.value = currentWO;
+          formWO.value = currentWO;
+          mWo.value = currentWO;
+        }
 
-    // helper for toYMD defined earlier in CSS block? define now:
-    function toYMD(d){ const z=n=>n<10?'0'+n:n; return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; }
+        // ensure date default
+        if (!inputDate.value) inputDate.value = toYMD(new Date());
 
-    // expose loadLogs globally for convenience
-    window.loadTurnoverLogs = loadLogs;
-  </script>
-</body>
+        // load initial list if enough inputs are set
+        // We won't auto-load unless user clicks Load to avoid accidental heavy reads
+      })();
+
+      // helper for toYMD defined earlier in CSS block? define now:
+
+      // expose loadLogs globally for convenience
+      window.loadTurnoverLogs = loadLogs;
+    </script>
+  </body>
 </html>
