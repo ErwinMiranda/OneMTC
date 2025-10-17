@@ -1344,6 +1344,9 @@
       const hideLoading = () => {
         overlay.style.display = "none";
       };
+      
+      // PRINTING......
+      
       function printFullTable() {
         if (!allDocs || allDocs.length === 0) {
           alert("No data to print ❗");
@@ -1444,6 +1447,7 @@
           }
           ${index === 0 ? `<td rowspan="${tasks.length}">${seq}</td>` : ""}
           <td>${d.task_card ?? ""}</td>
+          <td>${d.comment ?? ""}</td> <!-- ✅ Added Comments column -->
           <td>${d.status ?? ""}</td>
           <td style="${d.phase === "PH" ? bgColor : ""}">${
                   d.phase === "PH" ? d.skill : ""
@@ -1481,6 +1485,7 @@
         <th>Description</th>
         <th>Seq.No</th>
         <th>TaskCard</th>
+        <th>Comments</th> <!-- ✅ Added new column header -->
         <th>Status</th>
         <th>PH</th>
         <th>P0</th>
