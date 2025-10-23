@@ -1287,7 +1287,9 @@
     <span class="tag skill">Skill: ${skill}</span> • 
     <span class="tag phase">Phase: ${phase}</span><br>
     <span class="status ${status === "CLOSED" ? "closed" : "open"}">
-      ${status}
+  ${status === "OPEN" ? "RE-" + status : status}
+</span>
+
     </span> <small>by ${modifiedBy}</small>
   `;
         return li;
