@@ -1328,17 +1328,41 @@
    Helpers
   ======================== */
 
-      function calculateDayProgress(startDate, endDate) {
+      function calculateDayProgress(startDate, endDate, wo, filterWo) {
+        if (filterWo && wo !== filterWo) return ""; // 🚫 Skip if WO doesn’t match
+
         if (!startDate || !endDate) return "";
-        const start = new Date(startDate);
-        const end = new Date(endDate);
+
+        const start = startDate.toDate
+          ? startDate.toDate()
+          : new Date(startDate);
+        const end = endDate.toDate ? endDate.toDate() : new Date(endDate);
         const today = new Date();
-        const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-        const currentDay = Math.min(
-          Math.max(Math.ceil((today - start) / (1000 * 60 * 60 * 24)) + 1, 1),
-          totalDays
-        );
-        return `Day ${currentDay} of ${totalDays}`;
+
+        if (isNaN(start) || isNaN(end)) return "";
+
+        // 🕛 Ignore hours/minutes
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+
+        const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+        if (today < start) {
+          // 📅 Format start date nicely (e.g. "Nov 3 2025")
+          const formattedStart = start.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+          return `Start date is on ${formattedStart}`;
+        } else if (today > end) {
+          return `Completed (${totalDays} days total)`;
+        } else {
+          const currentDay =
+            Math.ceil((today - start) / (1000 * 60 * 60 * 24)) + 1;
+          return `Day ${currentDay} of ${totalDays}`;
+        }
       }
       const showLoading = () => {
         overlay.style.display = "flex";
@@ -2162,17 +2186,23 @@
             counterEl.innerHTML = `Total Tasks: ${snapshot.size} • <span class="highlight">${pctClosed}% Closed</span>`;
 
             //################## Dynamic header
-            if (allDocs.length > 0) {
+        if (allDocs.length > 0) {
               const ac = allDocs[0].ac || "Unknown AC";
               const schedStart = allDocs[0].sched_start_date;
               const schedEnd = allDocs[0].sched_end_date;
 
-              const dayProgress = calculateDayProgress(schedStart, schedEnd);
+              const dayProgress = calculateDayProgress(
+                schedStart,
+                schedEnd,
+                allDocs[0].wo,
+                currentWO
+              );
 
               document.getElementById(
                 "dynamicHeader"
-              ).textContent = `MTC Status for ${ac}    ${dayProgress}`;
+              ).textContent = `MTC Status for ${ac} ${dayProgress || ""}`;
             }
+
             lastUpdateEl.textContent = "Live • " + new Date().toLocaleString();
             //################## Dynamic header
 
