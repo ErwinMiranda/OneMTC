@@ -1434,10 +1434,9 @@
           grouped[seq].push(d);
         });
 
-        // 🔹 Build rows with merged seq, reference, and description
+        // 🔹 Build rows
         const rows = Object.entries(grouped)
           .map(([seq, tasks]) => {
-            // Sort tasks inside each seq by task_card
             tasks.sort((a, b) => {
               const cardA = a.task_card ?? "";
               const cardB = b.task_card ?? "";
@@ -1456,79 +1455,83 @@
                     : "background-color: salmon;";
 
                 return `
-        <tr>
-          ${
-            index === 0
-              ? `<td rowspan="${tasks.length}">${
-                  d.reference_task_card ?? ""
-                }</td>`
-              : ""
-          }
-          ${
-            index === 0
-              ? `<td rowspan="${tasks.length}">${
-                  d.task_card_description ?? ""
-                }</td>`
-              : ""
-          }
-          ${index === 0 ? `<td rowspan="${tasks.length}">${seq}</td>` : ""}
-          <td>${d.task_card ?? ""}</td>
-          <td>${d.comment ?? ""}</td> <!-- ✅ Added Comments column -->
-          <td>${d.status ?? ""}</td>
-          <td style="${d.phase === "PH" ? bgColor : ""}">${
+            <tr>
+              ${
+                index === 0
+                  ? `<td rowspan="${tasks.length}">${
+                      d.reference_task_card ?? ""
+                    }</td>`
+                  : ""
+              }
+              ${
+                index === 0
+                  ? `<td rowspan="${tasks.length}">${
+                      d.task_card_description ?? ""
+                    }</td>`
+                  : ""
+              }
+              ${index === 0 ? `<td rowspan="${tasks.length}">${seq}</td>` : ""}
+              <td>${d.task_card ?? ""}</td>
+              <td>${d.comment ?? ""}</td>
+              <td>${d.status ?? ""}</td>
+              <td style="${d.phase === "PH" ? bgColor : ""}">${
                   d.phase === "PH" ? d.skill : ""
                 }</td>
-          <td style="${d.phase === "P0" ? bgColor : ""}">${
+              <td style="${d.phase === "P0" ? bgColor : ""}">${
                   d.phase === "P0" ? d.skill : ""
                 }</td>
-          <td style="${d.phase === "P1" ? bgColor : ""}">${
+              <td style="${d.phase === "P1" ? bgColor : ""}">${
                   d.phase === "P1" ? d.skill : ""
                 }</td>
-          <td style="${d.phase === "P2" ? bgColor : ""}">${
+              <td style="${d.phase === "P2" ? bgColor : ""}">${
                   d.phase === "P2" ? d.skill : ""
                 }</td>
-          <td style="${d.phase === "P3" ? bgColor : ""}">${
+              <td style="${d.phase === "P3" ? bgColor : ""}">${
                   d.phase === "P3" ? d.skill : ""
                 }</td>
-          <td style="${d.phase === "P4" ? bgColor : ""}">${
+              <td style="${d.phase === "P4" ? bgColor : ""}">${
                   d.phase === "P4" ? d.skill : ""
                 }</td>
-          <td style="${d.phase === "P6" ? bgColor : ""}">${
+              <td style="${d.phase === "P6" ? bgColor : ""}">${
                   d.phase === "P6" ? d.skill : ""
                 }</td>
-        </tr>
-      `;
+            </tr>
+          `;
               })
               .join("");
           })
           .join("");
 
         const tableHTML = `
-  <table>
-    <thead>
-      <tr>
-        <th>Reference</th>
-        <th>Description</th>
-        <th>Seq.No</th>
-        <th>TaskCard</th>
-        <th>Comments</th> <!-- ✅ Added new column header -->
-        <th>Status</th>
-        <th>PH</th>
-        <th>P0</th>
-        <th>P1</th>
-        <th>P2</th>
-        <th>P3</th>
-        <th>P4</th>
-        <th>P6</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rows}
-    </tbody>
-  </table>
-`;
+    <table>
+      <thead>
+        <tr>
+          <th>Reference</th>
+          <th>Description</th>
+          <th>Seq.No</th>
+          <th>TaskCard</th>
+          <th>Comments</th>
+          <th>Status</th>
+          <th>PH</th>
+          <th>P0</th>
+          <th>P1</th>
+          <th>P2</th>
+          <th>P3</th>
+          <th>P4</th>
+          <th>P6</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
 
-        // 🔹 Open print window with landscape + scale + repeating headers
+        // 🔹 Get dynamic header content
+        const headerHTML =
+          document.getElementById("dynamicHeader")?.outerHTML || "";
+
+        // 🔹 Open print window
         const printWindow = window.open("", "_blank");
         printWindow.document.write(`
     <html>
@@ -1545,26 +1548,32 @@
           table { 
             border-collapse: collapse; 
             font-size: 10px; 
+            width: 100%;
           } 
           th, td { 
             border: 1px solid #000; 
             padding: 4px; 
             text-align: center; 
           }
-          th { 
-            background: #f2f2f2; 
+          th { background: #f2f2f2; }
+          thead { display: table-header-group; }
+          #dynamicHeader {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-weight: bold;
           }
-          thead { display: table-header-group; } /* ✅ repeat headers */
-          tfoot { display: table-footer-group; }
         </style>
       </head>
       <body>
+        ${headerHTML}
         ${tableHTML}
       </body>
     </html>
   `);
         printWindow.document.close();
       }
+
 
       window.printFullTable = printFullTable;
 
