@@ -1653,12 +1653,26 @@
             });
           });
 
-          // ✅ Final status for the whole sequence
-          const allClosed = tasks.every(
-            (t) => (t.status ?? "").toLowerCase() === "closed"
-          );
-          const finalStatus = allClosed ? "Closed" : "Open";
-          const statusColor = allClosed ? "green" : "red";
+        // ✅ Final status for the whole sequence (with CANCEL priority)
+const hasCancelled = tasks.some(
+  (t) => (t.status ?? "").toLowerCase() === "cancelled"
+);
+const allClosed = tasks.every(
+  (t) => (t.status ?? "").toLowerCase() === "closed"
+);
+
+let finalStatus = "Open";
+let statusColor = "red";
+
+// 🟩 Priority: Cancelled > Closed > Open
+if (hasCancelled) {
+  finalStatus = "Cancelled";
+  statusColor = "green";
+} else if (allClosed) {
+  finalStatus = "Closed";
+  statusColor = "green";
+}
+
 
           return tasks.map((t, index) => {
             // 👉 Check if this task row contains any selected skill
@@ -1849,7 +1863,7 @@
           if (st === "open") phaseOpen[phase] = (phaseOpen[phase] || 0) + 1;
           if (st === "closed" || st === "completed")
             phaseClosed[phase] = (phaseClosed[phase] || 0) + 1;
-          if (st === "cancelled")
+          if (st === "cancel")
             phaseCancelled[phase] = (phaseCancelled[phase] || 0) + 1;
           if (st === "hold") phaseHold[phase] = (phaseHold[phase] || 0) + 1;
         });
