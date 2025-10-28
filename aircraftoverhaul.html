@@ -1655,7 +1655,7 @@
 
         // ✅ Final status for the whole sequence (with CANCEL priority)
 const hasCancelled = tasks.some(
-  (t) => (t.status ?? "").toLowerCase() === "cancelled"
+  (t) => (t.status ?? "").toLowerCase() === "cancel"
 );
 const allClosed = tasks.every(
   (t) => (t.status ?? "").toLowerCase() === "closed"
