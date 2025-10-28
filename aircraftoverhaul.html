@@ -1708,7 +1708,10 @@ if (hasCancelled) {
                   )
                   .map((x) => {
                     const status = (x.status ?? "").toLowerCase();
-                    const color = status === "closed" ? "green" : "red";
+                    let color = "red";
+                    if (status === "closed" || status === "cancel") {
+                      color = "green";
+                    }
 
                     let highlightStyle = "";
                     if (
