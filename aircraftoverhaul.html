@@ -988,6 +988,7 @@
         query,
         where,
         doc,
+        getDoc,
         updateDoc,
         getDocs,
         orderBy,
@@ -1026,6 +1027,19 @@
           // Optionally show email in UI
           const userDisplay = document.getElementById("userDisplay");
           if (userDisplay) userDisplay.textContent = user.email || "Anonymous";
+        }
+      });
+      // ✅ Get currently logged-in user's email or fallback
+      let loginUser = "Unknown";
+
+      onAuthStateChanged(auth, (user) => {
+        if (user && user.email) {
+          // Trim everything after @
+          loginUser = user.email.includes("@")
+            ? user.email.split("@")[0]
+            : user.email;
+        } else {
+          loginUser = "Unknown";
         }
       });
 
@@ -1819,26 +1833,68 @@ if (hasCancelled) {
         // 🧠 Add Firestore comment update logic
         setTimeout(() => {
           document.querySelectorAll(".comment-input").forEach((ta) => {
-            // Auto-resize based on content
+            // Auto-resize
             const resize = () => {
               ta.style.height = "auto";
               ta.style.height = ta.scrollHeight + "px";
             };
 
             ta.addEventListener("input", resize);
-            resize(); // initial size
+            resize();
 
-            // Save on Enter key
+            // 💬 Save on Enter key — append new comment entry
+            ta.addEventListener("focus", () => {
+              // Clear the textarea when user clicks (focuses) on it
+              ta.value = "";
+            });
             ta.addEventListener("keydown", async (e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
+
                 const docId = ta.dataset.id;
-                const newComment = ta.value.trim();
+                const rawComment = ta.value.trim();
+                if (!rawComment) return;
+
+                // 👤 Logged-in username
+                let modifiedBy = loginUser || "Unknown";
+                if (modifiedBy.includes("@")) {
+                  modifiedBy = modifiedBy.split("@")[0];
+                }
+
+                // 🕒 Timestamp
+                const now = new Date();
+                const timestamp = now.toLocaleString("en-US", {
+                  month: "short",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                });
+
+                // 🧩 Fetch the latest comment text from Firestore (to preserve all)
                 try {
-                  await updateDoc(doc(db, "tasks", docId), {
-                    comment: newComment,
-                  });
-                  console.log(`💾 Comment saved for ${docId}`);
+                  const docRef = doc(db, "tasks", docId);
+                  const snap = await getDoc(docRef);
+                  const existingComment = snap.exists()
+                    ? snap.data().comment || ""
+                    : "";
+
+                  // Build new comment entry
+                  const newEntry = `[${timestamp}] ${modifiedBy}: ${rawComment}`;
+
+                  // Combine old + new comments
+                  const combinedComment = existingComment
+                    ? existingComment + "\n" + newEntry
+                    : newEntry;
+
+                  // Save back to Firestore
+                  await updateDoc(docRef, { comment: combinedComment });
+
+                  // Update UI
+                  ta.value = combinedComment;
+                  resize();
+
+                  console.log(`💾 New comment added by ${modifiedBy}`);
                 } catch (err) {
                   console.error("❌ Error saving comment:", err);
                   alert("Failed to save comment");
