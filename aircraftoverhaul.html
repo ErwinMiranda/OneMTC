@@ -12,7 +12,8 @@
 
   
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-
+    <!-- Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       body {
         font-family: sans-serif;
@@ -726,25 +727,50 @@
         <button id="multiSkillBtn" class="pill-btn">Multiskill MTC</button>
         <button id="singleSkillBtn" class="pill-btn">Single Skill MTC</button>
         <div class="layout">
-          <!-- Phase totals: now full width above main table -->
-          <div id="phaseTotalsContainer">
-            <table id="phaseTotalsTable">
-              <thead>
-                <tr>
-                  <th>Phase</th>
-                  <th style="text-align: right">Open Tasks</th>
-                  <th style="text-align: right">Closed Tasks</th>
-                  <th style="text-align: right">Cancelled Tasks</th>
-                  <th style="text-align: right">Hold Tasks</th>
-                  <th style="text-align: right">% Closed</th>
-                </tr>
-              </thead>
-              <tbody id="phaseTotalsBody">
-                <tr>
-                  <td colspan="6" style="text-align: center">No data</td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- Phase totals and chart (responsive side-by-side) -->
+          <div
+            id="phaseTotalsWrapper"
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 20px;
+              align-items: flex-start;
+            "
+          >
+            <!-- 📊 Phase Table -->
+            <div
+              id="phaseTotalsContainer"
+              style="flex: 1 1 400px; min-width: 300px"
+            >
+              <table
+                id="phaseTotalsTable"
+                style="width: 100%; border-collapse: collapse"
+              >
+                <thead>
+                  <tr>
+                    <th>Phase</th>
+                    <th style="text-align: right">Open Tasks</th>
+                    <th style="text-align: right">Closed Tasks</th>
+                    <th style="text-align: right">Cancelled Tasks</th>
+                    <th style="text-align: right">Hold Tasks</th>
+                    <th style="text-align: right">% Closed</th>
+                  </tr>
+                </thead>
+                <tbody id="phaseTotalsBody">
+                  <tr>
+                    <td colspan="6" style="text-align: center">No data</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 📈 Chart beside the table -->
+            <div
+              id="phaseChartContainer"
+              style="flex: 1 1 300px; min-width: 200px"
+            >
+              <canvas id="phaseChart" width="100%" height="150"></canvas>
+            </div>
           </div>
 
           <!-- Main scrollable table -->
@@ -2026,6 +2052,64 @@
             );
           }
         });
+
+        // ---- Create Chart Data ----
+        const phaseLabels = [];
+        const closedPercentages = [];
+
+        fixedPhases.forEach((phase) => {
+          const total = phaseTotals[phase] || 0;
+          const closed = phaseClosed[phase] || 0;
+          const pct = total ? ((closed / total) * 100).toFixed(1) : 0;
+          phaseLabels.push(phase);
+          closedPercentages.push(pct);
+        });
+
+        // ---- Render or Update Chart ----
+        if (window.phaseChartInstance) {
+          window.phaseChartInstance.data.labels = phaseLabels;
+          window.phaseChartInstance.data.datasets[0].data = closedPercentages;
+          window.phaseChartInstance.update();
+        } else {
+          const ctx = document.getElementById("phaseChart").getContext("2d");
+          window.phaseChartInstance = new Chart(ctx, {
+            type: "bar", // change to 'line' if preferred
+            data: {
+              labels: phaseLabels,
+              datasets: [
+                {
+                  label: "% Closed",
+                  data: closedPercentages,
+                  backgroundColor: "rgba(54, 162, 235, 0.6)",
+                  borderColor: "rgba(54, 162, 235, 1)",
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: (ctx) => `${ctx.parsed.y}% closed`,
+                  },
+                },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 100,
+                  title: { display: true, text: "% Closed" },
+                },
+                x: {
+                  title: { display: true, text: "Phase" },
+                },
+              },
+            },
+          });
+        }
 
         // Attach click listeners
         document
