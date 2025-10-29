@@ -1865,86 +1865,92 @@
         }
 
         // 🧠 Comment popup logic
-        setTimeout(() => {
-          document.querySelectorAll(".comment-input").forEach((ta) => {
-            const resize = () => {
-              ta.style.height = "auto";
-              ta.style.height = ta.scrollHeight + "px";
+         if (!scrollContainer.dataset.popupBound) {
+          scrollContainer.dataset.popupBound = "true"; // ✅ bind only once
+
+          scrollContainer.addEventListener("focusin", (e) => {
+            const ta = e.target.closest(".comment-input");
+            if (!ta) return;
+
+            ta.classList.add("ta-highlight");
+            ta.readOnly = true;
+
+            if (document.querySelector(".comment-popup")) return;
+
+            const popup = document.createElement("div");
+            popup.className = "comment-popup";
+            const input = document.createElement("input");
+            input.type = "text";
+            input.placeholder = "Type your comment and press Enter...";
+            popup.appendChild(input);
+            document.body.appendChild(popup);
+            setTimeout(() => input.focus(), 30);
+
+            const closePopup = () => {
+              popup.remove();
+              ta.classList.remove("ta-highlight");
+              ta.readOnly = false;
             };
-            ta.addEventListener("input", resize);
-            resize();
 
-            ta.addEventListener("focus", () => {
-              ta.classList.add("ta-highlight");
-              ta.readOnly = true;
+            input.addEventListener("keydown", async (e2) => {
+              if (e2.key === "Enter" && input.value.trim()) {
+                e2.preventDefault();
+                const docId = ta.dataset.id;
+                const rawComment = input.value.trim();
+                let modifiedBy = loginUser || "Unknown";
+                if (modifiedBy.includes("@"))
+                  modifiedBy = modifiedBy.split("@")[0];
 
-              if (document.querySelector(".comment-popup")) return;
+                const now = new Date();
+                const timestamp = now.toLocaleString("en-US", {
+                  month: "short",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                });
 
-              const popup = document.createElement("div");
-              popup.className = "comment-popup";
-              const input = document.createElement("input");
-              input.type = "text";
-              input.placeholder = "Type your comment and press Enter...";
-              popup.appendChild(input);
-              document.body.appendChild(popup);
-              setTimeout(() => input.focus(), 30);
+                try {
+                  const docRef = doc(db, "tasks", docId);
+                  const snap = await getDoc(docRef);
+                  const existingComment = snap.exists()
+                    ? snap.data().comment || ""
+                    : "";
 
-              const closePopup = () => {
-                popup.remove();
-                ta.classList.remove("ta-highlight");
-                ta.readOnly = false;
-              };
+                  const newEntry = `[${timestamp}] ${modifiedBy}: ${rawComment}`;
+                  const combinedComment = existingComment
+                    ? existingComment + "\n" + newEntry
+                    : newEntry;
 
-              input.addEventListener("keydown", async (e) => {
-                if (e.key === "Enter" && input.value.trim()) {
-                  e.preventDefault();
-                  const docId = ta.dataset.id;
-                  const rawComment = input.value.trim();
-                  let modifiedBy = loginUser || "Unknown";
-                  if (modifiedBy.includes("@"))
-                    modifiedBy = modifiedBy.split("@")[0];
-
-                  const now = new Date();
-                  const timestamp = now.toLocaleString("en-US", {
-                    month: "short",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  });
-
-                  try {
-                    const docRef = doc(db, "tasks", docId);
-                    const snap = await getDoc(docRef);
-                    const existingComment = snap.exists()
-                      ? snap.data().comment || ""
-                      : "";
-
-                    const newEntry = `[${timestamp}] ${modifiedBy}: ${rawComment}`;
-                    const combinedComment = existingComment
-                      ? existingComment + "\n" + newEntry
-                      : newEntry;
-
-                    await updateDoc(docRef, { comment: combinedComment });
-                    ta.value = combinedComment;
-                    resize();
-                    closePopup();
-                  } catch (err) {
-                    console.error("❌ Error saving comment:", err);
-                    alert("Failed to save comment");
-                    closePopup();
-                  }
-                } else if (e.key === "Escape") {
+                  await updateDoc(docRef, { comment: combinedComment });
+                  ta.value = combinedComment;
+                  ta.style.height = "auto";
+                  ta.style.height = ta.scrollHeight + "px";
+                  closePopup();
+                } catch (err) {
+                  console.error("❌ Error saving comment:", err);
+                  alert("Failed to save comment");
                   closePopup();
                 }
-              });
+              } else if (e2.key === "Escape") {
+                closePopup();
+              }
+            });
 
-              popup.addEventListener("click", (e) => {
-                if (e.target === popup) closePopup();
-              });
+            popup.addEventListener("click", (e3) => {
+              if (e3.target === popup) closePopup();
             });
           });
-        }, 400);
+
+          // Optional: autoresize all comment textareas on input
+          scrollContainer.addEventListener("input", (e) => {
+            const ta = e.target.closest(".comment-input");
+            if (ta) {
+              ta.style.height = "auto";
+              ta.style.height = ta.scrollHeight + "px";
+            }
+          });
+        }
       }
 
       function renderPhaseTotals(docs) {
