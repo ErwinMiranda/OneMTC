@@ -1848,6 +1848,13 @@
 
           if (scrollContainer) scrollContainer.scrollTop = prevScrollTop;
           if (tableContainer) tableContainer.style.visibility = "visible";
+            // 🪄 Auto-resize all visible comments after render
+          requestAnimationFrame(() => {
+            document.querySelectorAll(".comment-input").forEach((ta) => {
+              ta.style.height = "auto";
+              ta.style.height = ta.scrollHeight + "px";
+            });
+          });
         });
 
         // ✨ Add CSS for highlight and popup only once
