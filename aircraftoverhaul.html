@@ -1629,18 +1629,63 @@
 
       window.printFullTable = printFullTable;
 
-       async function renderRows(docs) {
+      let prevDocsMap = new Map(); // 🧠 Cache to detect changes
+      let commentFlashDuration = 60000; // highlight for 1 second
+
+      async function renderRows(docs) {
         // ✅ Precompute selected skills ONCE
         let selectedSkills = [];
         if (activeSkill !== "CLEAR") {
-          if (skillGroups[activeSkill]) {
-            selectedSkills = skillGroups[activeSkill]; // predefined group
-          } else {
-            selectedSkills = [activeSkill]; // dynamic skill
+          selectedSkills = skillGroups[activeSkill]
+            ? skillGroups[activeSkill]
+            : [activeSkill];
+        }
+
+        // 🔍 Build map for detecting changes
+        const newDocsMap = new Map(docs.map((d) => [d.id, d]));
+
+        // ✅ Detect if only comments changed (avoid full rebuild)
+        if (prevDocsMap.size > 0 && newDocsMap.size === prevDocsMap.size) {
+          const changed = [];
+          for (const [id, newDoc] of newDocsMap.entries()) {
+            const oldDoc = prevDocsMap.get(id);
+            if (!oldDoc) continue;
+            // Only check for comment field differences
+            if (oldDoc.comment !== newDoc.comment) {
+              changed.push({ id, comment: newDoc.comment });
+            }
+          }
+
+          // 🧩 If exactly 1 or few comment changes — update inline
+          if (changed.length > 0 && changed.length <= 5) {
+            changed.forEach(({ id, comment }) => {
+              const ta = document.querySelector(
+                `.comment-input[data-id="${id}"]`
+              );
+              if (ta) {
+                // Update text and resize
+                ta.value = comment || "";
+                ta.style.height = "auto";
+                ta.style.height = ta.scrollHeight + "px";
+
+                // Highlight briefly to show real-time change
+                ta.classList.add("comment-updated");
+                setTimeout(
+                  () => ta.classList.remove("comment-updated"),
+                  commentFlashDuration
+                );
+              }
+            });
+
+            prevDocsMap = newDocsMap;
+            return; // Skip full rebuild
           }
         }
 
-        // Group by seq
+        // 🧠 Save latest docs map
+        prevDocsMap = newDocsMap;
+
+        // 🔹 Group by seq
         const grouped = {};
         docs.forEach((d) => {
           const seq = d.seq ?? "Unknown";
@@ -1656,53 +1701,43 @@
           return String(seqA).localeCompare(String(seqB));
         });
 
-        // Build rows
+        // 🔹 Build all rows
         const rows = sortedGroups.flatMap(([seq, tasks]) => {
-          // 🔹 Sort tasks inside each seq by task_card
-          tasks.sort((a, b) => {
-            const cardA = a.task_card ?? "";
-            const cardB = b.task_card ?? "";
-            return String(cardA).localeCompare(String(cardB), undefined, {
-              numeric: true,
-            });
-          });
+          tasks.sort((a, b) =>
+            String(a.task_card ?? "").localeCompare(
+              String(b.task_card ?? ""),
+              undefined,
+              { numeric: true }
+            )
+          );
 
-        // ✅ Final status for the whole sequence (with CANCEL priority)
-const hasCancelled = tasks.some(
-  (t) => (t.status ?? "").toLowerCase() === "cancel"
-);
-const allClosed = tasks.every(
-  (t) => (t.status ?? "").toLowerCase() === "closed"
-);
+          const hasCancelled = tasks.some(
+            (t) => (t.status ?? "").toLowerCase() === "cancel"
+          );
+          const allClosed = tasks.every(
+            (t) => (t.status ?? "").toLowerCase() === "closed"
+          );
 
-let finalStatus = "Open";
-let statusColor = "red";
-
-// 🟩 Priority: Cancelled > Closed > Open
-if (hasCancelled) {
-  finalStatus = "Cancelled";
-  statusColor = "green";
-} else if (allClosed) {
-  finalStatus = "Closed";
-  statusColor = "green";
-}
-
+          let finalStatus = "Open";
+          let statusColor = "red";
+          if (hasCancelled) {
+            finalStatus = "Cancelled";
+            statusColor = "green";
+          } else if (allClosed) {
+            finalStatus = "Closed";
+            statusColor = "green";
+          }
 
           return tasks.map((t, index) => {
-            // 👉 Check if this task row contains any selected skill
             const hasSelectedSkill = tasks.some(
               (x) =>
                 selectedSkills.length > 0 && selectedSkills.includes(x.skill)
             );
-
-            // 👉 Check if THIS task row has any of the selected skills
             const rowHasSelectedSkill = tasks.some(
               (x) =>
                 x.task_card === t.task_card && selectedSkills.includes(x.skill)
             );
 
-            // 🔹 Gray base style ONLY if the row belongs to a group with selected skills
-            //     but THIS task row does not contain the selected skill
             let baseCellStyle = "";
             if (
               selectedSkills.length > 0 &&
@@ -1713,7 +1748,6 @@ if (hasCancelled) {
                 " color:#cfcfcf; border-radius:3px; padding:2px 4px;";
             }
 
-            // Build phase cells per task
             const phaseCells = fixedPhases
               .map((phase) => {
                 const skills = tasks
@@ -1722,12 +1756,12 @@ if (hasCancelled) {
                   )
                   .map((x) => {
                     const status = (x.status ?? "").toLowerCase();
-                    let color = "red";
-                    if (status === "closed" || status === "cancel") {
-                      color = "green";
-                    }
-
+                    let color =
+                      status === "closed" || status === "cancel"
+                        ? "green"
+                        : "red";
                     let highlightStyle = "";
+
                     if (
                       selectedSkills.length > 0 &&
                       selectedSkills.includes(x.skill)
@@ -1749,32 +1783,22 @@ if (hasCancelled) {
               })
               .join("");
 
-            // 🧩 Build full row
             return `
 <tr id="row-seq-${seq}">
-  <!-- Reference (rowspanned, no baseCellStyle) -->
   ${
     index === 0
-      ? `<td rowspan="${tasks.length}">
-           ${t.reference_task_card ?? ""}
-         </td>`
+      ? `<td rowspan="${tasks.length}">${t.reference_task_card ?? ""}</td>`
       : ""
   }
-
-  <!-- Description (rowspanned, no baseCellStyle) -->
   ${
     index === 0
-      ? `<td rowspan="${tasks.length}">
-           ${t.task_card_description ?? ""}
-         </td>`
+      ? `<td rowspan="${tasks.length}">${t.task_card_description ?? ""}</td>`
       : ""
   }
-
-  <!-- Seq.No (rowspanned) -->
   ${
     index === 0
       ? `<td rowspan="${tasks.length}" style="text-align:center; vertical-align:middle;">
-           <a href="https://ltpsystems.sharepoint.com/sites/BaseMaintenance/Shared Documents/ONEMTC/${currentWO}/${seq}.pdf" 
+           <a href="https://ltpsystems.sharepoint.com/sites/BaseMaintenance/Shared Documents/SECRETFILE/${currentWO}/${seq}.pdf" 
               target="_blank" 
               style="color:blue; text-decoration:underline; cursor:pointer;">
              ${seq}
@@ -1782,8 +1806,6 @@ if (hasCancelled) {
          </td>`
       : ""
   }
-
-  <!-- Status (rowspanned) -->
   ${
     index === 0
       ? `<td rowspan="${tasks.length}" style="text-align:center; vertical-align:middle; font-weight:bold; color:${statusColor};">
@@ -1791,118 +1813,138 @@ if (hasCancelled) {
          </td>`
       : ""
   }
-
-  <!-- TaskCard (per row) -->
   <td style="text-align:center; vertical-align:middle; ${baseCellStyle}">
     ${t.task_card ?? ""}
   </td>
 
-  <!-- 🗒️ Comments column -->
-<td class="comment-cell">
-  <textarea
-    class="comment-input"
-    data-id="${t.id}"
-    placeholder=""
-    rows="1"
-  >${t.comment || ""}</textarea>
-</td>
+  <td class="comment-cell">
+    <textarea class="comment-input" data-id="${t.id}" rows="1">${
+              t.comment || ""
+            }</textarea>
+  </td>
+
   ${phaseCells}
 </tr>`;
           });
         });
 
-        // Save scroll position
+        // Preserve scroll
         const scrollContainer = document.querySelector(".clusterize-scroll");
         const prevScrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
 
-        // Update table
-        clusterize.clear();
-        clusterize.update(
-          rows.length
-            ? rows
-            : [
-                `<tr class="clusterize-no-data"><td colspan="12">No data</td></tr>`,
-              ]
-        );
+        // 🪶 Smooth no-flicker refresh
+        const tableContainer = document.querySelector(".clusterize-scroll");
+        if (tableContainer) tableContainer.style.visibility = "hidden";
 
-        // Restore scroll position
-        if (scrollContainer) {
-          scrollContainer.scrollTop = prevScrollTop;
+        requestAnimationFrame(() => {
+          clusterize.clear();
+          clusterize.update(
+            rows.length
+              ? rows
+              : [
+                  `<tr class="clusterize-no-data"><td colspan="12">No data</td></tr>`,
+                ]
+          );
+
+          if (scrollContainer) scrollContainer.scrollTop = prevScrollTop;
+          if (tableContainer) tableContainer.style.visibility = "visible";
+        });
+
+        // ✨ Add CSS for highlight and popup only once
+        if (!document.querySelector("#comment-style")) {
+          const style = document.createElement("style");
+          style.id = "comment-style";
+          style.textContent = `
+.comment-popup { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.2); z-index: 9999; }
+.comment-popup input { width: 380px; padding: 10px 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; background: white; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.1); outline: none; }
+.comment-popup input:focus { border-color: #0078d7; }
+.ta-highlight { outline: 2px solid #0078d7; background: #f5faff; }
+.comment-updated { transition: background 0.3s ease; background: #fff6a3; } /* 💡 yellow flash */
+`;
+          document.head.appendChild(style);
         }
 
-        // 🧠 Add Firestore comment update logic
+        // 🧠 Comment popup logic
         setTimeout(() => {
           document.querySelectorAll(".comment-input").forEach((ta) => {
-            // Auto-resize
             const resize = () => {
               ta.style.height = "auto";
               ta.style.height = ta.scrollHeight + "px";
             };
-
             ta.addEventListener("input", resize);
             resize();
 
-            // 💬 Save on Enter key — append new comment entry
             ta.addEventListener("focus", () => {
-              // Clear the textarea when user clicks (focuses) on it
-              ta.value = "";
-            });
-            ta.addEventListener("keydown", async (e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
+              ta.classList.add("ta-highlight");
+              ta.readOnly = true;
 
-                const docId = ta.dataset.id;
-                const rawComment = ta.value.trim();
-                if (!rawComment) return;
+              if (document.querySelector(".comment-popup")) return;
 
-                // 👤 Logged-in username
-                let modifiedBy = loginUser || "Unknown";
-                if (modifiedBy.includes("@")) {
-                  modifiedBy = modifiedBy.split("@")[0];
+              const popup = document.createElement("div");
+              popup.className = "comment-popup";
+              const input = document.createElement("input");
+              input.type = "text";
+              input.placeholder = "Type your comment and press Enter...";
+              popup.appendChild(input);
+              document.body.appendChild(popup);
+              setTimeout(() => input.focus(), 30);
+
+              const closePopup = () => {
+                popup.remove();
+                ta.classList.remove("ta-highlight");
+                ta.readOnly = false;
+              };
+
+              input.addEventListener("keydown", async (e) => {
+                if (e.key === "Enter" && input.value.trim()) {
+                  e.preventDefault();
+                  const docId = ta.dataset.id;
+                  const rawComment = input.value.trim();
+                  let modifiedBy = loginUser || "Unknown";
+                  if (modifiedBy.includes("@"))
+                    modifiedBy = modifiedBy.split("@")[0];
+
+                  const now = new Date();
+                  const timestamp = now.toLocaleString("en-US", {
+                    month: "short",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  });
+
+                  try {
+                    const docRef = doc(db, "tasks", docId);
+                    const snap = await getDoc(docRef);
+                    const existingComment = snap.exists()
+                      ? snap.data().comment || ""
+                      : "";
+
+                    const newEntry = `[${timestamp}] ${modifiedBy}: ${rawComment}`;
+                    const combinedComment = existingComment
+                      ? existingComment + "\n" + newEntry
+                      : newEntry;
+
+                    await updateDoc(docRef, { comment: combinedComment });
+                    ta.value = combinedComment;
+                    resize();
+                    closePopup();
+                  } catch (err) {
+                    console.error("❌ Error saving comment:", err);
+                    alert("Failed to save comment");
+                    closePopup();
+                  }
+                } else if (e.key === "Escape") {
+                  closePopup();
                 }
+              });
 
-                // 🕒 Timestamp
-                const now = new Date();
-                const timestamp = now.toLocaleString("en-US", {
-                  month: "short",
-                  day: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                });
-
-                // 🧩 Fetch the latest comment text from Firestore (to preserve all)
-                try {
-                  const docRef = doc(db, "tasks", docId);
-                  const snap = await getDoc(docRef);
-                  const existingComment = snap.exists()
-                    ? snap.data().comment || ""
-                    : "";
-
-                  // Build new comment entry
-                  const newEntry = `[${timestamp}] ${modifiedBy}: ${rawComment}`;
-
-                  // Combine old + new comments
-                  const combinedComment = existingComment
-                    ? existingComment + "\n" + newEntry
-                    : newEntry;
-
-                  // Save back to Firestore
-                  await updateDoc(docRef, { comment: combinedComment });
-
-                  // Update UI
-                  ta.value = combinedComment;
-                  resize();
-
-                  console.log(`💾 New comment added by ${modifiedBy}`);
-                } catch (err) {
-                  console.error("❌ Error saving comment:", err);
-                  alert("Failed to save comment");
-                }
-              }
+              popup.addEventListener("click", (e) => {
+                if (e.target === popup) closePopup();
+              });
             });
           });
-        }, 500);
+        }, 400);
       }
 
       function renderPhaseTotals(docs) {
