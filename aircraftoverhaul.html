@@ -1630,7 +1630,7 @@
       window.printFullTable = printFullTable;
 
       let prevDocsMap = new Map(); // 🧠 Cache to detect changes
-      let commentFlashDuration = 60000; // highlight for 1 second
+      let commentFlashDuration = 1000; // highlight for 1 second
 
       async function renderRows(docs) {
         // ✅ Precompute selected skills ONCE
