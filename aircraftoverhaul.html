@@ -1413,7 +1413,7 @@
       
       // PRINTING......
       
-               function printFullTable() {
+      function printFullTable() {
         if (!allDocs || allDocs.length === 0) {
           alert("No data to print ❗");
           return;
@@ -1421,16 +1421,52 @@
 
         let filteredDocs = [...allDocs];
 
-        // 🔹 Apply filters
+        // 🔹 Apply filters (include multiskill seqs unless phase is active)
+
+        // 🔹 Apply skill filter while keeping other skills in the same seq visible
         if (activeSkill !== "CLEAR") {
+          let mainFiltered;
+
+          // Check if skill belongs to a predefined group
           if (skillGroups[activeSkill]) {
-            filteredDocs = filteredDocs.filter((d) =>
+            mainFiltered = filteredDocs.filter((d) =>
               skillGroups[activeSkill].includes(d.skill)
             );
           } else {
-            filteredDocs = filteredDocs.filter((d) => d.skill === activeSkill);
+            mainFiltered = filteredDocs.filter((d) => d.skill === activeSkill);
           }
+
+          // Get all seq numbers where the mainFiltered skill exists
+          const relatedSeqs = new Set(mainFiltered.map((d) => d.seq));
+
+          // Keep all tasks in those seqs (even with different skills)
+          filteredDocs = filteredDocs.filter((d) => relatedSeqs.has(d.seq));
+
+          // Mark highlight only for the selected skill(s)
+          filteredDocs = filteredDocs.map((d) => ({
+            ...d,
+            highlightTask:
+              d.skill === activeSkill ||
+              skillGroups[activeSkill]?.includes(d.skill),
+          }));
+
+          // If a phase is active, show only the exact match (no others)
+          if (activePhase) {
+            filteredDocs = filteredDocs
+              .filter((d) =>
+                skillGroups[activeSkill]
+                  ? skillGroups[activeSkill].includes(d.skill)
+                  : d.skill === activeSkill
+              )
+              .map((d) => ({ ...d, highlightTask: true }));
+          }
+        } else {
+          filteredDocs = filteredDocs.map((d) => ({
+            ...d,
+            highlightTask: false,
+          }));
         }
+
         if (seqFilterValues && seqFilterValues.length > 0) {
           filteredDocs = filteredDocs.filter((d) =>
             seqFilterValues.includes(String(d.seq))
@@ -1489,13 +1525,23 @@
             const taskRows = tasks
               .map((d, index) => {
                 const status = (d.status ?? "").toLowerCase();
-                const bgColor =
-                  status === "closed"
-                    ? "background-color: lightgreen;"
-                    : "background-color: salmon;";
+                let bgColor = "background-color: salmon;";
+                let displayStatus = d.status ?? "";
+
+                if (status === "closed") {
+                  bgColor = "background-color: lightgreen;";
+                  displayStatus = "Closed";
+                } else if (status === "cancel") {
+                  bgColor = "background-color: lightgreen;";
+                  displayStatus = "Cancelled";
+                } else if (status === "open") {
+                  bgColor = "background-color: salmon;";
+                  displayStatus = "Open";
+                }
 
                 return `
-          <tr>
+          <tr class="${d.faded ? "faded" : ""}">
+
             ${
               index === 0
                 ? `<td rowspan="${tasks.length}">${
@@ -1511,7 +1557,10 @@
                 : ""
             }
             ${index === 0 ? `<td rowspan="${tasks.length}">${seq}</td>` : ""}
-            <td>${d.task_card ?? ""}</td>
+            <td style="${d.highlightTask ? "background-color: #ededed;" : ""}">
+  ${d.task_card ?? ""}
+</td>
+
             <td>${d.comment ?? ""}</td>
             <td>${d.status ?? ""}</td>
             <td style="${d.phase === "PH" ? bgColor : ""}">${
