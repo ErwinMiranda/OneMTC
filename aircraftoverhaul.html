@@ -1597,16 +1597,23 @@
           })
           .join("");
 
-        // 🔹 Get dynamic header content
+         // 🔹 Get dynamic header content and add selected skill
         const dynamicHeader =
           document.getElementById("dynamicHeader")?.innerHTML || "";
+
+        let selectedSkillText = "";
+        if (activeSkill && activeSkill !== "CLEAR") {
+          selectedSkillText = ` - Selected Skill: <b>${activeSkill}</b>`;
+        }
+
+        const fullHeader = `${dynamicHeader}${selectedSkillText}`;
 
         const tableHTML = `
   <table>
     <thead>
       <tr>
         <th colspan="13" style="text-align:center; font-size:14px; font-weight:bold;">
-          ${dynamicHeader}
+          ${fullHeader}
         </th>
       </tr>
       <tr>
