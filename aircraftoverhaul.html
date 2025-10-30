@@ -1557,9 +1557,12 @@
                 : ""
             }
             ${index === 0 ? `<td rowspan="${tasks.length}">${seq}</td>` : ""}
-            <td style="${d.highlightTask ? "background-color: #ededed;" : ""}">
+           <td class="taskcard-cell" style="${
+             d.highlightTask ? "background-color: #ededed;" : ""
+           }">
   ${d.task_card ?? ""}
 </td>
+
 
             <td>${d.comment ?? ""}</td>
             <td>${d.status ?? ""}</td>
@@ -1597,7 +1600,7 @@
           })
           .join("");
 
-         // 🔹 Get dynamic header content and add selected skill
+        // 🔹 Get dynamic header content and add selected skill
         const dynamicHeader =
           document.getElementById("dynamicHeader")?.innerHTML || "";
 
@@ -1669,10 +1672,21 @@
         } 
 
         th, td { 
-          border: 1px solid #000; 
-          padding: 10px; 
-          text-align: center; 
-        }
+  border: 1px solid #000; 
+  padding: 10px; 
+  text-align: center; 
+  vertical-align: middle;
+  word-wrap: break-word; /* allows long words to break nicely elsewhere */
+}
+
+/* ✅ Force TaskCard Items column into a single line */
+td.taskcard-cell {
+  white-space: nowrap;        /* Prevent wrapping */
+  text-overflow: ellipsis;    /* Add ... if too long */
+  overflow: hidden;           /* Hide overflow text */
+  max-width: 300px;           /* Optional: adjust width for better layout */
+}
+
 
         th { background: #f2f2f2; }
 
