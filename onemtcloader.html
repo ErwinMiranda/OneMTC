@@ -1,281 +1,1048 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>One MTC Loader</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>One MTC</title>
     <script type="module">
       import { requireLogin, logout } from "./auth.js";
       requireLogin();
       window.logout = logout;
     </script>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-      :root {
-        --bg: #0f172a;
-        --card-bg: rgba(255, 255, 255, 0.08);
-        --text: #f1f5f9;
-        --muted: #94a3b8;
-        --accent: #38bdf8;
-        --accent-hover: #0ea5e9;
-        --radius: 14px;
-        --border: rgba(255, 255, 255, 0.15);
-        --error: #ef4444;
-        --bg-top: #0f172a;
-        --bg-bottom: #1e3a8a;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
       body {
-        font-family: "Inter", system-ui, sans-serif;
-        background: linear-gradient(to bottom, var(--bg-top), var(--bg-bottom));
-        color: var(--text);
-        margin: 0;
-        padding: 32px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-height: 100vh;
-        overflow-x: hidden;
+        font-family: sans-serif;
+        margin: 20px;
+        background: #fafafa;
       }
-
-      h1 {
-        font-size: 1.8rem;
-        font-weight: 600;
-        margin: 8px 0 12px;
-        text-align: center;
+      h2 {
+        margin-bottom: 15px;
       }
-
-      .small {
-        font-size: 0.9rem;
-        color: var(--muted);
-        text-align: center;
-        max-width: 600px;
-        line-height: 1.4;
-        margin-bottom: 24px;
+      h3 {
+        font-size: 14px;
+        padding: 6px 12px;
+        background: #0078d7;
+        border-radius: 12px;
+        color: #ffffff;
+        font-weight: normal;
       }
-
-      .card {
-        background: var(--card-bg);
-        backdrop-filter: blur(16px);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 24px;
-        width: 100%;
-        max-width: 1100px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-        animation: fadeIn 0.6s ease forwards;
-      }
-
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
+      /* Controls */
       .controls {
         display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
+        gap: 10px;
         align-items: center;
-        justify-content: center;
-        margin-bottom: 16px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
       }
-
-      select,
-      input[type="file"],
-      button {
-        border-radius: 8px;
-        border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--text);
-        padding: 8px 12px;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
+      .controls input {
+        flex: 1;
+        min-width: 220px;
+        padding: 6px;
+        font-size: 12px;
+        border-radius: 12px;
+        border: 1px solid #ccc;
       }
-
-      input[type="file"]::file-selector-button {
-        background: var(--accent);
+      .btn {
+        padding: 6px 12px;
+        font-size: 14px;
         border: none;
-        border-radius: 6px;
-        color: white;
-        padding: 6px 10px;
+        color: #fff;
+        border-radius: 12px;
         cursor: pointer;
-        transition: background 0.2s ease;
+      }
+      #woSearchBtn {
+        background: #0078d7;
+      }
+      #woSearchBtn:hover {
+        background: #005fa3;
+      }
+      #startScanBtn {
+        background: #28a745;
+      }
+      #startScanBtn.scanning {
+        background: #218838;
+        box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2) inset;
+      }
+      #stopScanBtn {
+        background: #dc3545;
+        border-radius: 12px;
+      }
+      #stopScanBtn:hover {
+        background: #c82333;
       }
 
-      input[type="file"]::file-selector-button:hover {
-        background: var(--accent-hover);
+      #counter {
+        margin-bottom: 15px;
+        font-weight: bold;
+      }
+      #counter .highlight {
+        color: #00d748;
       }
 
-      button {
-        cursor: pointer;
-        font-weight: 500;
+      /* ver07 */
+      /* Layout wrapper */
+      .layout {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        flex-wrap: wrap;
       }
 
-      button.primary {
-        background: var(--accent);
-        color: white;
-        border: none;
+      /* Left column (phase + skill) */
+      .left-column {
+        flex: 0 0 300px; /* fixed width */
+        display: flex;
+        flex-direction: column;
+        gap: 20px; /* space between phase and skill tables */
       }
 
-      button.primary:hover {
-        background: var(--accent-hover);
-        transform: translateY(-1px);
+      /* Main table */
+      #scrollArea {
+        flex: 1;
+        min-width: 400px;
+        height: 500px;
+        overflow-y: auto;
+        border: 1px solid #aaa;
+        background: #fff;
+        border-radius: 12px;
       }
 
-      .status {
-        font-size: 0.85rem;
-        color: var(--muted);
+      /* Skill + Phase tables */
+      #phaseTotalsTable,
+      #phaseTotalsTable th,
+      #phaseTotalsTable td {
+        border: 1px solid #ddd;
+        padding: 6px;
+      }
+      #phaseTotalsTable th {
+        background: #f5f5f5;
       }
 
+      /* Mobile responsive */
+      @media (max-width: 900px) {
+        .layout {
+          flex-direction: column;
+        }
+        .left-column,
+        #scrollArea {
+          flex: 1 1 100%;
+          max-width: 100%;
+        }
+        #phaseTotalsContainer {
+          max-width: 100%;
+          width: 100%;
+        }
+      }
+
+      /*ver07*/
+      /* Main scrollable table */
+      .clusterize-scroll {
+        flex: 1;
+        height: 500px;
+        overflow-y: auto;
+        border: 1px solid #aaa;
+        background: #fff;
+        border-radius: 12px;
+      }
       table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 16px;
-        overflow-x: auto;
-        font-size: 0.85rem;
+        table-layout: fixed;
       }
-
       th,
       td {
-        padding: 10px 12px;
+        padding: 6px;
+        border: 1px solid #ddd;
+        font-size: 14px;
         text-align: left;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+        border-radius: 6px;
       }
-
-      th {
-        background: rgba(255, 255, 255, 0.08);
+      thead th {
+        background: #f5f5f5;
         position: sticky;
         top: 0;
-        backdrop-filter: blur(10px);
+        z-index: 2;
       }
-
-      tr:hover td {
-        background: rgba(255, 255, 255, 0.05);
-      }
-
-      /* 🔐 Login/Logout Button */
-      .auth-btn {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        background: var(--accent);
-        color: #fff;
-        border: none;
-        padding: 8px 16px;
+      thead input {
+        width: 95%;
+        padding: 4px;
+        font-size: 12px;
+        box-sizing: border-box;
         border-radius: 8px;
-        cursor: pointer;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
       }
 
-      .auth-btn:hover {
-        background: var(--accent-hover);
-        transform: scale(1.05);
-      }
-
-      @media (max-width: 700px) {
-        .controls {
-          flex-direction: column;
-          align-items: stretch;
-        }
-      }
-      /* Minimalist loading overlay */
+      /* Loading overlay */
       #loadingOverlay {
         position: fixed;
         inset: 0;
         background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(3px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        font-family: "Inter", sans-serif;
-        color: #333;
-        font-size: 1.1rem;
-        letter-spacing: 0.5px;
-      }
-
-      .loader {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.75rem;
+        justify-content: center;
+        z-index: 9999;
+        font-size: 18px;
+        color: #333;
+        opacity: 1;
+        transition: opacity 0.5s ease;
+        border-radius: 0;
       }
-
-      .spinner {
-        width: 32px;
-        height: 32px;
-        border: 3px solid #ddd;
-        border-top-color: #007bff;
+      #loadingOverlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #loadingOverlay .spinner {
+        border: 4px solid #ccc;
+        border-top: 4px solid #0078d7;
         border-radius: 50%;
-        animation: spin 0.8s linear infinite;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 10px;
       }
-
       @keyframes spin {
         to {
           transform: rotate(360deg);
         }
       }
-      .delete-btn {
+
+      /* Skill filters */
+      .skill-filters {
+        margin: 10px 0 15px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .skill-filters button {
+        padding: 6px 12px;
+        font-size: 14px;
+        background: #555;
+        color: #fff;
+        border: none;
+        border-radius: 12px;
         cursor: pointer;
         transition: background 0.2s;
       }
+      .skill-filters button:hover {
+        background: #333;
+      }
+      .skill-filters button.active {
+        background: #0078d7;
+      }
+
+      /* Scan Modal */
+      #scanModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      }
+      #scanModal .modal-content {
+        background: #fff;
+        padding: 16px;
+        border-radius: 8px;
+        width: 420px;
+        max-width: calc(100% - 24px);
+        max-height: 80vh;
+        overflow: auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+      #scanModal h3 {
+        margin: 0 0 8px;
+      }
+      #scannedList {
+        list-style: none;
+        padding: 0;
+        margin: 8px 0;
+      }
+      #scannedList li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 8px;
+        border: 1px solid #eee;
+        border-radius: 6px;
+        margin-bottom: 6px;
+        background: #f9f9f9;
+        font-variant-numeric: tabular-nums;
+      }
+      .pill {
+        font-size: 12px;
+        padding: 2px 6px;
+        background: #eee;
+        border-radius: 10px;
+      }
+      .li-actions button {
+        border: none;
+        background: #ef5350;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .li-actions button:hover {
+        background: #d32f2f;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        justify-content: flex-end;
+      }
+      #submitScanBtn {
+        background: #28a745;
+      }
+      #clearScanBtn {
+        background: #6c757d;
+      }
+      #closeScanBtn {
+        background: #dc3545;
+      }
+
+      /* Hidden barcode input */
+      #barcodeInput {
+        position: absolute;
+        left: -9999px;
+        top: -9999px;
+      }
+      /* Toast Notifications */
+      #toastContainer {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 11000;
+      }
+
+      .toast {
+        background: #333;
+        color: #fff;
+        padding: 10px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.4s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateX(0);
+      }
+
+      .toast.success {
+        background: #28a745;
+      }
+      .toast.error {
+        background: #dc3545;
+      }
+      .toast.info {
+        background: #0078d7;
+      }
+      /* Phase Totals Table: smaller font */
+      #phaseTotalsTable th,
+      #phaseTotalsTable td {
+        font-size: 11px;
+        padding: 2px 4px; /* tighter padding */
+      }
+      #scrollArea th,
+      #scrollArea td {
+        font-size: 11px;
+        padding: 2px 4px; /* tighter padding */
+      }
+      /* Main table filter inputs compact */
+      #scrollArea thead input {
+        font-size: 11px;
+        padding: 2px 4px; /* smaller padding */
+        height: 18px; /* reduce input height */
+      }
+      .scan-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-top: 6px;
+      }
+
+      .scan-table th,
+      .scan-table td {
+        border: 1px solid #ccc;
+        padding: 6px 8px;
+        text-align: center;
+      }
+
+      .scan-table th {
+        background: #f5f5f5;
+        font-weight: bold;
+      }
+
+      .scan-table td button {
+        padding: 3px 6px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .plan-header {
+        top: 0;
+        z-index: 100;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(to bottom, var(--bg-top), var(--bg-bottom));
+        padding: 8px 12px;
+        border-radius: var(--radius);
+        margin-bottom: 20px;
+      }
+      .plan-heading {
+        font-size: 18px;
+        font-weight: 700;
+        color: #d0d0d0;
+      }
+      :root {
+        --bg-top: #0f172a;
+        --bg-bottom: #1e3a8a;
+        --card: rgba(255, 255, 255, 0.08);
+        --muted: #9ca3af;
+        --accent: #ffcc00; /* Lufthansa yellow */
+        --error: #ef4444;
+      }
+      .liveUpdate {
+        font-size: 0.8rem;
+        color: #cbd5e1;
+        margin-left: auto;
+        padding-right: 10px;
+      }
+      .pill-btn {
+        display: inline-block;
+        margin-top: 8px;
+        margin-bottom: 12px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        background: #f5f5f5;
+        border: 1px solid #ccc;
+        border-radius: 20px; /* pill shape */
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .pill-btn:hover {
+        background: #eaeaea;
+      }
+
+      .pill-btn.active {
+        background: #007bff; /* blue highlight when active */
+        color: white;
+        border-color: #007bff;
+      }
+      .printable {
+        margin-top: 10px;
+      }
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 30px;
+        height: 12px;
+      }
+
+      /* Hide default checkbox */
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      /* Slider background */
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 10px;
+      }
+
+      /* Slider circle */
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 10px;
+        width: 10px;
+        left: 1px;
+        bottom: 1px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+      }
+
+      /* Checked state */
+      input:checked + .slider {
+        background-color: #4caf50; /* green when ON */
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(18px);
+      }
+
+      /* Optional rounded slider */
+      .slider.round {
+        border-radius: 10px;
+      }
+      /* ==== Added for main wrapper + history panel ==== */
+      .main-wrapper {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+      }
+
+      /* Left side: your main content */
+      .main-content {
+        flex: 4; /* 75% width */
+        min-width: 0; /* prevent overflow in flex layout */
+      }
+
+      /* Right side: History panel (25%) */
+      .history {
+        flex: 1; /* 25% width */
+        background: #fcfbfb;
+        border: 1px solid #ccc;
+        border-radius: 12px;
+        padding: 16px;
+        min-width: 250px;
+        max-width: 350px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        overflow-y: auto;
+      }
+      .history-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        max-height: 80vh;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 13px;
+      }
+
+      .history-list li {
+        border-bottom: 1px solid #eee;
+        padding: 6px 8px;
+        line-height: 1.4;
+      }
+
+      .history-list li span.time {
+        color: #999;
+        font-size: 12px;
+      }
+
+      .history-list li span.status {
+        font-weight: bold;
+        color: #007bff;
+      }
+
+      .history-list li span.closed {
+        color: green;
+      }
+
+      .history-list li span.open {
+        color: red;
+      }
+
+      .history-list li span.modified {
+        color: #555;
+      }
+
+      /* Responsive: stack vertically on small screens */
+      @media (max-width: 900px) {
+        .main-wrapper {
+          flex-direction: column;
+        }
+        .history {
+          width: 100%;
+          max-width: none;
+          border: 1px solid #ddd;
+        }
+      }
+      /* status  glow */
+      @keyframes pulseGlowGreen {
+        0% {
+          background-color: #e8f5e9;
+          box-shadow: 0 0 10px 2px #81c784;
+        }
+        50% {
+          background-color: #c8e6c9;
+          box-shadow: 0 0 20px 5px #66bb6a;
+        }
+        100% {
+          background-color: #e8f5e9;
+          box-shadow: 0 0 10px 2px #81c784;
+        }
+      }
+
+      .pulse-glow-green {
+        animation: pulseGlowGreen 1.8s ease-in-out infinite;
+        transition: background-color 0.5s ease, box-shadow 0.5s ease;
+      }
+      @keyframes pulseGlowBlue {
+        0% {
+          background-color: #fde8e3;
+          box-shadow: 0 0 10px 2px #f66464;
+        }
+        50% {
+          background-color: #fbbbbb;
+          box-shadow: 0 0 20px 5px #f54242;
+        }
+        100% {
+          background-color: #fde3e3;
+          box-shadow: 0 0 10px 2px #f66464;
+        }
+      }
+
+      .pulse-glow-blue {
+        animation: pulseGlowBlue 1.8s ease-in-out infinite;
+        transition: background-color 0.5s ease, box-shadow 0.5s ease;
+      }
+      @keyframes pulseGlowAmber {
+        0% {
+          background-color: #fff8e1;
+          box-shadow: 0 0 10px 2px #ffca28;
+        }
+        50% {
+          background-color: #ffecb3;
+          box-shadow: 0 0 20px 5px #ffc107;
+        }
+        100% {
+          background-color: #fff8e1;
+          box-shadow: 0 0 10px 2px #ffca28;
+        }
+      }
+
+      .pulse-glow-amber {
+        animation: pulseGlowAmber 1.8s ease-in-out infinite;
+        transition: background-color 0.5s ease, box-shadow 0.5s ease;
+      }
+      .logbook-btn {
+        background-color: #003366; /* Lufthansa blue */
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        margin-left: 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.3s;
+      }
+      .logbook-btn:hover {
+        background-color: #002147;
+      }
+      .comment-cell {
+        vertical-align: top;
+        border: 1px solid #ccc;
+        padding: 2px 6px;
+      }
+
+      .comment-input {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        font-size: 13px;
+        line-height: 1.3;
+        resize: none; /* disable manual drag resize */
+        overflow: hidden;
+        padding: 2px 4px;
+        box-sizing: border-box;
+        min-height: 18px;
+      }
+
+      .comment-input:focus {
+        background-color: #f5f5f5;
+      }
+      .skill-filters button {
+        position: relative;
+        margin-right: 5px;
+      }
+
+      .comment-badge {
+        position: absolute;
+        top: -5px;
+        right: -6px;
+        background: red;
+        color: white;
+        font-size: 11px;
+        font-weight: bold;
+        border-radius: 50%;
+        padding: 2px 5px;
+        display: none;
+        transition: transform 0.2s ease;
+      }
+
+      .comment-badge.pulse {
+        transform: scale(1.25);
+      }
     </style>
   </head>
-
   <body>
-    <button onclick="logout()" class="auth-btn">Logout</button>
-
-    <h1>One MTC Uploader</h1>
-    <div class="small">
-      Upload Excel rows to One MTC db (<code>tasks</code>) with live updates.
+    <div class="plan-header">
+      <div class="plan-heading" id="dynamicHeader">No Data</div>
+      <span id="lastUpdate" class="liveUpdate"></span>
+      <button onclick="logout()" class="logout-btn">Logout</button>
     </div>
+    <div class="main-wrapper">
+      <!-- Left side main content -->
+      <div class="main-content">
+        <div class="controls">
+          <input type="text" id="woInput" placeholder="Enter Workorder" />
+          <button class="btn" id="woSearchBtn">Search</button>
 
-    <div class="card">
-      <div class="controls">
-        <input id="file" type="file" accept=".xlsx,.xls,.csv" />
-        <button id="uploadBtn" class="primary">Upload</button>
-        <span class="status" id="status">Initializing Firebase...</span>
+          <button
+            class="btn"
+            id="startScanBtn"
+            title="Activate barcode scanner"
+          >
+            Scan Here!!!
+          </button>
+          <button
+            class="btn"
+            id="stopScanBtn"
+            title="Stop scanner"
+            style="display: none"
+          >
+            Stop Scan
+          </button>
+
+          <!-- Hidden input to capture scanner keystrokes -->
+          <label for="barcodeInput" style="display: none">Barcode Input</label>
+          <input
+            type="text"
+            id="barcodeInput"
+            name="barcodeInput"
+            autocomplete="off"
+            placeholder="Scan or enter barcode"
+            title="Scan or enter barcode here"
+          />
+        </div>
+
+        <div class="skill-filters">
+          <button data-skill="CLEAR" class="active">
+            ALL SKILL
+            <span class="comment-badge" data-skill="CLEAR">0</span>
+          </button>
+          <button data-skill="GEN">
+            GEN
+            <span class="comment-badge" data-skill="GEN">0</span>
+          </button>
+          <button data-skill="AVI">
+            AVI
+            <span class="comment-badge" data-skill="AVI">0</span>
+          </button>
+          <button data-skill="CRG/ENG">
+            CRG/ENG
+            <span class="comment-badge" data-skill="CRG/ENG">0</span>
+          </button>
+          <button data-skill="CAB">
+            CAB
+            <span class="comment-badge" data-skill="CAB">0</span>
+          </button>
+          <button data-skill="LDG/FLC">
+            LDG/FLC
+            <span class="comment-badge" data-skill="LDG/FLC">0</span>
+          </button>
+          <button data-skill="STR">
+            STR
+            <span class="comment-badge" data-skill="STR">0</span>
+          </button>
+        </div>
+
+        <div id="counter">Waiting for input...</div>
+        <button id="multiSkillBtn" class="pill-btn">Multiskill MTC</button>
+        <button id="singleSkillBtn" class="pill-btn">Single Skill MTC</button>
+        <div class="layout">
+          <!-- Phase totals and chart (responsive side-by-side) -->
+          <div
+            id="phaseTotalsWrapper"
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 20px;
+              align-items: flex-start;
+            "
+          >
+            <!-- 📊 Phase Table -->
+            <div
+              id="phaseTotalsContainer"
+              style="flex: 1 1 400px; min-width: 300px"
+            >
+              <table
+                id="phaseTotalsTable"
+                style="width: 100%; border-collapse: collapse"
+              >
+                <thead>
+                  <tr>
+                    <th>Phase</th>
+                    <th style="text-align: right">Open Tasks</th>
+                    <th style="text-align: right">Closed Tasks</th>
+                    <th style="text-align: right">Cancelled Tasks</th>
+                    <th style="text-align: right">Hold Tasks</th>
+                    <th style="text-align: right">% Closed</th>
+                  </tr>
+                </thead>
+                <tbody id="phaseTotalsBody">
+                  <tr>
+                    <td colspan="6" style="text-align: center">No data</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 📈 Chart beside the table -->
+            <div
+              id="phaseChartContainer"
+              style="flex: 1 1 300px; min-width: 200px"
+            >
+              <canvas id="phaseChart" width="100%" height="150"></canvas>
+            </div>
+          </div>
+
+          <!-- Main scrollable table -->
+          <div id="scrollArea" class="clusterize-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 160px">Reference</th>
+                  <th>Description</th>
+                  <th style="width: 50px">Seq.No</th>
+                  <th style="width: 70px">Status</th>
+                  <th style="width: 160px">TaskCard Items</th>
+                  <th style="width: 160px">Comments</th>
+                  <th style="width: 40px"></th>
+                  <th style="width: 40px"></th>
+                  <th style="width: 40px"></th>
+                  <th style="width: 40px"></th>
+                  <th style="width: 40px"></th>
+                  <th style="width: 40px"></th>
+                  <th style="width: 40px"></th>
+                </tr>
+                <tr>
+                  <th>
+                    <input
+                      type="text"
+                      class="filter"
+                      data-field="reference_task_card"
+                      placeholder="Search Reference"
+                    />
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      class="filter"
+                      data-field="task_card_description"
+                      placeholder="Search Description"
+                    />
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      class="filter"
+                      data-field="seq"
+                      placeholder="Search Seq"
+                      style="padding-right: 10px"
+                    />
+                    <button
+                      id="clearSeqBtn"
+                      style="
+                        display: none;
+                        position: absolute;
+                        right: 10px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        border: none;
+                        background: transparent;
+                        cursor: pointer;
+                        font-size: 14px;
+                        color: #e40a0a;
+                      "
+                    >
+                      ✖
+                    </button>
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      class="filter"
+                      data-field="status"
+                      placeholder="Search Status"
+                    />
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      class="filter"
+                      data-field="task_card"
+                      placeholder="Search TaskCard Items"
+                    />
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      class="filter"
+                      data-field="comments"
+                      placeholder="Search Comments"
+                    />
+                  </th>
+                  <th>PH</th>
+                  <th>P0</th>
+                  <th>P1</th>
+                  <th>P2</th>
+                  <th>P3</th>
+                  <th>P4</th>
+                  <th>P6</th>
+                </tr>
+              </thead>
+              <tbody id="contentArea" class="clusterize-content">
+                <tr class="clusterize-no-data">
+                  <td colspan="12">No data yet</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <button onclick="printFullTable()" class="printable">
+          🖨️ Print This Table
+        </button>
+        <button id="logbookBtn" class="logbook-btn">Turnover Logbook</button>
+
+        <!-- Scan Modal -->
+        <div
+          id="scanModal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="scanModalTitle"
+        >
+          <div class="modal-content">
+            <h3 id="scanModalTitle">Scanned Sequences</h3>
+            <div style="font-size: 12px; color: #555">
+              WO: <span id="activeWO" class="pill">—</span> • Count:
+              <span id="scanCount" class="pill">0</span>
+              <span style="padding-left: 90px">
+                <label class="switch">
+                  <input type="checkbox" id="showClosedChk" />
+                  <span class="slider round"></span>
+                </label>
+                <span style="margin-left: 8px"> Re-open Task Item(s)</span>
+              </span>
+            </div>
+
+            <!-- Search results for scanned/typed seq -->
+            <div style="margin-top: 10px">
+              <h4 style="font-size: 13px; margin-bottom: 5px; color: #444">
+                Matching Tasks
+              </h4>
+              <table class="scan-table">
+                <thead>
+                  <tr>
+                    <th>Seq</th>
+                    <th>Phase</th>
+                    <th>Skill</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="scanResultsList"></tbody>
+              </table>
+            </div>
+
+            <!-- Queue of tasks to close -->
+            <div style="margin-top: 15px">
+              <h4 style="font-size: 13px; margin-bottom: 5px; color: #444">
+                Queued Tasks
+              </h4>
+              <table class="scan-table">
+                <thead>
+                  <tr>
+                    <th>Seq</th>
+                    <th>Phase</th>
+                    <th>Skill</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="scannedList"></tbody>
+              </table>
+            </div>
+
+            <!-- Manual input for seq number -->
+            <div id="manualInputContainer" style="margin-top: 10px">
+              <label
+                for="manualSeqInput"
+                style="
+                  display: block;
+                  font-size: 12px;
+                  color: #444;
+                  margin-bottom: 4px;
+                "
+              >
+                Manual Seq Number
+              </label>
+              <input
+                type="number"
+                id="manualSeqInput"
+                name="manualSeqInput"
+                placeholder="Enter Seq Number"
+                title="Enter sequence number manually"
+              />
+              <button id="manualAddBtn" title="Add entered sequence number">
+                Add
+              </button>
+            </div>
+
+            <div class="modal-actions">
+              <button
+                class="btn"
+                id="submitScanBtn"
+                title="Update queued tasks to CLOSED"
+              >
+                Submit
+              </button>
+              <button class="btn" id="clearScanBtn" title="Clear list">
+                Clear
+              </button>
+              <button class="btn" id="closeScanBtn" title="Close modal">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div style="overflow-x: auto">
-        <table id="tasksTable">
-          <thead>
-            <tr id="headerRow"></tr>
-          </thead>
-          <tbody id="tasksBody">
-            <tr>
-              <td colspan="12" class="small">No tasks loaded yet.</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Right side history panel -->
+      <div class="history">
+        <button id="clearNotifBtn" class="pill-btn">Clear Notification</button>
+        <h3>Updates</h3>
+        <ul id="historyList" class="history-list">
+          <li>Waiting for updates...</li>
+        </ul>
       </div>
     </div>
-
+    <!-- Loading -->
     <div id="loadingOverlay">
-      <div class="loader">
-        <div class="spinner"></div>
-        <div id="loadingMessage">Uploading, please wait...</div>
-      </div>
+      <div class="spinner"></div>
+      <div>Loading, please wait...</div>
     </div>
+    <!-- Toast Notifications -->
+    <div id="toastContainer"></div>
 
-    <!-- SheetJS -->
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
-    <!-- ✅ Fixed Firebase Logic -->
+    <script src="https://cdn.jsdelivr.net/npm/clusterize.js@0.18.1/clusterize.min.js"></script>
     <script type="module">
       import { logout } from "./auth.js";
 
@@ -284,35 +1051,40 @@
       import {
         getFirestore,
         collection,
-        doc,
-        writeBatch,
         onSnapshot,
         query,
         where,
-        orderBy,
+        doc,
+        getDoc,
+        updateDoc,
         getDocs,
+        orderBy,
+        limit,
+        addDoc,
         serverTimestamp,
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
       import {
         getAuth,
-        signInWithEmailAndPassword,
-        signOut,
         onAuthStateChanged,
-        signInAnonymously,
+        signOut,
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
+      /* =======================
+   Firebase Init
+  ======================== */
       const firebaseConfig = {
         apiKey: "AIzaSyDCpHhUL8x4rs-fom1xyaNdWm5prSGf57U",
         authDomain: "onemtc-2222c.firebaseapp.com",
         projectId: "onemtc-2222c",
-        storageBucket: "onemtc-2222c.appspot.com",
+        storageBucket: "onemtc-2222c.firebasestorage.app",
         messagingSenderId: "447271556426",
         appId: "1:447271556426:web:562ba4d72e40b754599db3",
       };
-
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
+      //signInAnonymously(auth).catch(console.error);
+
+      // ✅ Redirect user to login page if not signed in
       onAuthStateChanged(auth, (user) => {
         if (!user) {
           console.log("⚠️ No user signed in. Redirecting to login...");
@@ -322,480 +1094,2039 @@
           // Optionally show email in UI
           const userDisplay = document.getElementById("userDisplay");
           if (userDisplay) userDisplay.textContent = user.email || "Anonymous";
-             // ✅ Attach your Firestore realtime listener here
-    attachRealtimeListener();
-
-    // ✅ Update UI
-    setStatus("✅ Connected to One MTC , loading data...");
         }
       });
-      const authBtn = document.getElementById("authBtn");
-      const loginModal = document.getElementById("loginModal");
-      const loginSubmit = document.getElementById("loginSubmit");
-      const cancelLogin = document.getElementById("cancelLogin");
-      const emailInput = document.getElementById("email");
-      const passwordInput = document.getElementById("password");
-      const statusSpan = document.getElementById("status");
-      let unsubscribeListener = null;
+      // ✅ Get currently logged-in user's email or fallback
+      let loginUser = "Unknown";
 
-      function setStatus(msg, isError = false) {
-        statusSpan.textContent = msg;
-        statusSpan.style.color = isError ? "#ef4444" : "#94a3b8";
+      onAuthStateChanged(auth, (user) => {
+        if (user && user.email) {
+          // Trim everything after @
+          loginUser = user.email.includes("@")
+            ? user.email.split("@")[0]
+            : user.email;
+        } else {
+          loginUser = "Unknown";
+        }
+      });
+
+      /* =======================
+   UI refs
+  ======================== */
+      const counterEl = document.getElementById("counter");
+      const woInput = document.getElementById("woInput");
+      const woSearchBtn = document.getElementById("woSearchBtn");
+      const overlay = document.getElementById("loadingOverlay");
+
+      const startScanBtn = document.getElementById("startScanBtn");
+      const stopScanBtn = document.getElementById("stopScanBtn");
+      const barcodeInput = document.getElementById("barcodeInput");
+
+      const scanModal = document.getElementById("scanModal");
+      const scannedList = document.getElementById("scannedList");
+      const submitScanBtn = document.getElementById("submitScanBtn");
+      const clearScanBtn = document.getElementById("clearScanBtn");
+      const closeScanBtn = document.getElementById("closeScanBtn");
+      const activeWOEl = document.getElementById("activeWO");
+      const scanCountEl = document.getElementById("scanCount");
+      const fixedPhases = ["PH", "P0", "P1", "P2", "P3", "P4", "P6"];
+      const lastUpdateEl = document.getElementById("lastUpdate");
+      const showClosedChk = document.getElementById("showClosedChk");
+      const historyListEl = document.getElementById("historyList");
+      /* =======================
+   Clusterize Table
+  ======================== */
+      const clusterize = new Clusterize({
+        scrollId: "scrollArea",
+        contentId: "contentArea",
+        rows: [],
+      });
+
+      /* =======================
+   State
+  ======================== */
+      let unsubscribe = null;
+      let allDocs = []; // all docs for current WO
+      let activeSkill = "CLEAR";
+      let scanningActive = false;
+      let scannedSeqs = []; // numbers only
+      let currentWO = null; // string or number (as searched)
+      let seqFilterValues = []; // listahan ng lahat ng in-enter na seq filters
+      let activePhase = null; // currently selected phase filter
+      let multiSkillActive = false;
+      let singleSkillActive = false;
+      function getClosedPercentage(docs) {
+        if (!docs.length) return 0;
+        const closedCount = docs.filter((d) => {
+          const st = (d.status || "").toLowerCase();
+          return st === "closed" || st === "completed";
+        }).length;
+        return ((closedCount / docs.length) * 100).toFixed(1);
       }
-      function showLoading(message = "Uploading, please wait...") {
-        const overlay = document.getElementById("loadingOverlay");
-        const msg = document.getElementById("loadingMessage");
-        if (msg) msg.textContent = message;
-        overlay.style.display = "flex";
-      }
 
-      function hideLoading() {
-        document.getElementById("loadingOverlay").style.display = "none";
-      }
+      /* =======================
+   History Realtime Listener
+======================= */
+      window.addEventListener("load", () => {
+        const lastWO = localStorage.getItem("lastWorkorder");
+        if (lastWO) {
+          //console.log("🔄 Restoring last WO:", lastWO);
+          document.getElementById("woInput").value = lastWO;
 
-      async function uploadExcelDataToFirestore(excelData, db) {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        const userEmail = user?.email || user?.displayName || "Unknown User";
+          // 🔹 Load tasks
+          searchWorkorder(lastWO);
 
-        for (const rawRow of excelData) {
-          const mapped = mapRow(rawRow);
-          if (!mapped.id) continue;
+          // 🔹 Load matching history
+          listenToHistoryForWO(lastWO);
+        } else {
+          console.log("ℹ️ No previous Work Order found");
+        }
+      });
 
-          // 🔁 Save or overwrite the document with new user info
-          await setDoc(
-            doc(db, "tasks", mapped.id), // 👈 uses WO+TaskCard as the Firestore doc ID
-            {
-              ...mapped,
-              uploadedBy: userEmail, // 👈 who last uploaded
-              uploadedAt: new Date().toISOString(), // 👈 when
-            },
-            { merge: true } // 👈 keep existing fields, just update the new info
-          );
+      let unsubscribeHistory = null; // store listener cleanup reference
+
+      function listenToHistoryForWO(workorder) {
+        if (unsubscribeHistory) {
+          unsubscribeHistory();
+          unsubscribeHistory = null;
         }
 
-        console.log(
-          "✅ Upload complete. Firestore updated with last uploader info."
+        historyListEl.innerHTML = `<li>Loading history for ${workorder}...</li>`;
+
+        const workorderValue = isNaN(workorder) ? workorder : Number(workorder);
+
+        const qHistory = query(
+          collection(db, "history"),
+          where("wo", "==", workorderValue),
+          orderBy("timestamp", "desc"),
+          limit(50)
         );
-      }
 
-      const fileInput = document.getElementById("file");
-      const uploadBtn = document.getElementById("uploadBtn");
-      const tasksBody = document.getElementById("tasksBody");
-      const headerRow = document.getElementById("headerRow");
-      const useRemote = document.getElementById("useRemote");
-      const ADMIN_EMAILS = [
-        "admin@lht-philippines.com",
-        "anotheradmin@company.com",
-      ];
+        let initialLoad = true;
 
-      const TASKS_COLLECTION = "tasks";
-      const BATCH_LIMIT = 500;
-
-      function normalizeDate(value) {
-        if (value == null) return null;
-        if (Object.prototype.toString.call(value) === "[object Date]") {
-          if (isNaN(value)) return null;
-          const y = value.getFullYear();
-          const m = String(value.getMonth() + 1).padStart(2, "0");
-          const d = String(value.getDate()).padStart(2, "0");
-          return `${y}-${m}-${d}`;
-        }
-        if (typeof value === "number") {
-          const excelEpoch = new Date(1899, 11, 30);
-          const dt = new Date(excelEpoch.getTime() + value * 86400000);
-          return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(
-            2,
-            "0"
-          )}-${String(dt.getDate()).padStart(2, "0")}`;
-        }
-        const maybe = new Date(value);
-        if (!isNaN(maybe)) {
-          return `${maybe.getFullYear()}-${String(
-            maybe.getMonth() + 1
-          ).padStart(2, "0")}-${String(maybe.getDate()).padStart(2, "0")}`;
-        }
-        return String(value);
-      }
-      function formatDate(iso) {
-        if (!iso) return "-";
-        const d = new Date(iso);
-        return d.toLocaleString("en-PH", {
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-          timeZone: "Asia/Manila", // ensure PH time
-        });
-      }
-
-      async function parseFileToRows(file) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            try {
-              const wb = XLSX.read(e.target.result, { type: "binary" });
-              const sheet = wb.Sheets[wb.SheetNames[0]];
-              const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
-              resolve(rows);
-            } catch (err) {
-              reject(err);
+        unsubscribeHistory = onSnapshot(
+          qHistory,
+          (snapshot) => {
+            if (snapshot.empty) {
+              historyListEl.innerHTML = `<li>No history yet for ${workorder}</li>`;
+              return;
             }
-          };
-          reader.onerror = reject;
-          reader.readAsBinaryString(file);
-        });
-      }
 
-      function mapRow(raw) {
-        const mapKey = (names) => {
-          const keys = Object.keys(raw);
-          for (const n of names) {
-            const found = keys.find(
-              (k) => k.trim().toLowerCase() === n.toLowerCase()
-            );
-            if (found) return found;
-          }
-          return null;
-        };
+            if (initialLoad) {
+              historyListEl.innerHTML = "";
+              snapshot.docs.forEach((docSnap) => {
+                const data = docSnap.data();
+                const li = renderHistoryItem(data);
+                li.dataset.id = docSnap.id;
+                historyListEl.appendChild(li);
+              });
 
-        const wo = raw[mapKey(["wo", "workorder"])] ?? null;
-        const task_card = raw[mapKey(["task_card", "taskcard"])] ?? null;
+              // 🔹 Restore any previously glowing items
+              restoreGlow();
 
-        return {
-          id: wo && task_card ? `${wo}_${task_card}` : null,
-          wo,
-          sub_wo: raw[mapKey(["sub_wo", "sub wo"])] ?? null,
-          wo_description:
-            raw[mapKey(["wo_description", "wo description"])] ?? null,
-          phase: raw[mapKey(["phase"])] ?? null,
-          sched_start_date: normalizeDate(
-            raw[mapKey(["sched_start_date", "scheduled start date"])] ?? null
-          ),
-          sched_end_date: normalizeDate(
-            raw[mapKey(["sched_end_date", "scheduled end date"])] ?? null
-          ),
-          ac: raw[mapKey(["ac", "aircraft"])] ?? null,
-          task_card,
-          task_card_description:
-            raw[mapKey(["task_card_description", "task card description"])] ??
-            null,
-          skill: raw[mapKey(["skill"])] ?? null,
-          chapter: raw[mapKey(["chapter"])] ?? null,
-          team: raw[mapKey(["team"])] ?? null,
-          area: raw[mapKey(["area"])] ?? null,
-          status: raw[mapKey(["status"])] ?? null,
-          completed_on: normalizeDate(
-            raw[mapKey(["completed_on", "completed on"])] ?? null
-          ),
-          reference_task_card:
-            raw[mapKey(["reference_task_card", "reference task card"])] ?? null,
-          interval: raw[mapKey(["interval"])] ?? null,
-          est_mh: raw[mapKey(["est_mh", "estimated mh"])] ?? null,
-          seq: raw[mapKey(["seq", "sequence"])] ?? null,
-          ec: raw[mapKey(["ec"])] ?? null,
-          act_mh: raw[mapKey(["act_mh", "actual mh"])] ?? null,
-        };
-      }
+              initialLoad = false;
+              return;
+            }
 
-      async function renderTable(rows) {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        const userEmail = user?.email || "Unknown";
-        const isAdmin = ADMIN_EMAILS.includes(userEmail);
+            // 🔹 After first load: handle live changes
+            snapshot.docChanges().forEach((change) => {
+              const data = change.doc.data();
+              const id = change.doc.id;
 
-        // Group rows by WO + AC
-        const summaryMap = new Map();
-        for (const r of rows) {
-          if (!r.wo) continue;
-          const key = `${r.wo}_${r.ac || "N/A"}`;
-          if (!summaryMap.has(key)) {
-            summaryMap.set(key, {
-              wo: r.wo,
-              ac: r.ac || "N/A",
-              total: 0,
-              uploadedBy: r.uploadedBy || "Unknown",
-              uploadedAt: r.uploadedAt || "",
+              if (change.type === "added") {
+                clearGlow();
+
+                const li = renderHistoryItem(data);
+                li.dataset.id = id;
+
+                // Choose glow color by type
+                let glowClass = "";
+                if (data.status === "CLOSED") {
+                  glowClass = "pulse-glow-green";
+                } else if (data.status === "OPEN") {
+                  glowClass = "pulse-glow-blue";
+                } else if (
+                  data.status === "Warning" ||
+                  data.status === "NEWLY ADDED"
+                ) {
+                  glowClass = "pulse-glow-amber";
+                }
+
+                if (glowClass) {
+                  li.classList.add(glowClass);
+                  saveGlowState(id, glowClass); // 🔹 Save glow info
+                }
+
+                historyListEl.prepend(li);
+              }
+
+              if (change.type === "removed") {
+                const li = historyListEl.querySelector(`[data-id="${id}"]`);
+                if (li) li.remove();
+              }
             });
+          },
+          (error) => {
+            console.error("❌ History listener error:", error);
+            historyListEl.innerHTML = `<li>Error loading history</li>`;
           }
-          const item = summaryMap.get(key);
-          item.total += 1;
-          if (r.uploadedBy) item.uploadedBy = r.uploadedBy;
-          if (r.uploadedAt) item.uploadedAt = r.uploadedAt;
+        );
+
+        // 🧹 Helper: remove all glowing states
+        function clearGlow() {
+          document
+            .querySelectorAll(".pulse-glow")
+            .forEach((el) => el.classList.remove("pulse-glow"));
         }
 
-        const summaryRows = Array.from(summaryMap.values());
-
-        // Headers
-        const headers = ["wo", "ac", "total", "uploadedBy", "uploadedAt"];
-        if (isAdmin) headers.push("delete"); // 👈 only show if admin
-
-        const headerLabels = {
-          wo: "Work Order",
-          ac: "Aircraft",
-          total: "Total Taskcards",
-          uploadedBy: "Uploaded By",
-          uploadedAt: "Uploaded At",
-          delete: "Delete",
+        // 🖱️ Remove glow on user interaction
+        const removeGlowOnUserAction = () => {
+          clearGlow();
+          document.removeEventListener("click", removeGlowOnUserAction);
+          document.removeEventListener("keydown", removeGlowOnUserAction);
+          document.removeEventListener("scroll", removeGlowOnUserAction);
         };
 
-        // Render table header
-        headerRow.innerHTML = "";
-        headers.forEach((h) => {
-          const th = document.createElement("th");
-          th.textContent = headerLabels[h];
-          headerRow.appendChild(th);
-        });
+        document.addEventListener("click", removeGlowOnUserAction);
+        document.addEventListener("keydown", removeGlowOnUserAction);
+        document.addEventListener("scroll", removeGlowOnUserAction);
+      }
+      function clearGlow() {
+        document
+          .querySelectorAll(
+            ".pulse-glow-green, .pulse-glow-blue, .pulse-glow-amber"
+          )
+          .forEach((el) => {
+            el.classList.remove(
+              "pulse-glow-green",
+              "pulse-glow-blue",
+              "pulse-glow-amber"
+            );
+          });
+      }
+      document.getElementById("clearNotifBtn").addEventListener("click", () => {
+        clearGlow();
+        clearGlowState();
+      });
 
-        // Render body
-        tasksBody.innerHTML = "";
-        if (summaryRows.length === 0) {
-          tasksBody.innerHTML = `<tr><td colspan="${headers.length}" class="small">No summary data found.</td></tr>`;
+      function saveGlowState(id, glowClass) {
+        const glowData = JSON.parse(localStorage.getItem("glowState") || "{}");
+        glowData[id] = glowClass;
+        localStorage.setItem("glowState", JSON.stringify(glowData));
+      }
+
+      function loadGlowState() {
+        return JSON.parse(localStorage.getItem("glowState") || "{}");
+      }
+
+      function clearGlowState() {
+        localStorage.removeItem("glowState");
+      }
+
+      function restoreGlow() {
+        const glowData = loadGlowState();
+        for (const [id, glowClass] of Object.entries(glowData)) {
+          const li = document.querySelector(`[data-id="${id}"]`);
+          if (li) li.classList.add(glowClass);
+        }
+      }
+
+      document.getElementById("woSearchBtn").addEventListener("click", () => {
+        const wo = document.getElementById("woInput").value.trim();
+        if (!wo) {
+          showToast("Please enter a Work Order", "error");
           return;
         }
 
-        for (const row of summaryRows) {
-          const tr = document.createElement("tr");
-          headers.forEach((h) => {
-            const td = document.createElement("td");
+        // Load tasks for this WO (your existing function)
+        searchWorkorder(wo);
 
-            if (h === "delete" && isAdmin) {
-              const btn = document.createElement("button");
-              btn.textContent = "🗑 Delete";
-              btn.className =
-                "delete-btn bg-red-500 text-white rounded px-2 py-1 text-sm hover:bg-red-600";
-              btn.addEventListener("click", () =>
-                handleDeleteWO(row.wo, row.ac, userEmail)
-              );
-              td.appendChild(btn);
-            } else if (h === "uploadedAt") {
-              // ✅ format the uploadedAt date properly
-              td.textContent = formatDate(row.uploadedAt);
-            } else {
-              td.textContent = row[h] ?? "";
-            }
+        // Start listening to history for this WO
+        listenToHistoryForWO(wo);
+      });
 
-            tr.appendChild(td);
+      function renderHistoryItem(data) {
+        const time = data.timestamp?.toDate
+          ? data.timestamp.toDate().toLocaleString()
+          : "No time";
+        const seq = data.seq ?? "N/A";
+        const skill = data.skill ?? "N/A";
+        const phase = data.phase ?? "N/A";
+        const task = data.task_card ?? "Unknown";
+        const status = (data.status ?? "N/A").toUpperCase();
+
+        let modifiedBy = data.modified_by ?? "Unknown";
+        // 🔹 Remove everything after '@' if it looks like an email
+        if (modifiedBy.includes("@")) {
+          modifiedBy = modifiedBy.split("@")[0];
+        }
+
+        const li = document.createElement("li");
+        li.innerHTML = `
+    <span class="time">${time}</span><br>
+    <strong>Seq ${seq}</strong> — ${task}<br>
+    <span class="tag skill">Skill: ${skill}</span> • 
+    <span class="tag phase">Phase: ${phase}</span><br>
+    <span class="status ${status === "CLOSED" ? "closed" : "open"}">
+  ${status === "OPEN" ? "RE-" + status : status}
+</span>
+
+    </span> <small>by ${modifiedBy}</small>
+  `;
+        return li;
+      }
+
+      async function logHistoryEntry(task, newStatus) {
+        try {
+          const user = auth.currentUser;
+          const modifiedBy =
+            (user && (user.displayName || user.email)) ||
+            localStorage.getItem("username") ||
+            "Unknown";
+
+          await addDoc(collection(db, "history"), {
+            wo: task.wo || "N/A",
+            seq: task.seq || "N/A",
+            skill: task.skill || "N/A",
+            phase: task.phase || "N/A",
+            task_card: task.task_card || "N/A",
+            status: newStatus,
+            modified_by: modifiedBy,
+            timestamp: serverTimestamp(),
           });
 
-          tasksBody.appendChild(tr);
+          console.log(
+            `✅ History logged by ${modifiedBy}:`,
+            task.task_card,
+            newStatus
+          );
+        } catch (err) {
+          console.error("❌ Error logging history:", err);
         }
       }
 
-      async function handleDeleteWO(wo, ac, userEmail) {
-  if (!confirm(`Delete all taskcards and history for WO: ${wo}?`)) return;
+      /* =======================
+   Helpers
+  ======================== */
 
-  try {
-    showLoading(`Deleting ${wo}…`);
+      function calculateDayProgress(startDate, endDate, wo, filterWo) {
+        if (filterWo && wo !== filterWo) return ""; // 🚫 Skip if WO doesn’t match
 
-    // Delete from main tasks collection
-    const tasksQuery = query(
-      collection(db, TASKS_COLLECTION),
-      where("wo", "==", wo)
-    );
-    const tasksSnap = await getDocs(tasksQuery);
+        if (!startDate || !endDate) return "";
 
-    // Delete from history collection
-    const historyQuery = query(
-      collection(db, "history"),
-      where("wo", "==", wo)
-    );
-    const historySnap = await getDocs(historyQuery);
+        const start = startDate.toDate
+          ? startDate.toDate()
+          : new Date(startDate);
+        const end = endDate.toDate ? endDate.toDate() : new Date(endDate);
+        const today = new Date();
 
-    if (tasksSnap.empty && historySnap.empty) {
-      alert("No matching documents found in either collection.");
-      hideLoading();
-      return;
-    }
+        if (isNaN(start) || isNaN(end)) return "";
 
-    // Use batch delete for both collections
-    const batch = writeBatch(db);
+        // 🕛 Ignore hours/minutes
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
 
-    tasksSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-    historySnap.forEach((docSnap) => batch.delete(docSnap.ref));
+        const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 
-    await batch.commit();
+        if (today < start) {
+          // 📅 Format start date nicely (e.g. "Nov 3 2025")
+          const formattedStart = start.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+          return `Start date is on ${formattedStart}`;
+        } else if (today > end) {
+          return `Completed (${totalDays} days total)`;
+        } else {
+          const currentDay =
+            Math.ceil((today - start) / (1000 * 60 * 60 * 24)) + 1;
+          return `Day ${currentDay} of ${totalDays}`;
+        }
+      }
+      const showLoading = () => {
+        overlay.style.display = "flex";
+      };
+      const hideLoading = () => {
+        overlay.style.display = "none";
+      };
 
-    hideLoading();
-    alert(`✅ Deleted ${tasksSnap.size} taskcards and ${historySnap.size} history records for WO: ${wo}`);
-    console.log(`${userEmail} deleted ${tasksSnap.size} tasks and ${historySnap.size} history docs for ${wo}`);
-  } catch (err) {
-    hideLoading();
-    alert("❌ Delete failed: " + err.message);
-    console.error("Delete failed:", err);
-  }
+      // PRINTING......
+
+      function printFullTable() {
+        if (!allDocs || allDocs.length === 0) {
+          alert("No data to print ❗");
+          return;
+        }
+
+        let filteredDocs = [...allDocs];
+
+        // 🔹 Apply filters (include multiskill seqs unless phase is active)
+
+        // 🔹 Apply skill filter while keeping other skills in the same seq visible
+        if (activeSkill !== "CLEAR") {
+          let mainFiltered;
+
+          // Check if skill belongs to a predefined group
+          if (skillGroups[activeSkill]) {
+            mainFiltered = filteredDocs.filter((d) =>
+              skillGroups[activeSkill].includes(d.skill)
+            );
+          } else {
+            mainFiltered = filteredDocs.filter((d) => d.skill === activeSkill);
+          }
+
+          // Get all seq numbers where the mainFiltered skill exists
+          const relatedSeqs = new Set(mainFiltered.map((d) => d.seq));
+
+          // Keep all tasks in those seqs (even with different skills)
+          filteredDocs = filteredDocs.filter((d) => relatedSeqs.has(d.seq));
+
+          // Mark highlight only for the selected skill(s)
+          filteredDocs = filteredDocs.map((d) => ({
+            ...d,
+            highlightTask:
+              d.skill === activeSkill ||
+              skillGroups[activeSkill]?.includes(d.skill),
+          }));
+
+          // If a phase is active, show only the exact match (no others)
+          if (activePhase) {
+            filteredDocs = filteredDocs
+              .filter((d) =>
+                skillGroups[activeSkill]
+                  ? skillGroups[activeSkill].includes(d.skill)
+                  : d.skill === activeSkill
+              )
+              .map((d) => ({ ...d, highlightTask: true }));
+          }
+        } else {
+          filteredDocs = filteredDocs.map((d) => ({
+            ...d,
+            highlightTask: false,
+          }));
+        }
+
+        if (seqFilterValues && seqFilterValues.length > 0) {
+          filteredDocs = filteredDocs.filter((d) =>
+            seqFilterValues.includes(String(d.seq))
+          );
+        }
+        if (activePhase) {
+          filteredDocs = filteredDocs.filter((d) => d.phase === activePhase);
+        }
+        document.querySelectorAll(".filter").forEach((input) => {
+          const field = input.dataset.field;
+          const value = input.value.trim().toLowerCase();
+          if (value) {
+            filteredDocs = filteredDocs.filter((d) =>
+              String(d[field] || "")
+                .toLowerCase()
+                .includes(value)
+            );
+          }
+        });
+
+        if (filteredDocs.length === 0) {
+          alert("No data to print ❗");
+          return;
+        }
+
+        // 🔹 Sort by Seq
+        filteredDocs.sort((a, b) => {
+          const seqA = String(a.seq ?? "");
+          const seqB = String(b.seq ?? "");
+          const numA = Number(seqA);
+          const numB = Number(seqB);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return seqA.localeCompare(seqB);
+        });
+
+        // 🔹 Group by Seq
+        const grouped = {};
+        filteredDocs.forEach((d) => {
+          const seq = d.seq ?? "Unknown";
+          if (!grouped[seq]) grouped[seq] = [];
+          grouped[seq].push(d);
+        });
+
+        // 🔹 Build rows
+        const rows = Object.entries(grouped)
+          .map(([seq, tasks]) => {
+            tasks.sort((a, b) => {
+              const cardA = a.task_card ?? "";
+              const cardB = b.task_card ?? "";
+              return String(cardA).localeCompare(String(cardB), undefined, {
+                numeric: true,
+                sensitivity: "base",
+              });
+            });
+
+            const taskRows = tasks
+              .map((d, index) => {
+                const status = (d.status ?? "").toLowerCase();
+                let bgColor = "background-color: salmon;";
+                let displayStatus = d.status ?? "";
+
+                if (status === "closed") {
+                  bgColor = "background-color: lightgreen;";
+                  displayStatus = "Closed";
+                } else if (status === "cancel") {
+                  bgColor = "background-color: lightgreen;";
+                  displayStatus = "Cancelled";
+                } else if (status === "open") {
+                  bgColor = "background-color: salmon;";
+                  displayStatus = "Open";
+                }
+
+                return `
+          <tr class="${d.faded ? "faded" : ""}">
+
+            ${
+              index === 0
+                ? `<td rowspan="${tasks.length}">${
+                    d.reference_task_card ?? ""
+                  }</td>`
+                : ""
+            }
+            ${
+              index === 0
+                ? `<td rowspan="${tasks.length}">${
+                    d.task_card_description ?? ""
+                  }</td>`
+                : ""
+            }
+            ${index === 0 ? `<td rowspan="${tasks.length}">${seq}</td>` : ""}
+           <td class="taskcard-cell" style="${
+             d.highlightTask ? "background-color: #ededed;" : ""
+           }">
+  ${d.task_card ?? ""}
+</td>
+
+
+            <td>${d.comment ?? ""}</td>
+            <td>${d.status ?? ""}</td>
+            <td style="${d.phase === "PH" ? bgColor : ""}">${
+                  d.phase === "PH" ? d.skill : ""
+                }</td>
+            <td style="${d.phase === "P0" ? bgColor : ""}">${
+                  d.phase === "P0" ? d.skill : ""
+                }</td>
+            <td style="${d.phase === "P1" ? bgColor : ""}">${
+                  d.phase === "P1" ? d.skill : ""
+                }</td>
+            <td style="${d.phase === "P2" ? bgColor : ""}">${
+                  d.phase === "P2" ? d.skill : ""
+                }</td>
+            <td style="${d.phase === "P3" ? bgColor : ""}">${
+                  d.phase === "P3" ? d.skill : ""
+                }</td>
+            <td style="${d.phase === "P4" ? bgColor : ""}">${
+                  d.phase === "P4" ? d.skill : ""
+                }</td>
+            <td style="${d.phase === "P6" ? bgColor : ""}">${
+                  d.phase === "P6" ? d.skill : ""
+                }</td>
+          </tr>
+        `;
+              })
+              .join("");
+
+            return `
+      <tbody class="seq-group">
+        ${taskRows}
+      </tbody>
+    `;
+          })
+          .join("");
+
+        // 🔹 Get dynamic header content and add selected skill
+        const dynamicHeader =
+          document.getElementById("dynamicHeader")?.innerHTML || "";
+
+        let selectedSkillText = "";
+        if (activeSkill && activeSkill !== "CLEAR") {
+          selectedSkillText = ` - Selected Skill: <b>${activeSkill}</b>`;
+        }
+
+        const fullHeader = `${dynamicHeader}${selectedSkillText}`;
+
+        const tableHTML = `
+  <table>
+    <thead>
+      <tr>
+        <th colspan="13" style="text-align:center; font-size:14px; font-weight:bold;">
+          ${fullHeader}
+        </th>
+      </tr>
+      <tr>
+        <th>Reference</th>
+        <th>Description</th>
+        <th>Seq.No</th>
+        <th>TaskCard Items</th>
+        <th>Comments</th>
+        <th>Status</th>
+        <th>PH</th>
+        <th>P0</th>
+        <th>P1</th>
+        <th>P2</th>
+        <th>P3</th>
+        <th>P4</th>
+        <th>P6</th>
+      </tr>
+    </thead>
+    ${rows}
+  </table>
+`;
+
+        // 🔹 Open print window
+        const printWindow = window.open("", "_blank");
+        printWindow.document.write(`
+  <html>
+    <head>
+      <title>Print Table</title>
+      <style>
+        @page { 
+            size: landscape;
+          margin: 15mm 15mm 15mm 15mm;
+          @bottom-right {
+            content: "Page " counter(page) " of " counter(pages);
+            font-size: 10px;
+            color: #555;
+            font-family: Arial, sans-serif;
+          }
+        }
+
+        body { 
+          font-family: Arial, sans-serif; 
+          margin: 0;
+          padding: 5mm 5mm 5mm 5mm;
+          font-size: 10px; 
+          counter-reset: page;
+        }
+
+        table { 
+          border-collapse: collapse; 
+          width: 100%;
+          font-size: 10px;
+        } 
+
+        th, td { 
+  border: 1px solid #000; 
+  padding: 10px; 
+  text-align: center; 
+  vertical-align: middle;
+  word-wrap: break-word; /* allows long words to break nicely elsewhere */
+}
+
+/* ✅ Force TaskCard Items column into a single line */
+td.taskcard-cell {
+  white-space: nowrap;        /* Prevent wrapping */
+  text-overflow: ellipsis;    /* Add ... if too long */
+  overflow: hidden;           /* Hide overflow text */
+  max-width: 300px;           /* Optional: adjust width for better layout */
 }
 
 
-async function uploadRowsToFirestore(mappedRows) {
-  const db = getFirestore();
-  const auth = getAuth();
-  const user = auth.currentUser;
-  const userEmail = user?.email || user?.displayName || "Unknown User";
+        th { background: #f2f2f2; }
 
-  if (mappedRows.length === 0) {
-    setStatus("No rows to upload.", true);
-    return;
+        thead {
+          display: table-header-group; /* ✅ Repeats on every page */
+        }
+
+        thead tr:first-child th {
+          border-top: 2px solid #000; /* ✅ Top border always visible */
+          background: white;
+        }
+
+        .seq-group {
+          page-break-inside: avoid;
+        }
+
+        tbody.seq-group:first-of-type tr:first-child td {
+          border-top: 1px solid #000;
+        }
+
+        tbody.seq-group:not(:first-of-type) tr:first-child td {
+          border-top: 2px solid #000;
+        }
+
+      
+      </style>
+    </head>
+    <body>
+      ${tableHTML}
+    </body>
+  </html>
+`);
+        printWindow.document.close();
+      }
+
+      window.printFullTable = printFullTable;
+
+      let prevDocsMap = new Map(); // 🧠 Cache to detect changes
+      let commentFlashDuration = 1000; // highlight for 1 second
+      // 🧠 Badge Notification Logic
+
+      const badgeElements = document.querySelectorAll(".comment-badge");
+      let badgeCounts = JSON.parse(localStorage.getItem("badgeCounts")) || {};
+      let lastCommentMap = new Map();
+      let initialLoadDone = false;
+
+      function updateBadgeDisplay() {
+        document.querySelectorAll(".comment-badge").forEach((badge) => {
+          const skill = badge.dataset.skill;
+          const count = badgeCounts[skill] || 0;
+          if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = "inline-block";
+          } else {
+            badge.style.display = "none";
+          }
+        });
+
+        // 🔹 Save to localStorage
+        localStorage.setItem("badgeCounts", JSON.stringify(badgeCounts));
+      }
+
+      // 👇 Called inside your onSnapshot listener
+      function mapToGroupSkill(rawSkill) {
+        // match Firestore skill to button skill
+        for (const [group, members] of Object.entries(skillGroups)) {
+          if (members.includes(rawSkill)) return group;
+        }
+        return rawSkill; // fallback if not found
+      }
+
+      function handleCommentBadgeUpdates(snapshot) {
+        const newMap = new Map();
+        snapshot.docs.forEach((d) => newMap.set(d.id, d.data()));
+
+        if (initialLoadDone) {
+          // Only increment badges if it's not the first load
+          snapshot.docs.forEach((docSnap) => {
+            const data = docSnap.data();
+            const rawSkill = data.skill || "CLEAR";
+            const skill = mapToGroupSkill(rawSkill);
+
+            const prev = lastCommentMap.get(docSnap.id);
+            const oldComment = prev?.comment || "";
+            const newComment = data.comment || "";
+
+            if (newComment !== oldComment) {
+              badgeCounts[skill] = (badgeCounts[skill] || 0) + 1;
+            }
+          });
+          updateBadgeDisplay();
+        }
+
+        // Update map after processing
+        lastCommentMap = newMap;
+
+        // Mark first snapshot as done
+        if (!initialLoadDone) initialLoadDone = true;
+      }
+
+      // 🔄 Reset badge when clicking its skill
+      document.querySelectorAll(".skill-filters button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const skill = btn.dataset.skill;
+          badgeCounts[skill] = 0;
+          updateBadgeDisplay();
+        });
+      });
+
+      async function renderRows(docs) {
+        // ✅ Precompute selected skills ONCE
+        let selectedSkills = [];
+        if (activeSkill !== "CLEAR") {
+          selectedSkills = skillGroups[activeSkill]
+            ? skillGroups[activeSkill]
+            : [activeSkill];
+        }
+
+        // 🔍 Build map for detecting changes
+        const newDocsMap = new Map(docs.map((d) => [d.id, d]));
+
+        // ✅ Detect if only comments changed (avoid full rebuild)
+        if (prevDocsMap.size > 0 && newDocsMap.size === prevDocsMap.size) {
+          const changed = [];
+          for (const [id, newDoc] of newDocsMap.entries()) {
+            const oldDoc = prevDocsMap.get(id);
+            if (!oldDoc) continue;
+            // Only check for comment field differences
+            if (oldDoc.comment !== newDoc.comment) {
+              changed.push({ id, comment: newDoc.comment });
+            }
+          }
+
+          // 🧩 If exactly 1 or few comment changes — update inline
+          if (changed.length > 0 && changed.length <= 5) {
+            changed.forEach(({ id, comment }) => {
+              const ta = document.querySelector(
+                `.comment-input[data-id="${id}"]`
+              );
+              if (ta) {
+                // Update text and resize
+                ta.value = comment || "";
+                ta.style.height = "auto";
+                ta.style.height = ta.scrollHeight + "px";
+
+                // Highlight briefly to show real-time change
+                ta.classList.add("comment-updated");
+                setTimeout(
+                  () => ta.classList.remove("comment-updated"),
+                  commentFlashDuration
+                );
+              }
+            });
+
+            prevDocsMap = newDocsMap;
+            return; // Skip full rebuild
+          }
+        }
+
+        // 🧠 Save latest docs map
+        prevDocsMap = newDocsMap;
+
+        // 🔹 Group by seq
+        const grouped = {};
+        docs.forEach((d) => {
+          const seq = d.seq ?? "Unknown";
+          if (!grouped[seq]) grouped[seq] = [];
+          grouped[seq].push(d);
+        });
+
+        // 🔹 Sort groups by seq
+        const sortedGroups = Object.entries(grouped).sort(([seqA], [seqB]) => {
+          const numA = Number(seqA);
+          const numB = Number(seqB);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return String(seqA).localeCompare(String(seqB));
+        });
+
+        // 🔹 Build all rows
+        const rows = sortedGroups.flatMap(([seq, tasks]) => {
+          tasks.sort((a, b) =>
+            String(a.task_card ?? "").localeCompare(
+              String(b.task_card ?? ""),
+              undefined,
+              { numeric: true }
+            )
+          );
+
+          const hasCancelled = tasks.some(
+            (t) => (t.status ?? "").toLowerCase() === "cancel"
+          );
+          const allClosed = tasks.every(
+            (t) => (t.status ?? "").toLowerCase() === "closed"
+          );
+
+          let finalStatus = "Open";
+          let statusColor = "red";
+          if (hasCancelled) {
+            finalStatus = "Cancelled";
+            statusColor = "green";
+          } else if (allClosed) {
+            finalStatus = "Closed";
+            statusColor = "green";
+          }
+
+          return tasks.map((t, index) => {
+            const hasSelectedSkill = tasks.some(
+              (x) =>
+                selectedSkills.length > 0 && selectedSkills.includes(x.skill)
+            );
+            const rowHasSelectedSkill = tasks.some(
+              (x) =>
+                x.task_card === t.task_card && selectedSkills.includes(x.skill)
+            );
+
+            let baseCellStyle = "";
+            if (
+              selectedSkills.length > 0 &&
+              hasSelectedSkill &&
+              !rowHasSelectedSkill
+            ) {
+              baseCellStyle =
+                " color:#cfcfcf; border-radius:3px; padding:2px 4px;";
+            }
+
+            const phaseCells = fixedPhases
+              .map((phase) => {
+                const skills = tasks
+                  .filter(
+                    (x) => x.phase === phase && x.task_card === t.task_card
+                  )
+                  .map((x) => {
+                    const status = (x.status ?? "").toLowerCase();
+                    let color =
+                      status === "closed" || status === "cancel"
+                        ? "green"
+                        : "red";
+                    let highlightStyle = "";
+
+                    if (
+                      selectedSkills.length > 0 &&
+                      selectedSkills.includes(x.skill)
+                    ) {
+                      highlightStyle =
+                        "background:yellow; border-radius:3px; padding:1px 3px;";
+                    } else if (hasSelectedSkill && !rowHasSelectedSkill) {
+                      highlightStyle =
+                        "opacity: 0.5; border-radius:3px; padding:1px 3px;";
+                    }
+
+                    return `<div style="color:${color}; font-weight:bold; ${highlightStyle}">
+                ${x.skill ?? ""}
+              </div>`;
+                  })
+                  .join("<br>");
+
+                return `<td class="phase-cell">${skills || ""}</td>`;
+              })
+              .join("");
+
+            return `
+<tr id="row-seq-${seq}">
+  ${
+    index === 0
+      ? `<td rowspan="${tasks.length}">${t.reference_task_card ?? ""}</td>`
+      : ""
   }
-
-  // 🧹 1️⃣ Filter out invalid rows
-  const validRows = mappedRows.filter((r) => {
-    const seqValid = r.seq && r.seq.toString().trim() !== "";
-
-    const skillEmpty = !r.skill || r.skill.toString().trim() === "";
-    const phaseVal = r.phase ? r.phase.toString().trim().toUpperCase() : "";
-    const invalidPhase = phaseVal === "" || phaseVal === "A" || phaseVal === "B";
-
-    const phaseSkillInvalid = skillEmpty && invalidPhase;
-
-    // Only keep row if seq is valid and (skill-phase pair) is valid
-    return seqValid && !phaseSkillInvalid;
-  });
-
-  // 🧾 Optional — Show skipped count
-  const skippedCount = mappedRows.length - validRows.length;
-
-  if (validRows.length === 0) {
-    setStatus("⚠️ All rows skipped — no valid data to upload.");
-    return;
-  } else if (skippedCount > 0) {
-    setStatus(`ℹ️ Skipped ${skippedCount} invalid row(s). Continuing upload...`);
+  ${
+    index === 0
+      ? `<td rowspan="${tasks.length}">${t.task_card_description ?? ""}</td>`
+      : ""
   }
-
-  // 2️⃣ Collect unique WOs
-  const workOrders = [
-    ...new Set(validRows.map((r) => r.wo).filter(Boolean)),
-  ];
-  setStatus(
-    `Checking existing records for ${workOrders.length} work order(s)...`
-  );
-
-  // 3️⃣ Find existing WOs and existing task IDs
-  const existingIds = new Set();
-  const existingWOSet = new Set();
-
-  const chunkSize = 10;
-  for (let i = 0; i < workOrders.length; i += chunkSize) {
-    const chunk = workOrders.slice(i, i + chunkSize);
-    const queries = chunk.map((wo) =>
-      getDocs(query(collection(db, TASKS_COLLECTION), where("wo", "==", wo)))
-    );
-    const results = await Promise.all(queries);
-
-    results.forEach((snap, index) => {
-      if (!snap.empty) existingWOSet.add(chunk[index]); // mark existing WO
-      snap.forEach((docSnap) => existingIds.add(docSnap.id)); // mark existing taskcards
-    });
+  ${
+    index === 0
+      ? `<td rowspan="${tasks.length}" style="text-align:center; vertical-align:middle;">
+           <a href="https://ltpsystems.sharepoint.com/sites/BaseMaintenance/Shared Documents/ONEMTC/${currentWO}/${seq}.pdf" 
+              target="_blank" 
+              style="color:blue; text-decoration:underline; cursor:pointer;">
+             ${seq}
+           </a>
+         </td>`
+      : ""
   }
-
-  // 4️⃣ Split rows
-  const newRows = validRows.filter((r) => !existingIds.has(r.id));
-  const skippedRows = validRows.filter((r) => existingIds.has(r.id));
-
-  if (newRows.length === 0) {
-    setStatus("✅ No new taskcards to add.");
-    return;
+  ${
+    index === 0
+      ? `<td rowspan="${tasks.length}" style="text-align:center; vertical-align:middle; font-weight:bold; color:${statusColor};">
+           ${finalStatus}
+         </td>`
+      : ""
   }
+  <td style="text-align:center; vertical-align:middle; ${baseCellStyle}">
+    ${t.task_card ?? ""}
+  </td>
 
-  // 5️⃣ Upload in batches
-  const totalChunks = Math.ceil(newRows.length / BATCH_LIMIT);
-  let uploaded = 0;
+  <td class="comment-cell">
+    <textarea class="comment-input" data-id="${t.id}" rows="1">${
+              t.comment || ""
+            }</textarea>
+  </td>
 
-  for (let i = 0; i < totalChunks; i++) {
-    const start = i * BATCH_LIMIT;
-    const end = start + BATCH_LIMIT;
-    const chunk = newRows.slice(start, end);
+  ${phaseCells}
+</tr>`;
+          });
+        });
 
-    const batch = writeBatch(db);
+        // Preserve scroll
+        const scrollContainer = document.querySelector(".clusterize-scroll");
+        const prevScrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
 
-    for (const row of chunk) {
-      if (!row.id) continue;
+        // 🪶 Smooth no-flicker refresh
+        const tableContainer = document.querySelector(".clusterize-scroll");
+        if (tableContainer) tableContainer.style.visibility = "hidden";
 
-      const docRef = doc(db, TASKS_COLLECTION, row.id);
-      batch.set(
-        docRef,
-        {
-          ...row,
-          uploadedBy: userEmail,
-          uploadedAt: new Date().toISOString(),
-          createdAt: serverTimestamp(),
-        },
-        { merge: false }
-      );
+        requestAnimationFrame(() => {
+          clusterize.clear();
+          clusterize.update(
+            rows.length
+              ? rows
+              : [
+                  `<tr class="clusterize-no-data"><td colspan="12">No data</td></tr>`,
+                ]
+          );
 
-      // Only log to history if WO already exists
-      if (existingWOSet.has(row.wo)) {
-        const historyRef = doc(collection(db, "history"));
-        batch.set(historyRef, {
-          wo: row.wo || "N/A",
-          seq: row.seq || "N/A",
-          skill: row.skill || "N/A",
-          phase: row.phase || "N/A",
-          task_card: row.task_card || "N/A",
-          status: "NEWLY ADDED",
-          modified_by: userEmail,
-          timestamp: serverTimestamp(),
+          if (scrollContainer) scrollContainer.scrollTop = prevScrollTop;
+          if (tableContainer) tableContainer.style.visibility = "visible";
+          // 🪄 Auto-resize all visible comments after render
+          requestAnimationFrame(() => {
+            document.querySelectorAll(".comment-input").forEach((ta) => {
+              ta.style.height = "auto";
+              ta.style.height = ta.scrollHeight + "px";
+            });
+          });
+        });
+
+        // ✨ Add CSS for highlight and popup only once
+        if (!document.querySelector("#comment-style")) {
+          const style = document.createElement("style");
+          style.id = "comment-style";
+          style.textContent = `
+.comment-popup { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.2); z-index: 9999; }
+.comment-popup input { width: 380px; padding: 10px 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; background: white; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.1); outline: none; }
+.comment-popup input:focus { border-color: #0078d7; }
+.ta-highlight { outline: 2px solid #0078d7; background: #f5faff; }
+.comment-updated { transition: background 0.3s ease; background: #fff6a3; } /* 💡 yellow flash */
+`;
+          document.head.appendChild(style);
+        }
+
+        // 🧠 Comment popup logic
+        if (!scrollContainer.dataset.popupBound) {
+          scrollContainer.dataset.popupBound = "true"; // ✅ bind only once
+
+          scrollContainer.addEventListener("focusin", (e) => {
+            const ta = e.target.closest(".comment-input");
+            if (!ta) return;
+
+            ta.classList.add("ta-highlight");
+            ta.readOnly = true;
+
+            if (document.querySelector(".comment-popup")) return;
+
+            const popup = document.createElement("div");
+            popup.className = "comment-popup";
+            const input = document.createElement("input");
+            input.type = "text";
+            input.placeholder = "Type your comment and press Enter...";
+            popup.appendChild(input);
+            document.body.appendChild(popup);
+            setTimeout(() => input.focus(), 30);
+
+            const closePopup = () => {
+              popup.remove();
+              ta.classList.remove("ta-highlight");
+              ta.readOnly = false;
+            };
+
+            input.addEventListener("keydown", async (e2) => {
+              if (e2.key === "Enter" && input.value.trim()) {
+                e2.preventDefault();
+                const docId = ta.dataset.id;
+                const rawComment = input.value.trim();
+                let modifiedBy = loginUser || "Unknown";
+                if (modifiedBy.includes("@"))
+                  modifiedBy = modifiedBy.split("@")[0];
+
+                const now = new Date();
+                const timestamp = now.toLocaleString("en-US", {
+                  month: "short",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                });
+
+                try {
+                  const docRef = doc(db, "tasks", docId);
+                  const snap = await getDoc(docRef);
+                  const existingComment = snap.exists()
+                    ? snap.data().comment || ""
+                    : "";
+
+                  const newEntry = `[${timestamp}] ${modifiedBy}: ${rawComment}`;
+                  const combinedComment = existingComment
+                    ? existingComment + "\n" + newEntry
+                    : newEntry;
+
+                  await updateDoc(docRef, { comment: combinedComment });
+                  ta.value = combinedComment;
+                  ta.style.height = "auto";
+                  ta.style.height = ta.scrollHeight + "px";
+                  closePopup();
+                } catch (err) {
+                  console.error("❌ Error saving comment:", err);
+                  alert("Failed to save comment");
+                  closePopup();
+                }
+              } else if (e2.key === "Escape") {
+                closePopup();
+              }
+            });
+
+            popup.addEventListener("click", (e3) => {
+              if (e3.target === popup) closePopup();
+            });
+          });
+
+          // Optional: autoresize all comment textareas on input
+          scrollContainer.addEventListener("input", (e) => {
+            const ta = e.target.closest(".comment-input");
+            if (ta) {
+              ta.style.height = "auto";
+              ta.style.height = ta.scrollHeight + "px";
+            }
+          });
+        }
+      }
+
+      function renderPhaseTotals(docs) {
+        // Counters
+        const phaseTotals = {};
+        const phaseOpen = {};
+        const phaseClosed = {};
+        const phaseCancelled = {};
+        const phaseHold = {};
+
+        // Count tasks by phase
+        docs.forEach((d) => {
+          const phase = d.phase || "No Phase";
+          if (!fixedPhases.includes(phase)) return; // ignore unknown phases
+          phaseTotals[phase] = (phaseTotals[phase] || 0) + 1;
+          const st = (d.status || "").toLowerCase();
+          if (st === "open") phaseOpen[phase] = (phaseOpen[phase] || 0) + 1;
+          if (st === "closed" || st === "completed")
+            phaseClosed[phase] = (phaseClosed[phase] || 0) + 1;
+          if (st === "cancel")
+            phaseCancelled[phase] = (phaseCancelled[phase] || 0) + 1;
+          if (st === "hold") phaseHold[phase] = (phaseHold[phase] || 0) + 1;
+        });
+
+        // Render table body (always fixed phases)
+        const body = document.getElementById("phaseTotalsBody");
+        body.innerHTML = "";
+
+        fixedPhases.forEach((phase) => {
+          const total = phaseTotals[phase] || 0;
+
+          if (total === 0) {
+            // Always show, but with dashes
+            body.insertAdjacentHTML(
+              "beforeend",
+              `<tr>
+          <td class="phase-cell" data-phase="${phase}" style="cursor:pointer; color:gray;">
+            ${phase}
+          </td>
+          <td style="text-align:right; background:#f5f5f5;">-</td>
+          <td style="text-align:right; background:#f5f5f5;">-</td>
+          <td style="text-align:right; background:#f5f5f5;">-</td>
+          <td style="text-align:right; background:#f5f5f5;">-</td>
+          <td style="text-align:right; background:#f5f5f5;">-</td>
+        </tr>`
+            );
+          } else {
+            const open = phaseOpen[phase] || 0;
+            const closed = phaseClosed[phase] || 0;
+            const cancelledCount = phaseCancelled[phase] || 0; // ✅ FIXED
+            const hold = phaseHold[phase] || 0;
+            const pct = ((closed / total) * 100).toFixed(1);
+
+            body.insertAdjacentHTML(
+              "beforeend",
+              `<tr>
+          <td class="phase-cell" data-phase="${phase}" style="cursor:pointer; color:blue; text-decoration:underline;">
+            ${phase}
+          </td>
+          <td style="text-align:right;">${open}</td>
+          <td style="text-align:right;">${closed}</td>
+          <td style="text-align:right;">${cancelledCount}</td>
+          <td style="text-align:right;">${hold}</td>
+          <td style="text-align:right;">${pct}%</td>
+        </tr>`
+            );
+          }
+        });
+
+        // ---- Create Chart Data ----
+        const phaseLabels = [];
+        const closedPercentages = [];
+
+        fixedPhases.forEach((phase) => {
+          const total = phaseTotals[phase] || 0;
+          const closed = phaseClosed[phase] || 0;
+          const pct = total ? ((closed / total) * 100).toFixed(1) : 0;
+          phaseLabels.push(phase);
+          closedPercentages.push(pct);
+        });
+
+        // ---- Render or Update Chart ----
+        if (window.phaseChartInstance) {
+          window.phaseChartInstance.data.labels = phaseLabels;
+          window.phaseChartInstance.data.datasets[0].data = closedPercentages;
+          window.phaseChartInstance.update();
+        } else {
+          const ctx = document.getElementById("phaseChart").getContext("2d");
+          window.phaseChartInstance = new Chart(ctx, {
+            type: "bar", // change to 'line' if preferred
+            data: {
+              labels: phaseLabels,
+              datasets: [
+                {
+                  label: "% Closed",
+                  data: closedPercentages,
+                  backgroundColor: "rgba(54, 162, 235, 0.6)",
+                  borderColor: "rgba(54, 162, 235, 1)",
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: (ctx) => `${ctx.parsed.y}% closed`,
+                  },
+                },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 100,
+                  title: { display: true, text: "% Closed" },
+                },
+                x: {
+                  title: { display: true, text: "Phase" },
+                },
+              },
+            },
+          });
+        }
+
+        // Attach click listeners
+        document
+          .querySelectorAll("#phaseTotalsBody .phase-cell")
+          .forEach((cell) => {
+            cell.addEventListener("click", () => {
+              const phase = cell.dataset.phase;
+
+              // Toggle filter
+              if (activePhase === phase) {
+                activePhase = null;
+              } else {
+                activePhase = phase;
+              }
+
+              applyFilters();
+              // highlightActivePhase();
+            });
+          });
+      }
+
+      const skillGroups = {
+        CLEAR: [],
+        AVI: ["AVI"],
+        "CRG/ENG": ["CRG", "ENG-E", "ENG-F"],
+        CAB: ["CAB"],
+        "LDG/FLC": ["LDG", "FLC-W", "FLC-T"],
+        STR: ["STR"],
+        GEN: ["GEN"],
+      };
+      // ====== DYNAMIC BUTTON POPULATION ======
+      function populateDynamicSkillButtons() {
+        const container = document.querySelector(".skill-filters");
+
+        const predefined = new Set(Object.values(skillGroups).flat());
+        const allSkills = new Set(allDocs.map((d) => d.skill).filter(Boolean));
+        const dynamicSkills = [...allSkills].filter((s) => !predefined.has(s));
+
+        // Remove old dynamic buttons
+        container
+          .querySelectorAll("button[data-dynamic='true']")
+          .forEach((btn) => btn.remove());
+
+        // Add new dynamic buttons
+        dynamicSkills.forEach((skill) => {
+          const btn = document.createElement("button");
+          btn.textContent = skill;
+          btn.dataset.skill = skill;
+          btn.dataset.dynamic = "true";
+          container.appendChild(btn);
+
+          // ✅ Create badge span for the button
+          const badge = document.createElement("span");
+          badge.className = "comment-badge";
+          badge.dataset.skill = skill;
+          badge.style.display = "none"; // hidden initially
+          btn.appendChild(badge);
+        });
+
+        // Re-attach listeners
+        attachSkillButtonListeners();
+
+        // Update badges immediately (in case comments already exist)
+        updateBadgeDisplay();
+      }
+
+      function attachSkillButtonListeners() {
+        document.querySelectorAll(".skill-filters button").forEach((btn) => {
+          btn.onclick = () => {
+            // ✅ Remove active from all, add to clicked
+            document
+              .querySelectorAll(".skill-filters button")
+              .forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+
+            activeSkill = btn.dataset.skill;
+            localStorage.setItem("activeSkill", activeSkill);
+
+            // ✅ Reset the badge for this skill
+            badgeCounts[activeSkill] = 0;
+            updateBadgeDisplay();
+
+            // Clear filters if "ALL"
+            if (activeSkill === "CLEAR") {
+              scannedSeqs = [];
+              seqFilterValues = [];
+              document
+                .querySelectorAll(".filter")
+                .forEach((input) => (input.value = ""));
+            }
+
+            applyFilters();
+          };
         });
       }
-    }
 
-    await batch.commit();
-    uploaded += chunk.length;
-    setStatus(
-      `Uploaded batch ${i + 1}/${totalChunks} (${uploaded}/${newRows.length})`
-    );
-  }
+      document.getElementById("multiSkillBtn").addEventListener("click", () => {
+        multiSkillActive = !multiSkillActive;
+        singleSkillActive = false; // ensure mutual exclusivity
 
-  setStatus(
-    `🎉 Upload complete! Added ${uploaded} new, skipped ${
-      skippedRows.length + skippedCount
-    } total (duplicates + invalids).`
-  );
-  console.log(
-    `Added ${uploaded}, skipped ${skippedRows.length} existing, ${skippedCount} invalid.`
-  );
-}
+        const multiBtn = document.getElementById("multiSkillBtn");
+        const singleBtn = document.getElementById("singleSkillBtn");
 
+        multiBtn.classList.toggle("active", multiSkillActive);
+        singleBtn.classList.remove("active"); // ✅ always clear highlight
 
+        applyFilters();
+      });
+      document
+        .getElementById("singleSkillBtn")
+        .addEventListener("click", () => {
+          singleSkillActive = !singleSkillActive;
+          multiSkillActive = false; // ensure mutual exclusivity
 
-      function attachRealtimeListener() {
-        const q = query(
-          collection(db, TASKS_COLLECTION),
-          orderBy("sched_start_date")
+          const multiBtn = document.getElementById("multiSkillBtn");
+          const singleBtn = document.getElementById("singleSkillBtn");
+
+          singleBtn.classList.toggle("active", singleSkillActive);
+          multiBtn.classList.remove("active"); // ✅ always clear highlight
+
+          applyFilters();
+        });
+      function getSkillFilteredDocs() {
+        if (activeSkill === "CLEAR") return allDocs;
+
+        if (skillGroups[activeSkill]) {
+          // Predefined group (AVI, CRG/ENG, etc.)
+          const skills = skillGroups[activeSkill];
+          return allDocs.filter((d) => skills.includes(d.skill));
+        }
+
+        // Dynamic skill (not in predefined groups)
+        return allDocs.filter((d) => d.skill === activeSkill);
+      }
+
+      function applyFilters() {
+        const filters = {};
+        document.querySelectorAll(".filter").forEach((input) => {
+          const v = input.value.trim();
+          if (v !== "" && input.dataset.field !== "seq") {
+            filters[input.dataset.field] = v.toLowerCase();
+          }
+        });
+
+        // Step 1: start with skill-filtered docs
+        let skillFiltered = getSkillFilteredDocs();
+        const skillBaseTotal = skillFiltered.length; // ✅ this is your baseline
+
+        // Step 2: apply seq filters
+        if (scannedSeqs.length > 0) {
+          skillFiltered = skillFiltered.filter((d) =>
+            scannedSeqs.includes(Number(d.seq))
+          );
+        } else if (seqFilterValues.length > 0) {
+          skillFiltered = skillFiltered.filter((d) =>
+            seqFilterValues.includes(String(d.seq))
+          );
+        }
+
+        // Step 2.5: apply phase filter
+        if (activePhase) {
+          skillFiltered = skillFiltered.filter((d) => d.phase === activePhase);
+        }
+
+        // Step X: apply multiskill filter if active
+        if (multiSkillActive || singleSkillActive) {
+          const seqSkillMap = {};
+          allDocs.forEach((d) => {
+            const seq = String(d.seq);
+            if (!seqSkillMap[seq]) seqSkillMap[seq] = new Set();
+            if (d.skill) seqSkillMap[seq].add(d.skill);
+          });
+
+          if (multiSkillActive) {
+            const multiSkillSeqs = new Set(
+              Object.keys(seqSkillMap).filter(
+                (seq) => seqSkillMap[seq].size > 1
+              )
+            );
+            skillFiltered = skillFiltered.filter((d) =>
+              multiSkillSeqs.has(String(d.seq))
+            );
+          } else if (singleSkillActive) {
+            const singleSkillSeqs = new Set(
+              Object.keys(seqSkillMap).filter(
+                (seq) => seqSkillMap[seq].size === 1
+              )
+            );
+            skillFiltered = skillFiltered.filter((d) =>
+              singleSkillSeqs.has(String(d.seq))
+            );
+          }
+        }
+
+        // Step 3: apply text filters
+        skillFiltered = skillFiltered.filter((d) =>
+          Object.keys(filters).every((field) =>
+            String(d[field] ?? "")
+              .toLowerCase()
+              .includes(filters[field])
+          )
         );
-        unsubscribeListener = onSnapshot(
-          q,
+
+        // Step 4: get SEQs from filtered set
+        const filteredSeqs = new Set(skillFiltered.map((d) => String(d.seq)));
+
+        // Step 5: collect allDocs but only rows with those seqs
+        const rowsToRender = allDocs.filter((d) =>
+          filteredSeqs.has(String(d.seq))
+        );
+
+        // Render rows with full skill context
+        renderRows(rowsToRender);
+
+        // Counter + Phase totals
+        const pctClosed = getClosedPercentage(skillFiltered);
+
+        // ✅ Fix: baseline total should be after skill filter (not allDocs)
+        let referenceTotal = skillBaseTotal;
+        if (activePhase) {
+          referenceTotal = allDocs.filter(
+            (d) => d.phase === activePhase
+          ).length;
+        }
+
+        // ------------------------------
+        // ✅ New MTC Counts
+        // ------------------------------
+        const seqGroups = {};
+        skillFiltered.forEach((d) => {
+          const seq = String(d.seq);
+          if (!seqGroups[seq]) seqGroups[seq] = [];
+          seqGroups[seq].push(d.status?.toLowerCase());
+        });
+
+        let totalMTC = 0;
+        let closedMTC = 0;
+        let openMTC = 0;
+
+        Object.keys(seqGroups).forEach((seq) => {
+          totalMTC++;
+          const statuses = seqGroups[seq];
+          const allClosed = statuses.every((s) => s === "closed");
+          if (allClosed) {
+            closedMTC++;
+          } else {
+            openMTC++;
+          }
+        });
+
+        // ------------------------------
+        // Build Counter Text with Colors
+        // ------------------------------
+        let counterText = `Showing ${skillFiltered.length} of ${referenceTotal} tasks • 
+    <span class="highlight">${pctClosed}% Closed</span>
+    &nbsp;&nbsp;&nbsp; 
+    Total MTC ${totalMTC} • 
+    <span style="color:red; font-weight:bold;">Open MTC ${openMTC}</span> • 
+    <span style="color:green; font-weight:bold;">Closed MTC ${closedMTC}</span>`;
+
+        // If filtering by phase, add info + reset button
+        if (activePhase) {
+          counterText += ` • Filter: <span class="highlight">${activePhase}</span> 
+     <button id="clearPhaseBtn" 
+      style="margin-left:8px; padding:2px 8px; font-size:11px; 
+             background:#eee; border:1px solid #ccc; border-radius:12px; 
+             cursor:pointer; color:#333;">
+      Clear
+    </button>`;
+        }
+
+        counterEl.innerHTML = counterText;
+
+        // Attach event listener for Clear button
+        const clearBtn = document.getElementById("clearPhaseBtn");
+        if (clearBtn) {
+          clearBtn.addEventListener("click", () => {
+            activePhase = null;
+            applyFilters();
+          });
+        }
+
+        renderPhaseTotals(skillFiltered);
+
+        // Seq clear button
+        const clearSeqBtn = document.getElementById("clearSeqBtn");
+        if (seqFilterValues.length > 0 || scannedSeqs.length > 0) {
+          clearSeqBtn.style.display = "inline";
+        } else {
+          clearSeqBtn.style.display = "none";
+        }
+
+        if (clearSeqBtn) {
+          clearSeqBtn.onclick = () => {
+            scannedSeqs = [];
+            seqFilterValues = [];
+            const seqInput = document.querySelector(
+              '.filter[data-field="seq"]'
+            );
+            if (seqInput) seqInput.value = "";
+            applyFilters();
+          };
+        }
+      }
+
+      const seqInput = document.querySelector('.filter[data-field="seq"]');
+      seqInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const val = seqInput.value.trim();
+          if (val !== "" && !seqFilterValues.includes(val)) {
+            seqFilterValues.push(val);
+          }
+          seqInput.value = "";
+          applyFilters();
+        }
+      });
+
+      attachSkillButtonListeners();
+
+      document
+        .querySelectorAll(".filter")
+        .forEach((input) => input.addEventListener("input", applyFilters));
+
+      /* =======================
+   Firestore Query by WO
+  ======================== */
+      function searchWorkorder(wo) {
+        if (!wo) return;
+        showLoading();
+        counterEl.textContent = "Loading tasks...";
+        localStorage.setItem("lastWorkorder", wo);
+        if (unsubscribe) {
+          unsubscribe();
+          unsubscribe = null;
+        }
+
+        currentWO = isNaN(wo) ? wo : Number(wo);
+        activeWOEl.textContent = String(currentWO);
+
+        const qWO = query(
+          collection(db, "tasks"),
+          where("wo", "==", currentWO)
+        );
+        unsubscribe = onSnapshot(
+          qWO,
           (snapshot) => {
-            const rows = [];
-            snapshot.forEach((docSnap) => rows.push(docSnap.data()));
-            renderTable(rows);
-            setStatus(`Realtime: ${rows.length} tasks`);
+            handleCommentBadgeUpdates(snapshot);
+            allDocs = snapshot.docs.map((docSnap) => ({
+              id: docSnap.id,
+              ...docSnap.data(),
+            }));
+
+            const pctClosed = getClosedPercentage(allDocs);
+            counterEl.innerHTML = `Total Tasks: ${snapshot.size} • <span class="highlight">${pctClosed}% Closed</span>`;
+
+            //################## Dynamic header
+            if (allDocs.length > 0) {
+              const ac = allDocs[0].ac || "Unknown AC";
+              const schedStart = allDocs[0].sched_start_date;
+              const schedEnd = allDocs[0].sched_end_date;
+
+              const dayProgress = calculateDayProgress(
+                schedStart,
+                schedEnd,
+                allDocs[0].wo,
+                currentWO
+              );
+
+              document.getElementById(
+                "dynamicHeader"
+              ).textContent = `MTC Status for ${ac} ${dayProgress || ""}`;
+            }
+
+            lastUpdateEl.textContent = "Live • " + new Date().toLocaleString();
+            //################## Dynamic header
+
+            // 🔹 Preserve filters if active
+            if (
+              activeSkill !== "CLEAR" ||
+              activePhase ||
+              scannedSeqs.length > 0 ||
+              seqFilterValues.length > 0 ||
+              multiSkillActive ||
+              singleSkillActive
+            ) {
+              applyFilters();
+            } else {
+              renderRows(allDocs);
+              renderPhaseTotals(allDocs);
+            }
+
+            // 🔹 Preserve skill button highlight
+            document
+              .querySelectorAll(".skill-filters button")
+              .forEach((b) => b.classList.remove("active"));
+            const activeBtn = document.querySelector(
+              `.skill-filters button[data-skill="${activeSkill}"]`
+            );
+            if (activeBtn) activeBtn.classList.add("active");
+
+            // 🔹 Regenerate dynamic skill buttons
+            populateDynamicSkillButtons();
+
+            hideLoading();
           },
-          (err) => setStatus("Listener error: " + err.message, true)
+          (err) => {
+            console.error(err);
+            hideLoading();
+            // alert("Error loading tasks.");
+          }
         );
       }
 
-      uploadBtn.addEventListener("click", async () => {
-        const file = fileInput.files?.[0];
-        if (!file) return setStatus("Select file", true);
+      woSearchBtn.addEventListener("click", () => {
+        const wo = woInput.value.trim();
+        if (wo) searchWorkorder(wo);
+      });
 
+      const lastWO = localStorage.getItem("lastWorkorder");
+      if (lastWO) {
+        woInput.value = lastWO;
+        searchWorkorder(lastWO);
+      }
+
+      /* =======================
+   Scan Modal + Scanner
+  ======================== */
+      async function updateTaskStatus(taskId, newStatus) {
         try {
-          showLoading("Uploading to Firestore...");
-          const rows = (await parseFileToRows(file)).map((r) => mapRow(r));
-          await uploadRowsToFirestore(rows);
+          // 🔹 Update Firestore task
+          await updateDoc(doc(db, "tasks", taskId), { status: newStatus });
 
-          // ✅ Clear chosen file after successful upload
-          fileInput.value = "";
+          // 🔹 Update local cache
+          const idx = allDocs.findIndex((d) => d.id === taskId);
+          if (idx !== -1) {
+            allDocs[idx] = { ...allDocs[idx], status: newStatus };
 
-          setStatus("✅ Upload complete!");
+            // 🔹 Log history to Firestore
+            await logHistoryEntry(allDocs[idx], newStatus);
+          }
+
+          // 🔹 Refresh UI
+          applyFilters();
+
+          showToast(`Status updated to ${newStatus}`, "success");
+          return true;
         } catch (err) {
-          setStatus("❌ Upload failed: " + err.message, true);
-        } finally {
-          hideLoading();
+          console.error(err);
+          showToast(`Failed to update task ${taskId}`, "error");
+          return false;
+        }
+      }
+
+      function showToast(message, type = "info", duration = 4000) {
+        const container = document.getElementById("toastContainer");
+        container.innerHTML = "";
+
+        const toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+
+        container.appendChild(toast);
+
+        setTimeout(() => toast.classList.add("show"), 50);
+
+        setTimeout(() => {
+          toast.classList.remove("show");
+          setTimeout(() => toast.remove(), 400);
+        }, duration);
+      }
+
+      function openModal() {
+        scanModal.style.display = "flex";
+      }
+      function closeModal() {
+        scanModal.style.display = "none";
+      }
+
+      const manualSeqInput = document.getElementById("manualSeqInput");
+      const manualAddBtn = document.getElementById("manualAddBtn");
+
+      let scannedTasks = []; // [{ id, display }]
+      const scanResultsList = document.getElementById("scanResultsList");
+      //const scannedList = document.getElementById("scannedList");
+
+      manualAddBtn.addEventListener("click", () => {
+        const value = manualSeqInput.value.trim();
+        if (value !== "") {
+          handleScannedValue(value);
+          manualSeqInput.value = "";
         }
       });
+      manualSeqInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          manualAddBtn.click();
+        }
+      });
+
+      function setScanning(active) {
+        scanningActive = active;
+        startScanBtn.classList.toggle("scanning", active);
+        startScanBtn.disabled = active;
+        stopScanBtn.style.display = active ? "inline-block" : "none";
+        if (active) {
+          barcodeInput.value = "";
+          barcodeInput.focus();
+        } else {
+          barcodeInput.blur();
+        }
+      }
+
+      function renderScannedTasks() {
+        scannedList.innerHTML = "";
+
+        if (!scannedTasks.length) {
+          scannedList.innerHTML = `<li style="justify-content:center;color:#777;">No tasks queued</li>`;
+        } else {
+          scannedTasks.forEach((task) => {
+            const phase = task.phase || "P?";
+            const skill = task.skill || "GEN";
+            const status = task.status || "OPEN";
+
+            const li = document.createElement("li");
+            li.innerHTML = `
+        <span>Seq ${task.seq}-${phase}-${skill}-${status}</span>
+        <span class="li-actions">
+          <button type="button" data-remove="${task.id}">Remove</button>
+        </span>`;
+            scannedList.appendChild(li);
+          });
+        }
+
+        scanCountEl.textContent = String(scannedTasks.length);
+      }
+
+      startScanBtn.addEventListener("click", () => {
+        if (!currentWO && !woInput.value.trim()) {
+          alert("Enter a Workorder first, then click Search.");
+          return;
+        }
+        if (!currentWO && woInput.value.trim()) {
+          searchWorkorder(woInput.value.trim());
+        }
+        setScanning(true);
+        openModal();
+      });
+
+      stopScanBtn.addEventListener("click", () => setScanning(false));
+
+      barcodeInput.addEventListener("keydown", (e) => {
+        if (!scanningActive) return;
+        if (e.key === "Enter") {
+          const val = barcodeInput.value.trim();
+          barcodeInput.value = "";
+          if (val !== "") handleScannedValue(val);
+        }
+      });
+
+      // 🔍 Fetch tasks by sequence and show results
+
+      async function handleScannedValue(raw) {
+        const num = Number(raw);
+        if (Number.isNaN(num)) {
+          alert(`Invalid sequence (not a number): "${raw}"`);
+          return;
+        }
+
+        try {
+          const qSeq = query(
+            collection(db, "tasks"),
+            where("wo", "==", currentWO),
+            where("seq", "==", num)
+          );
+          const snap = await getDocs(qSeq);
+
+          scanResultsList.innerHTML = "";
+
+          if (snap.empty) {
+            scanResultsList.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center; color:#777;">
+            No tasks found for Seq ${num}
+          </td>
+        </tr>`;
+            return;
+          }
+
+          let shown = 0;
+          const showClosed = showClosedChk.checked; // ✅ check state
+
+          snap.docs.forEach((docSnap) => {
+            const task = { id: docSnap.id, ...docSnap.data() };
+            const isClosed = (task.status ?? "").toUpperCase() === "CLOSED";
+
+            // ✅ skip CLOSED unless checkbox is ticked
+            if (isClosed && !showClosed) return;
+
+            // ✅ filter by selected skill
+            if (activeSkill !== "CLEAR") {
+              if (skillGroups[activeSkill]) {
+                if (!skillGroups[activeSkill].includes(task.skill)) return;
+              } else {
+                if (task.skill !== activeSkill) return;
+              }
+            }
+
+            shown++;
+            scanResultsList.insertAdjacentHTML(
+              "beforeend",
+              `
+        <tr>
+          <td>${task.seq ?? ""}</td>
+          <td>${task.phase ?? "P?"}</td>
+          <td>${task.skill ?? "GEN"}</td>
+          <td>${task.status ?? "OPEN"}</td>
+          <td>
+            ${
+              isClosed
+                ? `<button type="button" data-reopen="${task.id}">Reopen</button>`
+                : `<button type="button" data-add="${task.id}">Add</button>`
+            }
+          </td>
+        </tr>
+      `
+            );
+          });
+
+          if (shown === 0) {
+            scanResultsList.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center; color:#777;">
+            No OPEN tasks found for Seq ${num}
+          </td>
+        </tr>`;
+          }
+
+          if (scanModal.style.display !== "flex") openModal();
+        } catch (err) {
+          console.error(err);
+          alert("Error fetching tasks.");
+        }
+      }
+
+      // ➕ Add task to queue
+      scanResultsList.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-add]");
+        if (!btn) return;
+
+        const taskId = btn.getAttribute("data-add");
+
+        // prevent duplicates
+        if (scannedTasks.some((t) => t.id === taskId)) {
+          showToast("Task already queued", "info");
+          return;
+        }
+
+        // get row cells (td values)
+        const row = btn.closest("tr");
+        const seq = row.children[0].textContent.trim();
+        const phase = row.children[1].textContent.trim();
+        const skill = row.children[2].textContent.trim();
+        const status = row.children[3].textContent.trim();
+
+        scannedTasks.push({
+          id: taskId,
+          seq,
+          phase,
+          skill,
+          status,
+          display: `Seq ${seq}-${phase}-${skill}-${status}`, // still keep for reuse
+        });
+
+        renderQueuedList();
+
+        // remove the row from results once added (optional)
+        row.remove();
+      });
+      scanResultsList.addEventListener("click", async (e) => {
+        const reopenBtn = e.target.closest("button[data-reopen]");
+        if (!reopenBtn) return;
+
+        const taskId = reopenBtn.getAttribute("data-reopen");
+
+        const ok = await updateTaskStatus(taskId, "OPEN");
+        if (!ok) return;
+
+        // update row
+        const row = reopenBtn.closest("tr");
+        row.children[3].textContent = "OPEN"; // update status cell
+        reopenBtn.outerHTML = `<button type="button" data-add="${taskId}">Add</button>`;
+        showToast("Task reopened ✅", "success");
+      });
+
+      // 📋 Render queued list
+      function renderQueuedList() {
+        scannedList.innerHTML = "";
+
+        if (!scannedTasks.length) {
+          scannedList.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center; color:#777;">No tasks queued</td>
+      </tr>`;
+        } else {
+          scannedTasks.forEach((task) => {
+            scannedList.insertAdjacentHTML(
+              "beforeend",
+              `
+        <tr>
+          <td>${task.seq}</td>
+          <td>${task.phase}</td>
+          <td>${task.skill}</td>
+          <td>${task.status}</td>
+          <td>
+            <button type="button" data-remove="${task.id}">Remove</button>
+          </td>
+        </tr>
+      `
+            );
+          });
+        }
+
+        scanCountEl.textContent = String(scannedTasks.length);
+      }
+
+      // ❌ Remove from queue (and send back to Matching list)
+      scannedList.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-remove]");
+        if (!btn) return;
+
+        const id = btn.getAttribute("data-remove");
+
+        // find task before removing
+        const task = scannedTasks.find((t) => t.id === id);
+
+        // filter it out
+        scannedTasks = scannedTasks.filter((t) => t.id !== id);
+        renderQueuedList();
+
+        // if task exists → put it back into Matching list
+        if (task) {
+          scanResultsList.insertAdjacentHTML(
+            "beforeend",
+            `
+      <tr>
+        <td>${task.seq}</td>
+        <td>${task.phase}</td>
+        <td>${task.skill}</td>
+        <td>${task.status}</td>
+        <td>
+          <button type="button" data-add="${task.id}">Add</button>
+        </td>
+      </tr>
+    `
+          );
+        }
+      });
+
+      // ✅ Submit queued tasks
+      submitScanBtn.addEventListener("click", async () => {
+        if (!currentWO) {
+          alert("Please search a Workorder first.");
+          return;
+        }
+        if (!scannedTasks.length) {
+          alert("No tasks queued.");
+          return;
+        }
+
+        closeModal();
+        setScanning(false);
+        showLoading();
+
+        let updated = 0;
+        try {
+          for (const task of scannedTasks) {
+            const ok = await updateTaskStatus(task.id, "CLOSED");
+            if (ok) updated++;
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Error while updating tasks. Please try again.");
+        } finally {
+          applyFilters(); // keep data filtered
+          hideLoading();
+
+          // Keep the active skill button visually active
+          document
+            .querySelectorAll(".skill-filters button")
+            .forEach((b) => b.classList.remove("active"));
+
+          const activeBtn = document.querySelector(
+            `.skill-filters button[data-skill="${activeSkill}"]`
+          );
+          if (activeBtn) activeBtn.classList.add("active");
+        }
+
+        scannedTasks = [];
+        renderScannedTasks();
+        scanResultsList.innerHTML = ""; // matching results
+        showToast(
+          `Updated to CLOSED: ${updated}`,
+          updated ? "success" : "info"
+        );
+      });
+
+      closeScanBtn.addEventListener("click", () => {
+        closeModal();
+        setScanning(false);
+        showClosedChk.checked = false;
+      });
+      clearScanBtn.addEventListener("click", () => {
+        scannedTasks = []; // queue
+        renderScannedTasks();
+        scanResultsList.innerHTML = ""; // matching results
+      });
+
+      renderQueuedList();
+      if (!lastWO) {
+        hideLoading();
+      }
+      // Digital Logbook Button
+      document.getElementById("logbookBtn").addEventListener("click", () => {
+        const currentWO = document.getElementById("woInput").value?.trim();
+        const selectedSkill =
+          document.getElementById("skillDropdown")?.value || "";
+
+        if (!currentWO) {
+          alert("Please select or enter a Work Order first.");
+          return;
+        }
+
+        const url = `digitallogbook.html?wo=${encodeURIComponent(
+          currentWO
+        )}&skill=${encodeURIComponent(selectedSkill)}`;
+        window.open(url, "_blank");
+      });
+      //notif badge ##################################
     </script>
   </body>
 </html>
