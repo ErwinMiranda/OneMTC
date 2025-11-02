@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>One MTC</title>
     <script type="module">
-  import { requireLogin, logout } from "./auth.js";
-  requireLogin();
-  window.logout = logout;
-</script>
-
-  
+      import { requireLogin, logout } from "./auth.js";
+      requireLogin();
+      window.logout = logout;
+    </script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -634,20 +632,20 @@
         transition: background-color 0.5s ease, box-shadow 0.5s ease;
       }
       .logbook-btn {
-  background-color: #003366; /* Lufthansa blue */
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  margin-left: 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.3s;
-}
-.logbook-btn:hover {
-  background-color: #002147;
-}
-.comment-cell {
+        background-color: #003366; /* Lufthansa blue */
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        margin-left: 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.3s;
+      }
+      .logbook-btn:hover {
+        background-color: #002147;
+      }
+      .comment-cell {
         vertical-align: top;
         border: 1px solid #ccc;
         padding: 2px 6px;
@@ -669,6 +667,28 @@
 
       .comment-input:focus {
         background-color: #f5f5f5;
+      }
+      .skill-filters button {
+        position: relative;
+        margin-right: 5px;
+      }
+
+      .comment-badge {
+        position: absolute;
+        top: -5px;
+        right: -6px;
+        background: red;
+        color: white;
+        font-size: 11px;
+        font-weight: bold;
+        border-radius: 50%;
+        padding: 2px 5px;
+        display: none;
+        transition: transform 0.2s ease;
+      }
+
+      .comment-badge.pulse {
+        transform: scale(1.25);
       }
     </style>
   </head>
@@ -714,13 +734,34 @@
         </div>
 
         <div class="skill-filters">
-          <button data-skill="CLEAR" class="active">ALL SKILL</button>
-          <button data-skill="GEN">GEN</button>
-          <button data-skill="AVI">AVI</button>
-          <button data-skill="CRG/ENG">CRG/ENG</button>
-          <button data-skill="CAB">CAB</button>
-          <button data-skill="LDG/FLC">LDG/FLC</button>
-          <button data-skill="STR">STR</button>
+          <button data-skill="CLEAR" class="active">
+            ALL SKILL
+            <span class="comment-badge" data-skill="CLEAR">0</span>
+          </button>
+          <button data-skill="GEN">
+            GEN
+            <span class="comment-badge" data-skill="GEN">0</span>
+          </button>
+          <button data-skill="AVI">
+            AVI
+            <span class="comment-badge" data-skill="AVI">0</span>
+          </button>
+          <button data-skill="CRG/ENG">
+            CRG/ENG
+            <span class="comment-badge" data-skill="CRG/ENG">0</span>
+          </button>
+          <button data-skill="CAB">
+            CAB
+            <span class="comment-badge" data-skill="CAB">0</span>
+          </button>
+          <button data-skill="LDG/FLC">
+            LDG/FLC
+            <span class="comment-badge" data-skill="LDG/FLC">0</span>
+          </button>
+          <button data-skill="STR">
+            STR
+            <span class="comment-badge" data-skill="STR">0</span>
+          </button>
         </div>
 
         <div id="counter">Waiting for input...</div>
@@ -851,7 +892,7 @@
                       placeholder="Search TaskCard Items"
                     />
                   </th>
-                   <th>
+                  <th>
                     <input
                       type="text"
                       class="filter"
@@ -1003,9 +1044,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/clusterize.js@0.18.1/clusterize.min.js"></script>
     <script type="module">
-      import {logout } from "./auth.js";
-  
-    window.logout = logout; // 👈 exposes it globally
+      import { logout } from "./auth.js";
+
+      window.logout = logout; // 👈 exposes it globally
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
         getFirestore,
@@ -1144,7 +1185,7 @@
 
       let unsubscribeHistory = null; // store listener cleanup reference
 
-     function listenToHistoryForWO(workorder) {
+      function listenToHistoryForWO(workorder) {
         if (unsubscribeHistory) {
           unsubscribeHistory();
           unsubscribeHistory = null;
@@ -1410,9 +1451,9 @@
       const hideLoading = () => {
         overlay.style.display = "none";
       };
-      
+
       // PRINTING......
-      
+
       function printFullTable() {
         if (!allDocs || allDocs.length === 0) {
           alert("No data to print ❗");
@@ -1722,11 +1763,79 @@ td.taskcard-cell {
         printWindow.document.close();
       }
 
-
       window.printFullTable = printFullTable;
 
       let prevDocsMap = new Map(); // 🧠 Cache to detect changes
       let commentFlashDuration = 1000; // highlight for 1 second
+      // 🧠 Badge Notification Logic
+
+      const badgeElements = document.querySelectorAll(".comment-badge");
+      let badgeCounts = JSON.parse(localStorage.getItem("badgeCounts")) || {};
+      let lastCommentMap = new Map();
+      let initialLoadDone = false;
+
+      function updateBadgeDisplay() {
+        document.querySelectorAll(".comment-badge").forEach((badge) => {
+          const skill = badge.dataset.skill;
+          const count = badgeCounts[skill] || 0;
+          if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = "inline-block";
+          } else {
+            badge.style.display = "none";
+          }
+        });
+
+        // 🔹 Save to localStorage
+        localStorage.setItem("badgeCounts", JSON.stringify(badgeCounts));
+      }
+
+      // 👇 Called inside your onSnapshot listener
+      function mapToGroupSkill(rawSkill) {
+        // match Firestore skill to button skill
+        for (const [group, members] of Object.entries(skillGroups)) {
+          if (members.includes(rawSkill)) return group;
+        }
+        return rawSkill; // fallback if not found
+      }
+
+      function handleCommentBadgeUpdates(snapshot) {
+        const newMap = new Map();
+        snapshot.docs.forEach((d) => newMap.set(d.id, d.data()));
+
+        if (initialLoadDone) {
+          // Only increment badges if it's not the first load
+          snapshot.docs.forEach((docSnap) => {
+            const data = docSnap.data();
+            const rawSkill = data.skill || "CLEAR";
+            const skill = mapToGroupSkill(rawSkill);
+
+            const prev = lastCommentMap.get(docSnap.id);
+            const oldComment = prev?.comment || "";
+            const newComment = data.comment || "";
+
+            if (newComment !== oldComment) {
+              badgeCounts[skill] = (badgeCounts[skill] || 0) + 1;
+            }
+          });
+          updateBadgeDisplay();
+        }
+
+        // Update map after processing
+        lastCommentMap = newMap;
+
+        // Mark first snapshot as done
+        if (!initialLoadDone) initialLoadDone = true;
+      }
+
+      // 🔄 Reset badge when clicking its skill
+      document.querySelectorAll(".skill-filters button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const skill = btn.dataset.skill;
+          badgeCounts[skill] = 0;
+          updateBadgeDisplay();
+        });
+      });
 
       async function renderRows(docs) {
         // ✅ Precompute selected skills ONCE
@@ -1944,7 +2053,7 @@ td.taskcard-cell {
 
           if (scrollContainer) scrollContainer.scrollTop = prevScrollTop;
           if (tableContainer) tableContainer.style.visibility = "visible";
-            // 🪄 Auto-resize all visible comments after render
+          // 🪄 Auto-resize all visible comments after render
           requestAnimationFrame(() => {
             document.querySelectorAll(".comment-input").forEach((ta) => {
               ta.style.height = "auto";
@@ -1968,7 +2077,7 @@ td.taskcard-cell {
         }
 
         // 🧠 Comment popup logic
-         if (!scrollContainer.dataset.popupBound) {
+        if (!scrollContainer.dataset.popupBound) {
           scrollContainer.dataset.popupBound = "true"; // ✅ bind only once
 
           scrollContainer.addEventListener("focusin", (e) => {
@@ -2210,6 +2319,7 @@ td.taskcard-cell {
         STR: ["STR"],
         GEN: ["GEN"],
       };
+      // ====== DYNAMIC BUTTON POPULATION ======
       function populateDynamicSkillButtons() {
         const container = document.querySelector(".skill-filters");
 
@@ -2227,22 +2337,41 @@ td.taskcard-cell {
           const btn = document.createElement("button");
           btn.textContent = skill;
           btn.dataset.skill = skill;
-          btn.dataset.dynamic = "true"; // so we can remove later
+          btn.dataset.dynamic = "true";
           container.appendChild(btn);
+
+          // ✅ Create badge span for the button
+          const badge = document.createElement("span");
+          badge.className = "comment-badge";
+          badge.dataset.skill = skill;
+          badge.style.display = "none"; // hidden initially
+          btn.appendChild(badge);
         });
 
-        // Re-attach listeners (for ALL buttons, static + dynamic)
+        // Re-attach listeners
         attachSkillButtonListeners();
+
+        // Update badges immediately (in case comments already exist)
+        updateBadgeDisplay();
       }
+
       function attachSkillButtonListeners() {
         document.querySelectorAll(".skill-filters button").forEach((btn) => {
           btn.onclick = () => {
+            // ✅ Remove active from all, add to clicked
             document
               .querySelectorAll(".skill-filters button")
               .forEach((b) => b.classList.remove("active"));
             btn.classList.add("active");
+
             activeSkill = btn.dataset.skill;
             localStorage.setItem("activeSkill", activeSkill);
+
+            // ✅ Reset the badge for this skill
+            badgeCounts[activeSkill] = 0;
+            updateBadgeDisplay();
+
+            // Clear filters if "ALL"
             if (activeSkill === "CLEAR") {
               scannedSeqs = [];
               seqFilterValues = [];
@@ -2255,6 +2384,7 @@ td.taskcard-cell {
           };
         });
       }
+
       document.getElementById("multiSkillBtn").addEventListener("click", () => {
         multiSkillActive = !multiSkillActive;
         singleSkillActive = false; // ensure mutual exclusivity
@@ -2506,6 +2636,7 @@ td.taskcard-cell {
         unsubscribe = onSnapshot(
           qWO,
           (snapshot) => {
+            handleCommentBadgeUpdates(snapshot);
             allDocs = snapshot.docs.map((docSnap) => ({
               id: docSnap.id,
               ...docSnap.data(),
@@ -2515,7 +2646,7 @@ td.taskcard-cell {
             counterEl.innerHTML = `Total Tasks: ${snapshot.size} • <span class="highlight">${pctClosed}% Closed</span>`;
 
             //################## Dynamic header
-        if (allDocs.length > 0) {
+            if (allDocs.length > 0) {
               const ac = allDocs[0].ac || "Unknown AC";
               const schedStart = allDocs[0].sched_start_date;
               const schedEnd = allDocs[0].sched_end_date;
@@ -2567,7 +2698,7 @@ td.taskcard-cell {
           (err) => {
             console.error(err);
             hideLoading();
-           // alert("Error loading tasks.");
+            // alert("Error loading tasks.");
           }
         );
       }
@@ -2980,19 +3111,22 @@ td.taskcard-cell {
         hideLoading();
       }
       // Digital Logbook Button
-document.getElementById("logbookBtn").addEventListener("click", () => {
-  const currentWO = document.getElementById("woInput").value?.trim();
-  const selectedSkill = document.getElementById("skillDropdown")?.value || "";
+      document.getElementById("logbookBtn").addEventListener("click", () => {
+        const currentWO = document.getElementById("woInput").value?.trim();
+        const selectedSkill =
+          document.getElementById("skillDropdown")?.value || "";
 
-  if (!currentWO) {
-    alert("Please select or enter a Work Order first.");
-    return;
-  }
+        if (!currentWO) {
+          alert("Please select or enter a Work Order first.");
+          return;
+        }
 
-  const url = `digitallogbook.html?wo=${encodeURIComponent(currentWO)}&skill=${encodeURIComponent(selectedSkill)}`;
-  window.open(url, "_blank");
-});
-
+        const url = `digitallogbook.html?wo=${encodeURIComponent(
+          currentWO
+        )}&skill=${encodeURIComponent(selectedSkill)}`;
+        window.open(url, "_blank");
+      });
+      //notif badge ##################################
     </script>
   </body>
 </html>
