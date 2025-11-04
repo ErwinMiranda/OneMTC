@@ -2243,7 +2243,26 @@ td.taskcard-cell {
           phaseLabels.push(phase);
           closedPercentages.push(pct);
         });
+        // ✅ Insert total row here
+const totalOpen = Object.values(phaseOpen).reduce((a, b) => a + b, 0);
+const totalClosed = Object.values(phaseClosed).reduce((a, b) => a + b, 0);
+const totalCancelled = Object.values(phaseCancelled).reduce((a, b) => a + b, 0);
+const totalHold = Object.values(phaseHold).reduce((a, b) => a + b, 0);
+const grandTotal =
+  totalOpen + totalClosed + totalCancelled + totalHold;
+const totalPct = grandTotal ? ((totalClosed / grandTotal) * 100).toFixed(1) : 0;
 
+body.insertAdjacentHTML(
+  "beforeend",
+  `<tr style="font-weight:bold; background:#eef;">
+    <td style="text-align:left;">TOTAL</td>
+    <td style="text-align:right;">${totalOpen}</td>
+    <td style="text-align:right;">${totalClosed}</td>
+    <td style="text-align:right;">${totalCancelled}</td>
+    <td style="text-align:right;">${totalHold}</td>
+    <td style="text-align:right;">${totalPct}%</td>
+  </tr>`
+);
         // ---- Render or Update Chart ----
         if (window.phaseChartInstance) {
           window.phaseChartInstance.data.labels = phaseLabels;
