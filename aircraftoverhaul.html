@@ -1818,15 +1818,22 @@ td.taskcard-cell {
         commentPopup.style.display = "none";
       };
 
-      // Optional: close popup when clicking outside the box
+     // Optional: close popup when clicking outside the box
       commentPopup.addEventListener("click", (e) => {
         if (e.target === commentPopup) commentPopup.style.display = "none";
       });
 
       // 2️⃣ Badge click event – load comments for that skill
       document.querySelectorAll(".comment-badge").forEach((badge) => {
-        badge.addEventListener("click", async (e) => {
-          const skill = e.target.dataset.skill;
+        // Works even for dynamically added badges
+        document.addEventListener("click", async (e) => {
+          const badge = e.target.closest(".comment-badge");
+          if (!badge) return; // Not a badge click, ignore
+
+          e.stopPropagation();
+          e.preventDefault();
+
+          const skill = badge.dataset.skill;
           document.getElementById(
             "popupTitle"
           ).textContent = `Comments – ${skill}`;
@@ -1838,7 +1845,7 @@ td.taskcard-cell {
             return d.skill === skill;
           });
 
-          // Extract comments
+          // Extract and sort comments
           const commentEntries = skillDocs
             .map((d) => ({
               seq: d.seq ?? "",
