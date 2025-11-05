@@ -3308,7 +3308,12 @@ body.insertAdjacentHTML(
         )}&skill=${encodeURIComponent(selectedSkill)}`;
         window.open(url, "_blank");
       });
-       // Create a fake event targeting the active-skill badge
+       document.getElementById("manualTrigger").addEventListener("click", () => {
+        // ensure a badge exists for current skill
+        const container = document.getElementById("dynamicBadgeContainer");
+        container.innerHTML = `<div class="comment-badge" data-skill="${activeSkill}"></div>`;
+
+        // Create a fake event targeting the active-skill badge
         const badge = document.querySelector(
           `.comment-badge[data-skill="${activeSkill}"]`
         );
