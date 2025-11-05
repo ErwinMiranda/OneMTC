@@ -1768,7 +1768,6 @@ td.taskcard-cell {
       let prevDocsMap = new Map(); // 🧠 Cache to detect changes
       let commentFlashDuration = 1000; // highlight for 1 second
       // 🧠 Badge Notification Logic
-
       const badgeElements = document.querySelectorAll(".comment-badge");
       let badgeCounts = JSON.parse(localStorage.getItem("badgeCounts")) || {};
       let lastCommentMap = new Map();
@@ -1788,6 +1787,109 @@ td.taskcard-cell {
 
         // 🔹 Save to localStorage
         localStorage.setItem("badgeCounts", JSON.stringify(badgeCounts));
+      }
+      // === COMMENT POPUP WHEN BADGE CLICKED ===
+
+      // 1️⃣ Create popup container (only once)
+      const commentPopup = document.createElement("div");
+      commentPopup.id = "commentListPopup";
+      commentPopup.style.cssText = `
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  justify-content: center;
+  align-items: center;
+  z-index: 99999;
+`;
+      commentPopup.innerHTML = `
+  <div style="background:#fff; padding:20px; border-radius:8px; width:450px; max-height:600px; overflow-y:auto; box-shadow:0 3px 12px rgba(0,0,0,0.2);">
+    <h3 id="popupTitle" style="margin-top:0; margin-bottom:10px; font-size:18px;">Comments</h3>
+    <div id="popupComments" style="font-family:monospace; font-size:13px; white-space:pre-wrap; line-height:1.3;"></div>
+    <button id="popupClose" style="margin-top:15px; background:#0078d7; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Close</button>
+  </div>
+`;
+      document.body.appendChild(commentPopup);
+
+      document.getElementById("popupClose").onclick = () => {
+        // ✅ Reset the badge for this skill
+        badgeCounts[activeSkill] = 0;
+        updateBadgeDisplay();
+        commentPopup.style.display = "none";
+      };
+
+      // Optional: close popup when clicking outside the box
+      commentPopup.addEventListener("click", (e) => {
+        if (e.target === commentPopup) commentPopup.style.display = "none";
+      });
+
+      // 2️⃣ Badge click event – load comments for that skill
+      document.querySelectorAll(".comment-badge").forEach((badge) => {
+        badge.addEventListener("click", async (e) => {
+          const skill = e.target.dataset.skill;
+          document.getElementById(
+            "popupTitle"
+          ).textContent = `Comments – ${skill}`;
+
+          // Fetch docs for that skill
+          const skillDocs = getSkillFilteredDocs().filter((d) => {
+            if (skill === "CLEAR") return true;
+            if (skillGroups[skill]) return skillGroups[skill].includes(d.skill);
+            return d.skill === skill;
+          });
+
+          // Extract comments
+          const commentEntries = skillDocs
+            .map((d) => ({
+              seq: d.seq ?? "",
+              task_card: d.task_card ?? "",
+              comment: d.comment ?? "",
+            }))
+            .filter((x) => x.comment.trim() !== "")
+            .sort(
+              (a, b) =>
+                extractLastTimestamp(b.comment) -
+                extractLastTimestamp(a.comment)
+            );
+
+          const container = document.getElementById("popupComments");
+
+          if (commentEntries.length === 0) {
+            container.textContent = "No comments yet.";
+          } else {
+            container.innerHTML = commentEntries
+              .map(
+                (c) => `
+🔹 <b>Seq ${c.seq}</b> — ${c.task_card}
+<div style="margin:3px 0 5px 10px; padding-left:5px; border-left:2px solid #0078d7;">
+${formatComment(c.comment)}
+</div>
+<hr style="border:none; border-top:1px solid #eee; margin:8px 0;">
+`
+              )
+              .join("");
+          }
+
+          commentPopup.style.display = "flex";
+        });
+      });
+
+      // 3️⃣ Helper: extract timestamp
+      function extractLastTimestamp(commentText) {
+        const matches = [...commentText.matchAll(/\[(.*?)\]/g)];
+        if (matches.length === 0) return 0;
+        const last = matches[matches.length - 1][1];
+        const parsed = Date.parse(last);
+        return isNaN(parsed) ? 0 : parsed;
+      }
+
+      // 4️⃣ Helper: format comment block
+      function formatComment(comment) {
+        return comment
+          .split("\n")
+          .reverse() // latest on top
+          .map((line) => line.replace(/\[(.*?)\]/g, "🕒 [$1]"))
+          .join("\n");
       }
 
       // 👇 Called inside your onSnapshot listener
@@ -1827,15 +1929,6 @@ td.taskcard-cell {
         // Mark first snapshot as done
         if (!initialLoadDone) initialLoadDone = true;
       }
-
-      // 🔄 Reset badge when clicking its skill
-      document.querySelectorAll(".skill-filters button").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const skill = btn.dataset.skill;
-          badgeCounts[skill] = 0;
-          updateBadgeDisplay();
-        });
-      });
 
       async function renderRows(docs) {
         // ✅ Precompute selected skills ONCE
@@ -2386,9 +2479,7 @@ body.insertAdjacentHTML(
             activeSkill = btn.dataset.skill;
             localStorage.setItem("activeSkill", activeSkill);
 
-            // ✅ Reset the badge for this skill
-            badgeCounts[activeSkill] = 0;
-            updateBadgeDisplay();
+        
 
             // Clear filters if "ALL"
             if (activeSkill === "CLEAR") {
