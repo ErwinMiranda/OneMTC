@@ -1789,26 +1789,58 @@ td.taskcard-cell {
         localStorage.setItem("badgeCounts", JSON.stringify(badgeCounts));
       }
       // === COMMENT POPUP WHEN BADGE CLICKED ===
-
-      // 1️⃣ Create popup container (only once)
+ // 🧊 Apple-style Sliding Glass Popup (with stronger background contrast)
       const commentPopup = document.createElement("div");
       commentPopup.id = "commentListPopup";
       commentPopup.style.cssText = `
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
-  justify-content: center;
+  backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.55); /* darker & more visible background */
+  justify-content: flex-end;
   align-items: center;
   z-index: 99999;
+  animation: fadeIn 0.3s ease;
 `;
+
+      // Inner popup card
       commentPopup.innerHTML = `
-  <div style="background:#fff; padding:20px; border-radius:8px; width:450px; max-height:600px; overflow-y:auto; box-shadow:0 3px 12px rgba(0,0,0,0.2);">
-    <h3 id="popupTitle" style="margin-top:0; margin-bottom:10px; font-size:18px;">Comments</h3>
-    <div id="popupComments" style="font-family:monospace; font-size:13px; white-space:pre-wrap; line-height:1.3;"></div>
-    <button id="popupClose" style="margin-top:15px; background:#0078d7; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Close</button>
+  <div style="
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 18px 0 0 18px;
+    padding: 24px;
+    width: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: -6px 0 30px rgba(0,0,0,0.25);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', Roboto, sans-serif;
+    animation: slideInRight 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  ">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+      <h3 id="popupTitle" style="margin:0; font-size:20px; font-weight:600; color:#111;">Comments</h3>
+      <button id="popupClose" style="
+        background:none;
+        border:none;
+        font-size:24px;
+        color:#666;
+        cursor:pointer;
+        transition:0.25s;
+      ">&times;</button>
+    </div>
+
+    <div id="popupComments" style="
+      font-size:14px;
+      color:#222;
+      line-height:1.6;
+      border-top:1px solid rgba(0,0,0,0.05);
+      padding-top:10px;
+    "></div>
   </div>
 `;
+
+      // Append popup to body
       document.body.appendChild(commentPopup);
 
       document.getElementById("popupClose").onclick = () => {
