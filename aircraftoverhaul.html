@@ -1767,7 +1767,7 @@ td.taskcard-cell {
 
       let prevDocsMap = new Map(); // 🧠 Cache to detect changes
       let commentFlashDuration = 1000; // highlight for 1 second
-      // 🧠 Badge Notification Logic
+       // 🧠 Badge Notification Logic
       const badgeElements = document.querySelectorAll(".comment-badge");
       let badgeCounts = JSON.parse(localStorage.getItem("badgeCounts")) || {};
       let lastCommentMap = new Map();
@@ -1789,128 +1789,147 @@ td.taskcard-cell {
         localStorage.setItem("badgeCounts", JSON.stringify(badgeCounts));
       }
       // === COMMENT POPUP WHEN BADGE CLICKED ===
- // 🧊 Apple-style Sliding Glass Popup (with stronger background contrast)
-      const commentPopup = document.createElement("div");
-      commentPopup.id = "commentListPopup";
-      commentPopup.style.cssText = `
-  display: none;
-  position: fixed;
-  inset: 0;
-  backdrop-filter: blur(3px);
-  background: rgba(0, 0, 0, 0.55); /* darker & more visible background */
-  justify-content: flex-end;
-  align-items: center;
-  z-index: 99999;
-  animation: fadeIn 0.3s ease;
-`;
+      // === Apple-style Popup Initialization ===
+      let commentPopup = document.getElementById("commentListPopup");
 
-      // Inner popup card
-      commentPopup.innerHTML = `
-  <div style="
-    background: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 18px 0 0 18px;
-    padding: 24px;
-    width: 420px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: -6px 0 30px rgba(0,0,0,0.25);
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', Roboto, sans-serif;
-    animation: slideInRight 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-  ">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
-      <h3 id="popupTitle" style="margin:0; font-size:20px; font-weight:600; color:#111;">Comments</h3>
-      <button id="popupClose" style="
-        background:none;
-        border:none;
-        font-size:24px;
-        color:#666;
-        cursor:pointer;
-        transition:0.25s;
-      ">&times;</button>
+      if (!commentPopup) {
+        commentPopup = document.createElement("div");
+        commentPopup.id = "commentListPopup";
+        commentPopup.style.cssText = `
+    display: none;
+    position: fixed;
+    inset: 0;
+    backdrop-filter: blur(3px);
+    background: rgba(0, 0, 0, 0.55);
+    justify-content: flex-end;
+    align-items: center;
+    z-index: 99999;
+  `;
+
+        commentPopup.innerHTML = `
+    <div class="popup-card" style="
+      background: rgba(255,255,255,0.85);
+      border: 1px solid rgba(255,255,255,0.5);
+      border-radius: 18px 0 0 18px;
+      padding: 24px;
+      width: 420px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: -6px 0 30px rgba(0,0,0,0.25);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', Roboto, sans-serif;
+      animation: slideInRight 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    ">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+        <h3 id="popupTitle" style="margin:0; font-size:20px; font-weight:600; color:#111;">Comments</h3>
+        <button id="popupClose" style="
+          background:none;
+          border:none;
+          font-size:24px;
+          color:#666;
+          cursor:pointer;
+          transition:0.25s;
+        ">&times;</button>
+      </div>
+      <div id="popupComments" style="font-size:14px; color:#222; line-height:1.6; border-top:1px solid rgba(0,0,0,0.05); padding-top:10px;">
+      </div>
     </div>
+  `;
+        document.body.appendChild(commentPopup);
 
-    <div id="popupComments" style="
-      font-size:14px;
-      color:#222;
-      line-height:1.6;
-      border-top:1px solid rgba(0,0,0,0.05);
-      padding-top:10px;
-    "></div>
-  </div>
-`;
+        const style = document.createElement("style");
+        style.textContent = `
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOutRight {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
+    }
+    #popupClose:hover {
+      color:#000;
+      transform: scale(1.1);
+    }
+  `;
+        document.head.appendChild(style);
+      }
 
-      // Append popup to body
-      document.body.appendChild(commentPopup);
+      // === Popup Open / Close Functions ===
+      function openPopup(title, htmlContent) {
+        const popupCard = commentPopup.querySelector(".popup-card");
+        const titleEl = commentPopup.querySelector("#popupTitle");
+        const commentsEl = commentPopup.querySelector("#popupComments");
 
-      document.getElementById("popupClose").onclick = () => {
-        // ✅ Reset the badge for this skill
+        titleEl.textContent = title;
+        commentsEl.innerHTML = htmlContent || "No comments yet.";
+
+        commentPopup.style.display = "flex";
+        popupCard.style.animation = "slideInRight 0.4s ease";
+      }
+
+      function closePopup() {
+        const popupCard = commentPopup.querySelector(".popup-card");
+        popupCard.style.animation = "slideOutRight 0.3s ease forwards";
+        setTimeout(() => {
+          commentPopup.style.display = "none";
+        }, 280);
         badgeCounts[activeSkill] = 0;
         updateBadgeDisplay();
-        commentPopup.style.display = "none";
-      };
+      }
 
-     // Optional: close popup when clicking outside the box
+      // Close button
+      commentPopup.querySelector("#popupClose").onclick = closePopup;
+
+      // Close when clicking outside the card
       commentPopup.addEventListener("click", (e) => {
-        if (e.target === commentPopup) commentPopup.style.display = "none";
+        if (e.target === commentPopup) closePopup();
       });
 
-      // 2️⃣ Badge click event – load comments for that skill
-      document.querySelectorAll(".comment-badge").forEach((badge) => {
-        // Works even for dynamically added badges
-        document.addEventListener("click", async (e) => {
-          const badge = e.target.closest(".comment-badge");
-          if (!badge) return; // Not a badge click, ignore
+      // === Badge Click Handler (only one listener!) ===
+      document.addEventListener("click", (e) => {
+        const badge = e.target.closest(".comment-badge");
+        if (!badge) return;
 
-          e.stopPropagation();
-          e.preventDefault();
+        e.stopPropagation();
+        e.preventDefault();
 
-          const skill = badge.dataset.skill;
-          document.getElementById(
-            "popupTitle"
-          ).textContent = `Comments – ${skill}`;
+        const skill = badge.dataset.skill;
 
-          // Fetch docs for that skill
-          const skillDocs = getSkillFilteredDocs().filter((d) => {
-            if (skill === "CLEAR") return true;
-            if (skillGroups[skill]) return skillGroups[skill].includes(d.skill);
-            return d.skill === skill;
-          });
+        // Build the popup content for this skill
+        const skillDocs = getSkillFilteredDocs().filter((d) => {
+          if (skill === "CLEAR") return true;
+          if (skillGroups[skill]) return skillGroups[skill].includes(d.skill);
+          return d.skill === skill;
+        });
 
-          // Extract and sort comments
-          const commentEntries = skillDocs
-            .map((d) => ({
-              seq: d.seq ?? "",
-              task_card: d.task_card ?? "",
-              comment: d.comment ?? "",
-            }))
-            .filter((x) => x.comment.trim() !== "")
-            .sort(
-              (a, b) =>
-                extractLastTimestamp(b.comment) -
-                extractLastTimestamp(a.comment)
-            );
+        const commentEntries = skillDocs
+          .map((d) => ({
+            seq: d.seq ?? "",
+            task_card: d.task_card ?? "",
+            comment: d.comment ?? "",
+          }))
+          .filter((x) => x.comment.trim() !== "")
+          .sort(
+            (a, b) =>
+              extractLastTimestamp(b.comment) - extractLastTimestamp(a.comment)
+          );
 
-          const container = document.getElementById("popupComments");
-
-          if (commentEntries.length === 0) {
-            container.textContent = "No comments yet.";
-          } else {
-            container.innerHTML = commentEntries
-              .map(
-                (c) => `
+        const htmlContent =
+          commentEntries.length === 0
+            ? "No comments yet."
+            : commentEntries
+                .map(
+                  (c) => `
 🔹 <b>Seq ${c.seq}</b> — ${c.task_card}
 <div style="margin:3px 0 5px 10px; padding-left:5px; border-left:2px solid #0078d7;">
 ${formatComment(c.comment)}
 </div>
 <hr style="border:none; border-top:1px solid #eee; margin:8px 0;">
 `
-              )
-              .join("");
-          }
+                )
+                .join("");
 
-          commentPopup.style.display = "flex";
-        });
+        openPopup(`Comments – ${skill}`, htmlContent);
       });
 
       // 3️⃣ Helper: extract timestamp
