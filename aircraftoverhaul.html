@@ -1170,7 +1170,7 @@
         if (!docs.length) return 0;
         const closedCount = docs.filter((d) => {
           const st = (d.status || "").toLowerCase();
-          return st === "closed" || st === "completed";
+          return st === "closed" || st === "cancel";
         }).length;
         return ((closedCount / docs.length) * 100).toFixed(1);
       }
@@ -2385,7 +2385,7 @@ ${formatComment(c.comment)}
             const closed = phaseClosed[phase] || 0;
             const cancelledCount = phaseCancelled[phase] || 0; // ✅ FIXED
             const hold = phaseHold[phase] || 0;
-            const pct = ((closed / total) * 100).toFixed(1);
+            const pct = (((closed + cancelledCount) / total) * 100).toFixed(1);
 
             body.insertAdjacentHTML(
               "beforeend",
@@ -2410,7 +2410,10 @@ ${formatComment(c.comment)}
         fixedPhases.forEach((phase) => {
           const total = phaseTotals[phase] || 0;
           const closed = phaseClosed[phase] || 0;
-          const pct = total ? ((closed / total) * 100).toFixed(1) : 0;
+          const cancelled = phaseCancelled[phase] || 0;
+          const pct = total
+            ? (((closed + cancelled) / total) * 100).toFixed(1)
+            : 0;
           phaseLabels.push(phase);
           closedPercentages.push(pct);
         });
@@ -2421,7 +2424,9 @@ const totalCancelled = Object.values(phaseCancelled).reduce((a, b) => a + b, 0);
 const totalHold = Object.values(phaseHold).reduce((a, b) => a + b, 0);
 const grandTotal =
   totalOpen + totalClosed + totalCancelled + totalHold;
-const totalPct = grandTotal ? ((totalClosed / grandTotal) * 100).toFixed(1) : 0;
+ const totalPct = grandTotal
+          ? (((totalClosed + totalCancelled) / grandTotal) * 100).toFixed(1)
+          : 0;
 
 body.insertAdjacentHTML(
   "beforeend",
@@ -2719,7 +2724,12 @@ body.insertAdjacentHTML(
         Object.keys(seqGroups).forEach((seq) => {
           totalMTC++;
           const statuses = seqGroups[seq];
-          const allClosed = statuses.every((s) => s === "closed");
+
+          const allClosed = statuses.every((s) => {
+            const st = (s || "").toLowerCase();
+            return st === "closed" || st === "cancel" || st === "completed";
+          });
+
           if (allClosed) {
             closedMTC++;
           } else {
