@@ -12,6 +12,8 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
     <style>
       body {
         font-family: sans-serif;
@@ -818,12 +820,18 @@
               </table>
             </div>
 
-            <!-- 📈 Chart beside the table -->
             <div
               id="phaseChartContainer"
               style="flex: 1 1 300px; min-width: 200px"
             >
-              <canvas id="phaseChart" width="100%" height="150"></canvas>
+              <canvas id="phaseChart" width="110%" height="180"></canvas>
+            </div>
+
+            <div
+              id="jcChartContainer"
+              style="flex: 1 1 300px; min-width: 200px"
+            >
+              <canvas id="jcChart" width="100%" height="200"></canvas>
             </div>
           </div>
           <!-- hidden badge container -->
@@ -1189,6 +1197,7 @@
 
           // 🔹 Load matching history
           listenToHistoryForWO(lastWO);
+          renderJCChart(lastWO); // ✅ new line
         } else {
           console.log("ℹ️ No previous Work Order found");
         }
@@ -1778,7 +1787,7 @@ td.taskcard-cell {
 
       let prevDocsMap = new Map(); // 🧠 Cache to detect changes
       let commentFlashDuration = 1000; // highlight for 1 second
-       // 🧠 Badge Notification Logic
+      // 🧠 Badge Notification Logic
       const badgeElements = document.querySelectorAll(".comment-badge");
       let badgeCounts = JSON.parse(localStorage.getItem("badgeCounts")) || {};
       let lastCommentMap = new Map();
@@ -1968,7 +1977,6 @@ ${formatComment(c.comment)}
         const parsed = Date.parse(last);
         return isNaN(parsed) ? 0 : parsed;
       }
-
 
       // 👇 Called inside your onSnapshot listener
       function mapToGroupSkill(rawSkill) {
@@ -2418,19 +2426,24 @@ ${formatComment(c.comment)}
           closedPercentages.push(pct);
         });
         // ✅ Insert total row here
-const totalOpen = Object.values(phaseOpen).reduce((a, b) => a + b, 0);
-const totalClosed = Object.values(phaseClosed).reduce((a, b) => a + b, 0);
-const totalCancelled = Object.values(phaseCancelled).reduce((a, b) => a + b, 0);
-const totalHold = Object.values(phaseHold).reduce((a, b) => a + b, 0);
-const grandTotal =
-  totalOpen + totalClosed + totalCancelled + totalHold;
- const totalPct = grandTotal
+        const totalOpen = Object.values(phaseOpen).reduce((a, b) => a + b, 0);
+        const totalClosed = Object.values(phaseClosed).reduce(
+          (a, b) => a + b,
+          0
+        );
+        const totalCancelled = Object.values(phaseCancelled).reduce(
+          (a, b) => a + b,
+          0
+        );
+        const totalHold = Object.values(phaseHold).reduce((a, b) => a + b, 0);
+        const grandTotal = totalOpen + totalClosed + totalCancelled + totalHold;
+        const totalPct = grandTotal
           ? (((totalClosed + totalCancelled) / grandTotal) * 100).toFixed(1)
           : 0;
 
-body.insertAdjacentHTML(
-  "beforeend",
-  `<tr style="font-weight:bold; background:#eef;">
+        body.insertAdjacentHTML(
+          "beforeend",
+          `<tr style="font-weight:bold; background:#eef;">
     <td style="text-align:left;">TOTAL</td>
     <td style="text-align:right;">${totalOpen}</td>
     <td style="text-align:right;">${totalClosed}</td>
@@ -2438,7 +2451,7 @@ body.insertAdjacentHTML(
     <td style="text-align:right;">${totalHold}</td>
     <td style="text-align:right;">${totalPct}%</td>
   </tr>`
-);
+        );
         // ---- Render or Update Chart ----
         if (window.phaseChartInstance) {
           window.phaseChartInstance.data.labels = phaseLabels;
@@ -2562,8 +2575,6 @@ body.insertAdjacentHTML(
             activeSkill = btn.dataset.skill;
             localStorage.setItem("activeSkill", activeSkill);
 
-        
-
             // Clear filters if "ALL"
             if (activeSkill === "CLEAR") {
               scannedSeqs = [];
@@ -2617,7 +2628,7 @@ body.insertAdjacentHTML(
         return allDocs.filter((d) => d.skill === activeSkill);
       }
 
-      function applyFilters() {
+      async function applyFilters() {
         const filters = {};
         document.querySelectorAll(".filter").forEach((input) => {
           const v = input.value.trim();
@@ -2628,7 +2639,7 @@ body.insertAdjacentHTML(
 
         // Step 1: start with skill-filtered docs
         let skillFiltered = getSkillFilteredDocs();
-        const skillBaseTotal = skillFiltered.length; // ✅ this is your baseline
+        const skillBaseTotal = skillFiltered.length; // ✅ baseline after skill filter
 
         // Step 2: apply seq filters
         if (scannedSeqs.length > 0) {
@@ -2646,7 +2657,7 @@ body.insertAdjacentHTML(
           skillFiltered = skillFiltered.filter((d) => d.phase === activePhase);
         }
 
-        // Step X: apply multiskill filter if active
+        // Step X: apply multiskill/single-skill filters if active
         if (multiSkillActive || singleSkillActive) {
           const seqSkillMap = {};
           allDocs.forEach((d) => {
@@ -2699,7 +2710,7 @@ body.insertAdjacentHTML(
         // Counter + Phase totals
         const pctClosed = getClosedPercentage(skillFiltered);
 
-        // ✅ Fix: baseline total should be after skill filter (not allDocs)
+        // ✅ baseline total after skill filter
         let referenceTotal = skillBaseTotal;
         if (activePhase) {
           referenceTotal = allDocs.filter(
@@ -2724,38 +2735,37 @@ body.insertAdjacentHTML(
         Object.keys(seqGroups).forEach((seq) => {
           totalMTC++;
           const statuses = seqGroups[seq];
-
           const allClosed = statuses.every((s) => {
             const st = (s || "").toLowerCase();
             return st === "closed" || st === "cancel" || st === "completed";
           });
-
-          if (allClosed) {
-            closedMTC++;
-          } else {
-            openMTC++;
-          }
+          if (allClosed) closedMTC++;
+          else openMTC++;
         });
 
         // ------------------------------
         // Build Counter Text with Colors
         // ------------------------------
         let counterText = `Showing ${skillFiltered.length} of ${referenceTotal} tasks • 
-    <span class="highlight">${pctClosed}% Closed</span>
-    &nbsp;&nbsp;&nbsp; 
-    Total MTC ${totalMTC} • 
-    <span style="color:red; font-weight:bold;">Open MTC ${openMTC}</span> • 
-    <span style="color:green; font-weight:bold;">Closed MTC ${closedMTC}</span>`;
+  <span class="highlight">${pctClosed}% Closed</span>
+  &nbsp;&nbsp;&nbsp; 
+  Total MTC ${totalMTC} • 
+  <span style="color:red; font-weight:bold;">Open MTC ${openMTC}</span> • 
+  <span style="color:green; font-weight:bold;">Closed MTC ${closedMTC}</span>`;
 
-        // If filtering by phase, add info + reset button
         if (activePhase) {
           counterText += ` • Filter: <span class="highlight">${activePhase}</span> 
-     <button id="clearPhaseBtn" 
-      style="margin-left:8px; padding:2px 8px; font-size:11px; 
-             background:#eee; border:1px solid #ccc; border-radius:12px; 
-             cursor:pointer; color:#333;">
-      Clear
-    </button>`;
+    <button id="clearPhaseBtn" 
+        style="margin-left:8px; padding:2px 8px; font-size:11px; 
+          background:#eee; border:1px solid #ccc; border-radius:12px; 
+          cursor:pointer; color:#333;">
+        Clear
+   </button>`;
+        }
+
+        // 🟦 Add skill info in counter
+        if (activeSkill && activeSkill !== "CLEAR") {
+          counterText += ` • Skill: <span class="highlight">${activeSkill}</span>`;
         }
 
         counterEl.innerHTML = counterText;
@@ -2789,6 +2799,14 @@ body.insertAdjacentHTML(
             if (seqInput) seqInput.value = "";
             applyFilters();
           };
+        }
+
+        // 🟩 AUTO-REFRESH JC CHART BASED ON CURRENT SKILL + WORKORDER
+        if (
+          typeof renderJCChart === "function" &&
+          typeof currentWO !== "undefined"
+        ) {
+          await renderJCChart(currentWO, skillFiltered);
         }
       }
 
@@ -2877,6 +2895,8 @@ body.insertAdjacentHTML(
             } else {
               renderRows(allDocs);
               renderPhaseTotals(allDocs);
+              // new: load the JC chart
+              renderJCChart(wo);
             }
 
             // 🔹 Preserve skill button highlight
@@ -3324,7 +3344,7 @@ body.insertAdjacentHTML(
         )}&skill=${encodeURIComponent(selectedSkill)}`;
         window.open(url, "_blank");
       });
-       document.getElementById("manualTrigger").addEventListener("click", () => {
+      document.getElementById("manualTrigger").addEventListener("click", () => {
         // ensure a badge exists for current skill
         const container = document.getElementById("dynamicBadgeContainer");
         container.innerHTML = `<div class="comment-badge" data-skill="${activeSkill}"></div>`;
@@ -3335,6 +3355,254 @@ body.insertAdjacentHTML(
         );
         if (badge) badge.click(); // 🔹 triggers your original event listener
       });
+
+      async function renderJCChart(workorder, filteredDocs = []) {
+        if (!workorder) {
+          console.warn("⚠️ No workorder specified for JC chart.");
+          return;
+        }
+
+        const workorderValue = isNaN(workorder) ? workorder : Number(workorder);
+
+        // -----------------------------
+        // 🔹 Get Target Data (from Firestore)
+        // -----------------------------
+        const q = query(
+          collection(db, "jctargets"),
+          where("wo", "==", workorderValue),
+          orderBy("tdate")
+        );
+
+        const snap = await getDocs(q);
+        const rawData = [];
+
+        snap.forEach((doc) => {
+          const d = doc.data();
+          if (!d.tdate || !d.tasktarget) return;
+
+          const date = d.tdate.toDate?.() || new Date(d.tdate);
+          const dateKey = date.toISOString().split("T")[0];
+          const tasktarget = Number(d.tasktarget) || 0;
+          const skill = d.skill || "Unassigned";
+          rawData.push({ dateKey, tasktarget, skill });
+        });
+
+        if (rawData.length === 0) {
+          console.warn("ℹ️ No JC target data found for WO:", workorder);
+          if (window.jcChartInstance) {
+            window.jcChartInstance.destroy();
+            window.jcChartInstance = null;
+          }
+          return;
+        }
+
+        // -----------------------------
+        // 🔹 Filter by active skill
+        // -----------------------------
+        let filteredTarget = rawData;
+        if (activeSkill && activeSkill !== "CLEAR") {
+          const selectedSkills = skillGroups[activeSkill] || [activeSkill];
+          filteredTarget = rawData.filter((d) =>
+            selectedSkills.includes(d.skill)
+          );
+        }
+
+        // -----------------------------
+        // 🔹 Group target totals per date
+        // -----------------------------
+        const groupedTarget = {};
+        filteredTarget.forEach(({ dateKey, tasktarget }) => {
+          groupedTarget[dateKey] = (groupedTarget[dateKey] || 0) + tasktarget;
+        });
+
+        const sortedDates = Object.keys(groupedTarget).sort(
+          (a, b) => new Date(a) - new Date(b)
+        );
+
+        // -----------------------------
+        // 🔹 Compute cumulative target
+        // -----------------------------
+        const labels = [];
+        const cumulativeTargets = [];
+        let runningTarget = 0;
+
+        sortedDates.forEach((d, i) => {
+          runningTarget += groupedTarget[d];
+          labels.push(`Day ${i + 1}`);
+          cumulativeTargets.push(runningTarget);
+        });
+
+        // -----------------------------
+        // 🆕 Get Actual Closed Tasks (from `history`)
+        // -----------------------------
+        const histQ = query(
+          collection(db, "history"),
+          where("wo", "==", workorderValue)
+        );
+
+        const histSnap = await getDocs(histQ);
+        const historyDocs = [];
+        const uniqueTasks = new Set(); // 🧠 to prevent duplicate task counts
+
+        histSnap.forEach((doc) => {
+          const h = doc.data();
+          if (!h.timestamp) return;
+
+          // optional filter by skill
+          if (activeSkill && activeSkill !== "CLEAR") {
+            const selectedSkills = skillGroups[activeSkill] || [activeSkill];
+            if (!selectedSkills.includes(h.skill)) return;
+          }
+
+          const status = (h.status || "").toLowerCase();
+          if (
+            status !== "closed" &&
+            status !== "completed" &&
+            status !== "cancel"
+          )
+            return;
+          // ✅ Create unique key (can be customized)
+          const uniqueKey = `${h.wo || ""}-${h.skill || ""}-${
+            h.task_card || ""
+          }`.trim();
+          if (uniqueTasks.has(uniqueKey)) return; // skip duplicates
+          uniqueTasks.add(uniqueKey);
+
+          const date = h.timestamp.toDate?.() || new Date(h.timestamp);
+          if (isNaN(date)) return;
+
+          const dateKey = date.toISOString().split("T")[0];
+          historyDocs.push({ dateKey });
+        });
+
+        // -----------------------------
+        // 🔹 Group closed count per date
+        // -----------------------------
+        const groupedActual = {};
+        historyDocs.forEach(({ dateKey }) => {
+          groupedActual[dateKey] = (groupedActual[dateKey] || 0) + 1;
+        });
+
+        // -----------------------------
+        // 🔹 Compute cumulative actual closed
+        // -----------------------------
+        // 🔹 Compute cumulative actual closed (cut off at today)
+        const cumulativeActual = [];
+        let runningActual = 0;
+        const todayKey = new Date().toISOString().split("T")[0];
+
+        sortedDates.forEach((d) => {
+          if (new Date(d) <= new Date(todayKey)) {
+            runningActual += groupedActual[d] || 0;
+            cumulativeActual.push(runningActual);
+          } else {
+            // Stop line here by filling remaining days with null (so Chart.js cuts the line)
+            cumulativeActual.push(null);
+          }
+        });
+
+        // -----------------------------
+        // 🔹 Chart Title
+        // -----------------------------
+        const chartTitle =
+          activeSkill && activeSkill !== "CLEAR"
+            ? `Target vs Actual Closed — ${activeSkill}`
+            : "Target vs Actual Closed Tasks";
+
+        // -----------------------------
+        // 🎨 Render / Update Chart
+        // -----------------------------
+        const ctx =
+          window.jcChartCtx ||
+          (window.jcChartCtx = document
+            .getElementById("jcChart")
+            .getContext("2d"));
+
+        if (window.jcChartInstance) {
+          window.jcChartInstance.data.labels = labels;
+          window.jcChartInstance.data.datasets[0].data = cumulativeTargets;
+          window.jcChartInstance.data.datasets[1].data = cumulativeActual;
+          window.jcChartInstance.options.plugins.title.text = chartTitle;
+          window.jcChartInstance.update("active");
+          return;
+        }
+
+        window.jcChartInstance = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Cumulative Target",
+                data: cumulativeTargets,
+                borderColor: "rgba(54,162,235,1)",
+                backgroundColor: "rgba(54,162,235,0.1)",
+                borderWidth: 2,
+                fill: true,
+                tension: 0.35,
+                pointRadius: 3,
+              },
+              {
+                label: "Cumulative Closed",
+                data: cumulativeActual,
+                borderColor: "rgba(34,197,94,1)",
+                backgroundColor: "rgba(34,197,94,0.1)",
+                borderWidth: 2,
+                fill: false,
+                tension: 0.35,
+                pointRadius: 3,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 800, easing: "easeOutQuart" },
+            plugins: {
+              legend: {
+                display: true,
+                position: "bottom", // ⬇️ move legend to bottom
+                labels: {
+                  usePointStyle: true,
+                  boxWidth: 8,
+                  font: { size: 12, weight: "500" },
+                  color: "#374151",
+                },
+              },
+              title: { display: false }, // 🚫 remove title
+              tooltip: {
+                backgroundColor: "#1f2937",
+                titleColor: "#f9fafb",
+                bodyColor: "#f9fafb",
+                callbacks: {
+                  label: (ctx) =>
+                    `${
+                      ctx.dataset.label
+                    }: ${ctx.parsed.y.toLocaleString()} tasks`,
+                },
+              },
+            },
+
+            scales: {
+              x: {
+                title: { display: false }, // 🚫 remove bottom title
+                grid: { display: false },
+                ticks: { color: "#6b7280", font: { size: 11 } },
+              },
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: "Cumulative Tasks" },
+                grid: { color: "rgba(107,114,128,0.1)", drawBorder: false },
+                ticks: {
+                  color: "#6b7280",
+                  font: { size: 11 },
+                  callback: (v) => v.toLocaleString(),
+                },
+              },
+            },
+          },
+        });
+      }
     </script>
   </body>
 </html>
