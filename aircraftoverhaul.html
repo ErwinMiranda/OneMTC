@@ -3356,236 +3356,253 @@ ${formatComment(c.comment)}
         if (badge) badge.click(); // 🔹 triggers your original event listener
       });
 
-      async function renderJCChart(workorder) {
-  if (!workorder) {
-    console.warn("⚠️ No workorder specified for JC chart.");
-    return;
-  }
+      async function renderJCChart(workorder, filteredDocs = []) {
+        if (!workorder) {
+          console.warn("⚠️ No workorder specified for JC chart.");
+          return;
+        }
 
-  const workorderValue = isNaN(workorder) ? workorder : Number(workorder);
+        const workorderValue = isNaN(workorder) ? workorder : Number(workorder);
 
-  // Show a loading placeholder
-  const loader = document.getElementById("jcChartLoader");
-  if (loader) loader.style.display = "block";
+        // -----------------------------
+        // 🔹 Get Target Data (from Firestore)
+        // -----------------------------
+        const q = query(
+          collection(db, "jctargets"),
+          where("wo", "==", workorderValue),
+          orderBy("tdate")
+        );
 
-  // -----------------------------
-  // 🔹 Firestore queries (in parallel)
-  // -----------------------------
-  const targetQuery = query(
-    collection(db, "jctargets"),
-    where("wo", "==", workorderValue),
-    orderBy("tdate")
-  );
+        const snap = await getDocs(q);
+        const rawData = [];
 
-  const historyQuery = query(
-    collection(db, "history"),
-    where("wo", "==", workorderValue)
-  );
+        snap.forEach((doc) => {
+          const d = doc.data();
+          if (!d.tdate || !d.tasktarget) return;
 
-  const [targetSnap, historySnap] = await Promise.all([
-    getDocs(targetQuery),
-    getDocs(historyQuery),
-  ]);
+          const date = d.tdate.toDate?.() || new Date(d.tdate);
+          const dateKey = date.toISOString().split("T")[0];
+          const tasktarget = Number(d.tasktarget) || 0;
+          const skill = d.skill || "Unassigned";
+          rawData.push({ dateKey, tasktarget, skill });
+        });
 
-  // -----------------------------
-  // 🔹 Process Target Data
-  // -----------------------------
-  const rawTarget = [];
-  targetSnap.forEach((doc) => {
-    const d = doc.data();
-    if (!d.tdate || !d.tasktarget) return;
+        if (rawData.length === 0) {
+          console.warn("ℹ️ No JC target data found for WO:", workorder);
+          if (window.jcChartInstance) {
+            window.jcChartInstance.destroy();
+            window.jcChartInstance = null;
+          }
+          return;
+        }
 
-    const date = d.tdate.toDate?.() || new Date(d.tdate);
-    const dateKey = date.toISOString().split("T")[0];
-    const tasktarget = Number(d.tasktarget) || 0;
-    const skill = d.skill || "Unassigned";
-    rawTarget.push({ dateKey, tasktarget, skill });
-  });
+        // -----------------------------
+        // 🔹 Filter by active skill
+        // -----------------------------
+        let filteredTarget = rawData;
+        if (activeSkill && activeSkill !== "CLEAR") {
+          const selectedSkills = skillGroups[activeSkill] || [activeSkill];
+          filteredTarget = rawData.filter((d) =>
+            selectedSkills.includes(d.skill)
+          );
+        }
 
-  if (rawTarget.length === 0) {
-    console.warn("ℹ️ No JC target data found for WO:", workorder);
-    if (window.jcChartInstance) {
-      window.jcChartInstance.destroy();
-      window.jcChartInstance = null;
-    }
-    if (loader) loader.style.display = "none";
-    return;
-  }
+        // -----------------------------
+        // 🔹 Group target totals per date
+        // -----------------------------
+        const groupedTarget = {};
+        filteredTarget.forEach(({ dateKey, tasktarget }) => {
+          groupedTarget[dateKey] = (groupedTarget[dateKey] || 0) + tasktarget;
+        });
 
-  // Filter by activeSkill
-  let filteredTarget = rawTarget;
-  if (activeSkill && activeSkill !== "CLEAR") {
-    const selectedSkills = skillGroups[activeSkill] || [activeSkill];
-    filteredTarget = rawTarget.filter((d) => selectedSkills.includes(d.skill));
-  }
+        const sortedDates = Object.keys(groupedTarget).sort(
+          (a, b) => new Date(a) - new Date(b)
+        );
 
-  // Group by date
-  const groupedTarget = {};
-  filteredTarget.forEach(({ dateKey, tasktarget }) => {
-    groupedTarget[dateKey] = (groupedTarget[dateKey] || 0) + tasktarget;
-  });
+        // -----------------------------
+        // 🔹 Compute cumulative target
+        // -----------------------------
+        const labels = [];
+        const cumulativeTargets = [];
+        let runningTarget = 0;
 
-  const sortedDates = Object.keys(groupedTarget).sort(
-    (a, b) => new Date(a) - new Date(b)
-  );
+        sortedDates.forEach((d, i) => {
+          runningTarget += groupedTarget[d];
+          labels.push(`Day ${i + 1}`);
+          cumulativeTargets.push(runningTarget);
+        });
 
-  // Compute cumulative targets
-  const labels = [];
-  const cumulativeTargets = [];
-  let runningTarget = 0;
-  sortedDates.forEach((d, i) => {
-    runningTarget += groupedTarget[d];
-    labels.push(`Day ${i + 1}`);
-    cumulativeTargets.push(runningTarget);
-  });
+        // -----------------------------
+        // 🆕 Get Actual Closed Tasks (from `history`)
+        // -----------------------------
+        const histQ = query(
+          collection(db, "history"),
+          where("wo", "==", workorderValue)
+        );
 
-  // -----------------------------
-  // 🔹 Initialize Chart with Target line immediately
-  // -----------------------------
-  const ctx =
-    window.jcChartCtx ||
-    (window.jcChartCtx = document.getElementById("jcChart").getContext("2d"));
+        const histSnap = await getDocs(histQ);
+        const historyDocs = [];
+        const uniqueTasks = new Set(); // 🧠 to prevent duplicate task counts
 
-  if (!window.jcChartInstance) {
-    window.jcChartInstance = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels,
-        datasets: [
-          {
-            label: "Cumulative Target",
-            data: cumulativeTargets,
-            borderColor: "rgba(54,162,235,1)",
-            backgroundColor: "rgba(54,162,235,0.1)",
-            borderWidth: 2,
-            fill: true,
-            tension: 0.35,
-            pointRadius: 3,
+        histSnap.forEach((doc) => {
+          const h = doc.data();
+          if (!h.timestamp) return;
+
+          // optional filter by skill
+          if (activeSkill && activeSkill !== "CLEAR") {
+            const selectedSkills = skillGroups[activeSkill] || [activeSkill];
+            if (!selectedSkills.includes(h.skill)) return;
+          }
+
+          const status = (h.status || "").toLowerCase();
+          if (
+            status !== "closed" &&
+            status !== "completed" &&
+            status !== "cancel"
+          )
+            return;
+          // ✅ Create unique key (can be customized)
+          const uniqueKey = `${h.wo || ""}-${h.skill || ""}-${
+            h.task_card || ""
+          }`.trim();
+          if (uniqueTasks.has(uniqueKey)) return; // skip duplicates
+          uniqueTasks.add(uniqueKey);
+
+          const date = h.timestamp.toDate?.() || new Date(h.timestamp);
+          if (isNaN(date)) return;
+
+          const dateKey = date.toISOString().split("T")[0];
+          historyDocs.push({ dateKey });
+        });
+
+        // -----------------------------
+        // 🔹 Group closed count per date
+        // -----------------------------
+        const groupedActual = {};
+        historyDocs.forEach(({ dateKey }) => {
+          groupedActual[dateKey] = (groupedActual[dateKey] || 0) + 1;
+        });
+
+        // -----------------------------
+        // 🔹 Compute cumulative actual closed
+        // -----------------------------
+        // 🔹 Compute cumulative actual closed (cut off at today)
+        const cumulativeActual = [];
+        let runningActual = 0;
+        const todayKey = new Date().toISOString().split("T")[0];
+
+        sortedDates.forEach((d) => {
+          if (new Date(d) <= new Date(todayKey)) {
+            runningActual += groupedActual[d] || 0;
+            cumulativeActual.push(runningActual);
+          } else {
+            // Stop line here by filling remaining days with null (so Chart.js cuts the line)
+            cumulativeActual.push(null);
+          }
+        });
+
+        // -----------------------------
+        // 🔹 Chart Title
+        // -----------------------------
+        const chartTitle =
+          activeSkill && activeSkill !== "CLEAR"
+            ? `Target vs Actual Closed — ${activeSkill}`
+            : "Target vs Actual Closed Tasks";
+
+        // -----------------------------
+        // 🎨 Render / Update Chart
+        // -----------------------------
+        const ctx =
+          window.jcChartCtx ||
+          (window.jcChartCtx = document
+            .getElementById("jcChart")
+            .getContext("2d"));
+
+        if (window.jcChartInstance) {
+          window.jcChartInstance.data.labels = labels;
+          window.jcChartInstance.data.datasets[0].data = cumulativeTargets;
+          window.jcChartInstance.data.datasets[1].data = cumulativeActual;
+          window.jcChartInstance.options.plugins.title.text = chartTitle;
+          window.jcChartInstance.update("active");
+          return;
+        }
+
+        window.jcChartInstance = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Cumulative Target",
+                data: cumulativeTargets,
+                borderColor: "rgba(54,162,235,1)",
+                backgroundColor: "rgba(54,162,235,0.1)",
+                borderWidth: 2,
+                fill: true,
+                tension: 0.35,
+                pointRadius: 3,
+              },
+              {
+                label: "Cumulative Closed",
+                data: cumulativeActual,
+                borderColor: "rgba(34,197,94,1)",
+                backgroundColor: "rgba(34,197,94,0.1)",
+                borderWidth: 2,
+                fill: false,
+                tension: 0.35,
+                pointRadius: 3,
+              },
+            ],
           },
-          {
-            label: "Cumulative Closed",
-            data: Array(labels.length).fill(null), // initially empty
-            borderColor: "rgba(34,197,94,1)",
-            backgroundColor: "rgba(34,197,94,0.1)",
-            borderWidth: 2,
-            fill: false,
-            tension: 0.35,
-            pointRadius: 3,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 800, easing: "easeOutQuart" },
-        plugins: {
-          legend: {
-            display: true,
-            position: "bottom",
-            labels: {
-              usePointStyle: true,
-              boxWidth: 8,
-              font: { size: 12, weight: "500" },
-              color: "#374151",
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 800, easing: "easeOutQuart" },
+            plugins: {
+              legend: {
+                display: true,
+                position: "bottom", // ⬇️ move legend to bottom
+                labels: {
+                  usePointStyle: true,
+                  boxWidth: 8,
+                  font: { size: 12, weight: "500" },
+                  color: "#374151",
+                },
+              },
+              title: { display: false }, // 🚫 remove title
+              tooltip: {
+                backgroundColor: "#1f2937",
+                titleColor: "#f9fafb",
+                bodyColor: "#f9fafb",
+                callbacks: {
+                  label: (ctx) =>
+                    `${
+                      ctx.dataset.label
+                    }: ${ctx.parsed.y.toLocaleString()} tasks`,
+                },
+              },
+            },
+
+            scales: {
+              x: {
+                title: { display: false }, // 🚫 remove bottom title
+                grid: { display: false },
+                ticks: { color: "#6b7280", font: { size: 11 } },
+              },
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: "Cumulative Tasks" },
+                grid: { color: "rgba(107,114,128,0.1)", drawBorder: false },
+                ticks: {
+                  color: "#6b7280",
+                  font: { size: 11 },
+                  callback: (v) => v.toLocaleString(),
+                },
+              },
             },
           },
-          title: { display: false },
-          tooltip: {
-            backgroundColor: "#1f2937",
-            titleColor: "#f9fafb",
-            bodyColor: "#f9fafb",
-            callbacks: {
-              label: (ctx) =>
-                `${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() || 0} tasks`,
-            },
-          },
-        },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: "#6b7280", font: { size: 11 } } },
-          y: {
-            beginAtZero: true,
-            title: { display: true, text: "Cumulative Tasks" },
-            grid: { color: "rgba(107,114,128,0.1)", drawBorder: false },
-            ticks: {
-              color: "#6b7280",
-              font: { size: 11 },
-              callback: (v) => v.toLocaleString(),
-            },
-          },
-        },
-      },
-    });
-  } else {
-    window.jcChartInstance.data.labels = labels;
-    window.jcChartInstance.data.datasets[0].data = cumulativeTargets;
-    window.jcChartInstance.update("active");
-  }
-
-  // -----------------------------
-  // 🔹 Process Actual Closed Tasks (final status only)
-  // -----------------------------
-  const latestHistory = {};
-  historySnap.forEach((doc) => {
-    const h = doc.data();
-    if (!h.timestamp) return;
-
-    // Optional skill filter
-    if (activeSkill && activeSkill !== "CLEAR") {
-      const selectedSkills = skillGroups[activeSkill] || [activeSkill];
-      if (!selectedSkills.includes(h.skill)) return;
-    }
-
-    const key = `${h.wo || ""}-${h.skill || ""}-${h.task_card || ""}`.trim();
-    const ts = h.timestamp.toDate?.() || new Date(h.timestamp);
-
-    if (!latestHistory[key] || ts > latestHistory[key].timestamp) {
-      latestHistory[key] = { status: h.status, timestamp: ts };
-    }
-  });
-
-  const historyDocs = [];
-  Object.values(latestHistory).forEach(({ status, timestamp }) => {
-    const s = (status || "").toLowerCase();
-    if (s === "closed" || s === "completed" || s === "cancel") {
-      const dateKey = timestamp.toISOString().split("T")[0];
-      historyDocs.push({ dateKey });
-    }
-  });
-
-  // Group actual by date
-  const groupedActual = {};
-  historyDocs.forEach(({ dateKey }) => {
-    groupedActual[dateKey] = (groupedActual[dateKey] || 0) + 1;
-  });
-
-  // Compute cumulative actuals
-  const cumulativeActual = [];
-  let runningActual = 0;
-  const todayKey = new Date().toISOString().split("T")[0];
-  sortedDates.forEach((d) => {
-    if (new Date(d) <= new Date(todayKey)) {
-      runningActual += groupedActual[d] || 0;
-      cumulativeActual.push(runningActual);
-    } else {
-      cumulativeActual.push(null);
-    }
-  });
-
-  // -----------------------------
-  // 🔹 Update Chart with Actual line
-  // -----------------------------
-  window.jcChartInstance.data.datasets[1].data = cumulativeActual;
-  const chartTitle =
-    activeSkill && activeSkill !== "CLEAR"
-      ? `Target vs Actual Closed — ${activeSkill}`
-      : "Target vs Actual Closed Tasks";
-  window.jcChartInstance.options.plugins.title.text = chartTitle;
-  window.jcChartInstance.update("active");
-
-  // Hide loader
-  if (loader) loader.style.display = "none";
-}
-      
+        });
+      }
     </script>
   </body>
 </html>
