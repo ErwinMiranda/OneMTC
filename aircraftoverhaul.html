@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>One MTC</title>
     <script type="module">
-      import { requireLogin, logout } from "./auth.js";
-      requireLogin();
-      window.logout = logout;
+         import { requireLogin, logout } from "./auth.js";
+         requireLogin();
+         window.logout = logout;
     </script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js library -->
@@ -705,6 +705,25 @@
         cursor: pointer;
         transition: all 0.2s ease;
       }
+      /* Add this new style */
+      .history-list-scroll {
+        height: 80vh; /* You can adjust this height */
+        overflow-y: auto;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      /* Modify this existing style */
+      .history-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        max-height: none; /* 👈 Remove the max-height */
+        overflow-y: visible; /* 👈 Let the parent handle scrolling */
+        font-family: monospace;
+        font-size: 13px;
+      }
     </style>
   </head>
   <body>
@@ -1048,9 +1067,12 @@
       <div class="history">
         <button id="clearNotifBtn" class="pill-btn">Clear Notification</button>
         <h3>Updates</h3>
-        <ul id="historyList" class="history-list">
-          <li>Waiting for updates...</li>
-        </ul>
+
+        <div id="historyScrollArea" class="history-list-scroll">
+          <ul id="historyList" class="history-list">
+            <li class="clusterize-no-data">Waiting for updates...</li>
+          </ul>
+        </div>
       </div>
     </div>
     <!-- Loading -->
@@ -1128,10 +1150,19 @@
           loginUser = "Unknown";
         }
       });
-
+      function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+          const context = this;
+          clearTimeout(timeout);
+          timeout = setTimeout(() => func.apply(context, args), wait);
+        };
+      }
       /* =======================
    UI refs
   ======================== */
+      // Create a debounced version of applyFilters
+      const debouncedApplyFilters = debounce(applyFilters, 300); // 300ms delay
       const counterEl = document.getElementById("counter");
       const woInput = document.getElementById("woInput");
       const woSearchBtn = document.getElementById("woSearchBtn");
@@ -1160,12 +1191,21 @@
         contentId: "contentArea",
         rows: [],
       });
-
+      // 👇 ADD THIS NEW INSTANCE
+      const historyClusterize = new Clusterize({
+        scrollId: "historyScrollArea", // 👈 The new scroll container
+        contentId: "historyList", // 👈 The <ul>
+        rows: [],
+        no_data_text: "No history yet...",
+        item_height: 85, // 👈 (Optional) Guessing your <li> height, adjust if needed
+        tag: "li",
+      });
       /* =======================
    State
   ======================== */
       let unsubscribe = null;
       let allDocs = []; // all docs for current WO
+      let allHistoryData = []; // 👈 Add this line
       let activeSkill = "CLEAR";
       let scanningActive = false;
       let scannedSeqs = []; // numbers only
@@ -1197,7 +1237,6 @@
 
           // 🔹 Load matching history
           listenToHistoryForWO(lastWO);
-          renderJCChart(lastWO); // ✅ new line
         } else {
           console.log("ℹ️ No previous Work Order found");
         }
@@ -1218,8 +1257,7 @@
         const qHistory = query(
           collection(db, "history"),
           where("wo", "==", workorderValue),
-          orderBy("timestamp", "desc"),
-          limit(50)
+          orderBy("timestamp", "desc")
         );
 
         let initialLoad = true;
@@ -1228,21 +1266,24 @@
           qHistory,
           (snapshot) => {
             if (snapshot.empty) {
-              historyListEl.innerHTML = `<li>No history yet for ${workorder}</li>`;
+              historyClusterize.update([
+                "<li class='clusterize-no-data'>No history yet...</li>",
+              ]);
               return;
             }
 
             if (initialLoad) {
-              historyListEl.innerHTML = "";
-              snapshot.docs.forEach((docSnap) => {
-                const data = docSnap.data();
-                const li = renderHistoryItem(data);
-                li.dataset.id = docSnap.id;
-                historyListEl.appendChild(li);
+              // 1. Build the array of <li> strings
+              allHistoryData = snapshot.docs.map((docSnap) => {
+                return renderHistoryItem(docSnap.data(), docSnap.id); // 👈 Pass data and id
               });
 
-              // 🔹 Restore any previously glowing items
+              // 2. Update Clusterize with the full list
+              historyClusterize.update(allHistoryData);
+
+              // 3. Call your other functions after the list is rendered
               restoreGlow();
+              renderJCChart(currentWO || workorder, allDocs);
 
               initialLoad = false;
               return;
@@ -1254,41 +1295,58 @@
               const id = change.doc.id;
 
               if (change.type === "added") {
+                // This logic assumes new items are always at the top (due to orderBy desc)
                 clearGlow();
 
-                const li = renderHistoryItem(data);
-                li.dataset.id = id;
+                // 1. Render the new <li> string
+                const liString = renderHistoryItem(data, id);
 
-                // Choose glow color by type
-                let glowClass = "";
-                if (data.status === "CLOSED") {
-                  glowClass = "pulse-glow-green";
-                } else if (data.status === "OPEN") {
-                  glowClass = "pulse-glow-blue";
-                } else if (
-                  data.status === "Warning" ||
-                  data.status === "NEWLY ADDED"
-                ) {
-                  glowClass = "pulse-glow-amber";
-                }
+                // 2. Add to our state array
+                allHistoryData.unshift(liString); // Add to the beginning
 
-                if (glowClass) {
-                  li.classList.add(glowClass);
-                  saveGlowState(id, glowClass); // 🔹 Save glow info
-                }
+                // 3. Prepend to Clusterize
+                historyClusterize.prepend([liString]);
 
-                historyListEl.prepend(li);
+                // 4. Handle the glow
+                // We must wait a frame for Clusterize to render the new <li>
+                requestAnimationFrame(() => {
+                  const newLi = historyListEl.querySelector(
+                    `[data-id="${id}"]`
+                  );
+                  if (!newLi) return;
+
+                  let glowClass = "";
+                  if (data.status === "CLOSED") glowClass = "pulse-glow-green";
+                  else if (data.status === "OPEN")
+                    glowClass = "pulse-glow-blue";
+                  else if (
+                    data.status === "Warning" ||
+                    data.status === "NEWLY ADDED"
+                  )
+                    glowClass = "pulse-glow-amber";
+
+                  if (glowClass) {
+                    newLi.classList.add(glowClass);
+                    saveGlowState(id, glowClass);
+                  }
+                });
               }
 
               if (change.type === "removed") {
-                const li = historyListEl.querySelector(`[data-id="${id}"]`);
-                if (li) li.remove();
+                // Find and remove from state array
+                allHistoryData = allHistoryData.filter((rowString) => {
+                  return !rowString.includes(`data-id="${id}"`);
+                });
+                // Refresh the whole list in Clusterize
+                historyClusterize.update(allHistoryData);
               }
             });
           },
           (error) => {
             console.error("❌ History listener error:", error);
-            historyListEl.innerHTML = `<li>Error loading history</li>`;
+            historyClusterize.update([
+              "<li class='clusterize-no-data'>Error loading history</li>",
+            ]);
           }
         );
 
@@ -1365,7 +1423,8 @@
         listenToHistoryForWO(wo);
       });
 
-      function renderHistoryItem(data) {
+      function renderHistoryItem(data, id) {
+        // 👈 Note the new "id" parameter
         const time = data.timestamp?.toDate
           ? data.timestamp.toDate().toLocaleString()
           : "No time";
@@ -1376,24 +1435,22 @@
         const status = (data.status ?? "N/A").toUpperCase();
 
         let modifiedBy = data.modified_by ?? "Unknown";
-        // 🔹 Remove everything after '@' if it looks like an email
         if (modifiedBy.includes("@")) {
           modifiedBy = modifiedBy.split("@")[0];
         }
 
-        const li = document.createElement("li");
-        li.innerHTML = `
-    <span class="time">${time}</span><br>
-    <strong>Seq ${seq}</strong> — ${task}<br>
-    <span class="tag skill">Skill: ${skill}</span> • 
-    <span class="tag phase">Phase: ${phase}</span><br>
-    <span class="status ${status === "CLOSED" ? "closed" : "open"}">
-  ${status === "OPEN" ? "RE-" + status : status}
-</span>
-
-    </span> <small>by ${modifiedBy}</small>
+        // 👇 This is the change: return a string, not an element
+        return `
+    <li data-id="${id}"> 
+      <span class="time">${time}</span><br>
+      <strong>Seq ${seq}</strong> — ${task}<br>
+      <span class="tag skill">Skill: ${skill}</span> • 
+      <span class="tag phase">Phase: ${phase}</span><br>
+      <span class="status ${status === "CLOSED" ? "closed" : "open"}">
+        ${status === "OPEN" ? "RE-" + status : status}
+      </span> <small>by ${modifiedBy}</small>
+    </li>
   `;
-        return li;
       }
 
       async function logHistoryEntry(task, newStatus) {
@@ -1431,25 +1488,49 @@
 
       function calculateDayProgress(startDate, endDate, wo, filterWo) {
         if (filterWo && wo !== filterWo) return ""; // 🚫 Skip if WO doesn’t match
-
         if (!startDate || !endDate) return "";
 
-        const start = startDate.toDate
-          ? startDate.toDate()
-          : new Date(startDate);
-        const end = endDate.toDate ? endDate.toDate() : new Date(endDate);
-        const today = new Date();
+        // ✨ FIX: Helper to safely parse dates in the LOCAL timezone
+        // This prevents the bug where "YYYY-MM-DD" strings are parsed as UTC.
+        const parseDateAsLocal = (dateInput) => {
+          if (dateInput.toDate) {
+            return dateInput.toDate(); // Handle Firestore Timestamps
+          }
+          // If it's a string 'YYYY-MM-DD', new Date() parses it as UTC.
+          // Appending 'T00:00:00' forces it to parse as LOCAL midnight.
+          if (
+            typeof dateInput === "string" &&
+            dateInput.match(/^\d{4}-\d{2}-\d{2}$/)
+          ) {
+            return new Date(`${dateInput}T00:00:00`);
+          }
+          // Handle all other cases (full ISO strings, Date objects, etc.)
+          return new Date(dateInput);
+        };
 
-        if (isNaN(start) || isNaN(end)) return "";
+        const start = parseDateAsLocal(startDate);
+        const end = parseDateAsLocal(endDate);
+        const today = new Date(); // This is always local
 
-        // 🕛 Ignore hours/minutes
+        // Use .getTime() for robust checking
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return "";
+
+        // 🕛 Ignore hours/minutes (sets to LOCAL midnight)
+        // This part of your original code was already correct.
         start.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
         today.setHours(0, 0, 0, 0);
 
-        const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        const msPerDay = 1000 * 60 * 60 * 24;
 
-        if (today < start) {
+        // ✨ Use Math.round for safety across Daylight Saving Time changes
+        const totalDays =
+          Math.round((end.getTime() - start.getTime()) / msPerDay) + 1;
+
+        if (totalDays <= 0) return ""; // Handle invalid date range
+
+        // ✨ Use .getTime() for safer date comparisons
+        if (today.getTime() < start.getTime()) {
           // 📅 Format start date nicely (e.g. "Nov 3 2025")
           const formattedStart = start.toLocaleDateString("en-US", {
             month: "short",
@@ -1457,11 +1538,11 @@
             year: "numeric",
           });
           return `Start date is on ${formattedStart}`;
-        } else if (today > end) {
+        } else if (today.getTime() > end.getTime()) {
           return `Completed (${totalDays} days total)`;
         } else {
           const currentDay =
-            Math.ceil((today - start) / (1000 * 60 * 60 * 24)) + 1;
+            Math.round((today.getTime() - start.getTime()) / msPerDay) + 1;
           return `Day ${currentDay} of ${totalDays}`;
         }
       }
@@ -2629,185 +2710,161 @@ ${formatComment(c.comment)}
       }
 
       async function applyFilters() {
+        // 1. Get all active filter values ONCE
         const filters = {};
         document.querySelectorAll(".filter").forEach((input) => {
-          const v = input.value.trim();
-          if (v !== "" && input.dataset.field !== "seq") {
-            filters[input.dataset.field] = v.toLowerCase();
+          const v = input.value.trim().toLowerCase();
+          if (v && input.dataset.field !== "seq") {
+            filters[input.dataset.field] = v;
           }
         });
 
-        // Step 1: start with skill-filtered docs
-        let skillFiltered = getSkillFilteredDocs();
-        const skillBaseTotal = skillFiltered.length; // ✅ baseline after skill filter
+        // 2. Start with docs that match the active skill
+        let skillFilteredDocs = getSkillFilteredDocs();
+        const skillBaseTotal = skillFilteredDocs.length;
 
-        // Step 2: apply seq filters
-        if (scannedSeqs.length > 0) {
-          skillFiltered = skillFiltered.filter((d) =>
-            scannedSeqs.includes(Number(d.seq))
-          );
-        } else if (seqFilterValues.length > 0) {
-          skillFiltered = skillFiltered.filter((d) =>
-            seqFilterValues.includes(String(d.seq))
-          );
-        }
-
-        // Step 2.5: apply phase filter
-        if (activePhase) {
-          skillFiltered = skillFiltered.filter((d) => d.phase === activePhase);
-        }
-
-        // Step X: apply multiskill/single-skill filters if active
+        // 3. Build a map of seq -> skill count
+        const seqSkillMap = {};
         if (multiSkillActive || singleSkillActive) {
-          const seqSkillMap = {};
           allDocs.forEach((d) => {
             const seq = String(d.seq);
             if (!seqSkillMap[seq]) seqSkillMap[seq] = new Set();
             if (d.skill) seqSkillMap[seq].add(d.skill);
           });
-
-          if (multiSkillActive) {
-            const multiSkillSeqs = new Set(
-              Object.keys(seqSkillMap).filter(
-                (seq) => seqSkillMap[seq].size > 1
-              )
-            );
-            skillFiltered = skillFiltered.filter((d) =>
-              multiSkillSeqs.has(String(d.seq))
-            );
-          } else if (singleSkillActive) {
-            const singleSkillSeqs = new Set(
-              Object.keys(seqSkillMap).filter(
-                (seq) => seqSkillMap[seq].size === 1
-              )
-            );
-            skillFiltered = skillFiltered.filter((d) =>
-              singleSkillSeqs.has(String(d.seq))
-            );
-          }
         }
 
-        // Step 3: apply text filters
-        skillFiltered = skillFiltered.filter((d) =>
-          Object.keys(filters).every((field) =>
-            String(d[field] ?? "")
-              .toLowerCase()
-              .includes(filters[field])
-          )
-        );
+        // 4. Find all SEQs that match ALL criteria
+        const matchingSeqs = new Set();
+        for (const d of skillFilteredDocs) {
+          const seqStr = String(d.seq);
 
-        // Step 4: get SEQs from filtered set
-        const filteredSeqs = new Set(skillFiltered.map((d) => String(d.seq)));
+          // Check text filters
+          if (
+            !Object.keys(filters).every((field) =>
+              String(d[field] ?? "")
+                .toLowerCase()
+                .includes(filters[field])
+            )
+          ) {
+            continue;
+          }
 
-        // Step 5: collect allDocs but only rows with those seqs
+          // Check seq text filter
+          if (seqFilterValues.length > 0 && !seqFilterValues.includes(seqStr)) {
+            continue;
+          }
+
+          // Check scanned seq filter
+          if (scannedSeqs.length > 0 && !scannedSeqs.includes(Number(d.seq))) {
+            continue;
+          }
+
+          // Check phase filter
+          if (activePhase && d.phase !== activePhase) {
+            continue;
+          }
+
+          // Check multi/single skill filters
+          if (multiSkillActive && (seqSkillMap[seqStr]?.size || 0) <= 1) {
+            continue;
+          }
+          if (singleSkillActive && (seqSkillMap[seqStr]?.size || 0) !== 1) {
+            continue;
+          }
+
+          // If all checks pass, add the seq
+          matchingSeqs.add(seqStr);
+        }
+
+        // 5. Now, get all docs that belong to those matching SEQs
         const rowsToRender = allDocs.filter((d) =>
-          filteredSeqs.has(String(d.seq))
+          matchingSeqs.has(String(d.seq))
         );
 
-        // Render rows with full skill context
+        // 6. Render the final list
         renderRows(rowsToRender);
 
-        // Counter + Phase totals
-        const pctClosed = getClosedPercentage(skillFiltered);
+        // 7. Update counters (using the initially skill-filtered list for context)
+        updateCounters(skillFilteredDocs, skillBaseTotal);
 
-        // ✅ baseline total after skill filter
-        let referenceTotal = skillBaseTotal;
-        if (activePhase) {
-          referenceTotal = allDocs.filter(
-            (d) => d.phase === activePhase
-          ).length;
+        // 8. Update JC Chart
+        if (
+          typeof renderJCChart === "function" &&
+          typeof currentWO !== "undefined"
+        ) {
+          await renderJCChart(currentWO, skillFilteredDocs);
         }
+      }
 
-        // ------------------------------
-        // ✅ New MTC Counts
-        // ------------------------------
+      // 💡 You'll need to create this new helper function
+      // I've moved the counter logic out of applyFilters for clarity
+      function updateCounters(skillFilteredDocs, skillBaseTotal) {
+        const pctClosed = getClosedPercentage(skillFilteredDocs);
+
+        // --- MTC Counts ---
         const seqGroups = {};
-        skillFiltered.forEach((d) => {
+        skillFilteredDocs.forEach((d) => {
           const seq = String(d.seq);
           if (!seqGroups[seq]) seqGroups[seq] = [];
           seqGroups[seq].push(d.status?.toLowerCase());
         });
 
-        let totalMTC = 0;
-        let closedMTC = 0;
-        let openMTC = 0;
-
+        let totalMTC = 0,
+          closedMTC = 0,
+          openMTC = 0;
         Object.keys(seqGroups).forEach((seq) => {
           totalMTC++;
-          const statuses = seqGroups[seq];
-          const allClosed = statuses.every((s) => {
-            const st = (s || "").toLowerCase();
-            return st === "closed" || st === "cancel" || st === "completed";
-          });
+          const allClosed = seqGroups[seq].every(
+            (s) => s === "closed" || s === "cancel" || s === "completed"
+          );
           if (allClosed) closedMTC++;
           else openMTC++;
         });
+        // --- End MTC Counts ---
 
-        // ------------------------------
-        // Build Counter Text with Colors
-        // ------------------------------
-        let counterText = `Showing ${skillFiltered.length} of ${referenceTotal} tasks • 
-  <span class="highlight">${pctClosed}% Closed</span>
-  &nbsp;&nbsp;&nbsp; 
-  Total MTC ${totalMTC} • 
-  <span style="color:red; font-weight:bold;">Open MTC ${openMTC}</span> • 
-  <span style="color:green; font-weight:bold;">Closed MTC ${closedMTC}</span>`;
+        let counterText = `Showing ${skillFilteredDocs.length} of ${skillBaseTotal} tasks • 
+    <span class="highlight">${pctClosed}% Closed</span>
+    &nbsp;&nbsp;&nbsp; 
+    Total MTC ${totalMTC} • 
+    <span style="color:red; font-weight:bold;">Open MTC ${openMTC}</span> • 
+    <span style="color:green; font-weight:bold;">Closed MTC ${closedMTC}</span>`;
 
         if (activePhase) {
-          counterText += ` • Filter: <span class="highlight">${activePhase}</span> 
-    <button id="clearPhaseBtn" 
-        style="margin-left:8px; padding:2px 8px; font-size:11px; 
-          background:#eee; border:1px solid #ccc; border-radius:12px; 
-          cursor:pointer; color:#333;">
+          counterText += ` • Filter: <span class="highlight">${activePhase}</span>
+      <button id="clearPhaseBtn" style="margin-left:8px; padding:2px 8px; font-size:11px; background:#eee; border:1px solid #ccc; border-radius:12px; cursor:pointer; color:#333;">
         Clear
-   </button>`;
+      </button>`;
         }
 
-        // 🟦 Add skill info in counter
         if (activeSkill && activeSkill !== "CLEAR") {
           counterText += ` • Skill: <span class="highlight">${activeSkill}</span>`;
         }
 
         counterEl.innerHTML = counterText;
 
-        // Attach event listener for Clear button
-        const clearBtn = document.getElementById("clearPhaseBtn");
-        if (clearBtn) {
-          clearBtn.addEventListener("click", () => {
+        // Re-attach listener for the clear button
+        document
+          .getElementById("clearPhaseBtn")
+          ?.addEventListener("click", () => {
             activePhase = null;
             applyFilters();
           });
-        }
-
-        renderPhaseTotals(skillFiltered);
 
         // Seq clear button
         const clearSeqBtn = document.getElementById("clearSeqBtn");
-        if (seqFilterValues.length > 0 || scannedSeqs.length > 0) {
-          clearSeqBtn.style.display = "inline";
-        } else {
-          clearSeqBtn.style.display = "none";
-        }
+        clearSeqBtn.style.display =
+          seqFilterValues.length > 0 || scannedSeqs.length > 0
+            ? "inline"
+            : "none";
+        clearSeqBtn.onclick = () => {
+          scannedSeqs = [];
+          seqFilterValues = [];
+          const seqInput = document.querySelector('.filter[data-field="seq"]');
+          if (seqInput) seqInput.value = "";
+          applyFilters();
+        };
 
-        if (clearSeqBtn) {
-          clearSeqBtn.onclick = () => {
-            scannedSeqs = [];
-            seqFilterValues = [];
-            const seqInput = document.querySelector(
-              '.filter[data-field="seq"]'
-            );
-            if (seqInput) seqInput.value = "";
-            applyFilters();
-          };
-        }
-
-        // 🟩 AUTO-REFRESH JC CHART BASED ON CURRENT SKILL + WORKORDER
-        if (
-          typeof renderJCChart === "function" &&
-          typeof currentWO !== "undefined"
-        ) {
-          await renderJCChart(currentWO, skillFiltered);
-        }
+        renderPhaseTotals(skillFilteredDocs);
       }
 
       const seqInput = document.querySelector('.filter[data-field="seq"]');
@@ -2827,7 +2884,9 @@ ${formatComment(c.comment)}
 
       document
         .querySelectorAll(".filter")
-        .forEach((input) => input.addEventListener("input", applyFilters));
+        .forEach((input) =>
+          input.addEventListener("input", debouncedApplyFilters)
+        ); // 👈 Use the debounced version
 
       /* =======================
    Firestore Query by WO
@@ -2896,7 +2955,7 @@ ${formatComment(c.comment)}
               renderRows(allDocs);
               renderPhaseTotals(allDocs);
               // new: load the JC chart
-              renderJCChart(wo);
+              renderJCChart(wo, allDocs); // 👈 PASS THE DATA
             }
 
             // 🔹 Preserve skill button highlight
@@ -3357,6 +3416,18 @@ ${formatComment(c.comment)}
       });
 
       async function renderJCChart(workorder, filteredDocs = []) {
+        // -----------------------------
+        // 🆕 Helper function for local date strings
+        // -----------------------------
+        const getLocalDateKey = (date) => {
+          // Check for a valid Date object
+          if (!date || isNaN(date.getTime())) return null;
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, "0"); // getMonth() is 0-indexed
+          const day = String(date.getDate()).padStart(2, "0");
+          return `${year}-${month}-${day}`;
+        };
+
         if (!workorder) {
           console.warn("⚠️ No workorder specified for JC chart.");
           return;
@@ -3381,20 +3452,16 @@ ${formatComment(c.comment)}
           if (!d.tdate || !d.tasktarget) return;
 
           const date = d.tdate.toDate?.() || new Date(d.tdate);
-          const dateKey = date.toISOString().split("T")[0];
+          const dateKey = getLocalDateKey(date);
+          if (!dateKey) return;
+
           const tasktarget = Number(d.tasktarget) || 0;
           const skill = d.skill || "Unassigned";
           rawData.push({ dateKey, tasktarget, skill });
         });
 
-        if (rawData.length === 0) {
-          console.warn("ℹ️ No JC target data found for WO:", workorder);
-          if (window.jcChartInstance) {
-            window.jcChartInstance.destroy();
-            window.jcChartInstance = null;
-          }
-          return;
-        }
+        // ✅✅✅ CHANGE 1: We REMOVED the "if (rawData.length === 0)" block that used to be here.
+        // This allows the function to continue even if no targets are found.
 
         // -----------------------------
         // 🔹 Filter by active skill
@@ -3413,23 +3480,6 @@ ${formatComment(c.comment)}
         const groupedTarget = {};
         filteredTarget.forEach(({ dateKey, tasktarget }) => {
           groupedTarget[dateKey] = (groupedTarget[dateKey] || 0) + tasktarget;
-        });
-
-        const sortedDates = Object.keys(groupedTarget).sort(
-          (a, b) => new Date(a) - new Date(b)
-        );
-
-        // -----------------------------
-        // 🔹 Compute cumulative target
-        // -----------------------------
-        const labels = [];
-        const cumulativeTargets = [];
-        let runningTarget = 0;
-
-        sortedDates.forEach((d, i) => {
-          runningTarget += groupedTarget[d];
-          labels.push(`Day ${i + 1}`);
-          cumulativeTargets.push(runningTarget);
         });
 
         // -----------------------------
@@ -3459,19 +3509,19 @@ ${formatComment(c.comment)}
             status !== "closed" &&
             status !== "completed" &&
             status !== "cancel"
-          )
+          ) {
             return;
-          // ✅ Create unique key (can be customized)
-          const uniqueKey = `${h.wo || ""}-${h.skill || ""}-${
-            h.task_card || ""
-          }`.trim();
+          }
+
+          // Use a unique key of Seq + TaskCard to only count each item once
+          const uniqueKey = `${h.seq || ""}-${h.task_card || ""}`.trim();
           if (uniqueTasks.has(uniqueKey)) return; // skip duplicates
           uniqueTasks.add(uniqueKey);
 
           const date = h.timestamp.toDate?.() || new Date(h.timestamp);
-          if (isNaN(date)) return;
+          const dateKey = getLocalDateKey(date);
+          if (!dateKey) return;
 
-          const dateKey = date.toISOString().split("T")[0];
           historyDocs.push({ dateKey });
         });
 
@@ -3484,19 +3534,52 @@ ${formatComment(c.comment)}
         });
 
         // -----------------------------
-        // 🔹 Compute cumulative actual closed
+        // ✅✅✅ CHANGE 2: Build a master x-axis from BOTH target and actual dates
+        // -----------------------------
+        const allDatesSet = new Set([
+          ...Object.keys(groupedTarget),
+          ...Object.keys(groupedActual),
+        ]);
+
+        const sortedDates = [...allDatesSet].sort(
+          (a, b) => new Date(a) - new Date(b)
+        );
+
+        // ✅✅✅ CHANGE 3: Add a new guard clause to exit if NO data (neither target nor actual) is found
+        if (sortedDates.length === 0) {
+          console.warn("ℹ️ No target or actual data found for WO:", workorder);
+          if (window.jcChartInstance) {
+            window.jcChartInstance.destroy();
+            window.jcChartInstance = null;
+          }
+          return;
+        }
+
+        // -----------------------------
+        // 🔹 Compute cumulative target
+        // -----------------------------
+        const labels = [];
+        const cumulativeTargets = [];
+        let runningTarget = 0;
+
+        sortedDates.forEach((d, i) => {
+          runningTarget += groupedTarget[d] || 0; // 👈 Will add 0 if no target for this date
+          labels.push(`Day ${i + 1}`);
+          cumulativeTargets.push(runningTarget);
+        });
+
         // -----------------------------
         // 🔹 Compute cumulative actual closed (cut off at today)
+        // -----------------------------
         const cumulativeActual = [];
         let runningActual = 0;
-        const todayKey = new Date().toISOString().split("T")[0];
+        const todayKey = getLocalDateKey(new Date());
 
         sortedDates.forEach((d) => {
-          if (new Date(d) <= new Date(todayKey)) {
-            runningActual += groupedActual[d] || 0;
+          if (d <= todayKey) {
+            runningActual += groupedActual[d] || 0; // 👈 Will add 0 if no actuals for this date
             cumulativeActual.push(runningActual);
           } else {
-            // Stop line here by filling remaining days with null (so Chart.js cuts the line)
             cumulativeActual.push(null);
           }
         });
@@ -3534,7 +3617,7 @@ ${formatComment(c.comment)}
             datasets: [
               {
                 label: "Cumulative Target",
-                data: cumulativeTargets,
+                data: cumulativeTargets, // 👈 This will be [0, 0, 0...] if no targets exist
                 borderColor: "rgba(54,162,235,1)",
                 backgroundColor: "rgba(54,162,235,0.1)",
                 borderWidth: 2,
@@ -3544,7 +3627,7 @@ ${formatComment(c.comment)}
               },
               {
                 label: "Cumulative Closed",
-                data: cumulativeActual,
+                data: cumulativeActual, // 👈 This will show the actual data
                 borderColor: "rgba(34,197,94,1)",
                 backgroundColor: "rgba(34,197,94,0.1)",
                 borderWidth: 2,
@@ -3561,7 +3644,7 @@ ${formatComment(c.comment)}
             plugins: {
               legend: {
                 display: true,
-                position: "bottom", // ⬇️ move legend to bottom
+                position: "bottom",
                 labels: {
                   usePointStyle: true,
                   boxWidth: 8,
@@ -3569,7 +3652,7 @@ ${formatComment(c.comment)}
                   color: "#374151",
                 },
               },
-              title: { display: false }, // 🚫 remove title
+              title: { display: false },
               tooltip: {
                 backgroundColor: "#1f2937",
                 titleColor: "#f9fafb",
@@ -3582,10 +3665,9 @@ ${formatComment(c.comment)}
                 },
               },
             },
-
             scales: {
               x: {
-                title: { display: false }, // 🚫 remove bottom title
+                title: { display: false },
                 grid: { display: false },
                 ticks: { color: "#6b7280", font: { size: 11 } },
               },
