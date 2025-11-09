@@ -4,150 +4,299 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>One MTC</title>
-    <script type="module">
-         import { requireLogin, logout } from "./auth.js";
-         requireLogin();
-         window.logout = logout;
-    </script>
+    <!--
+    REMOVED commented-out script block.
+    All Firebase/auth logic is handled in the main script at the bottom.
+    -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <!-- Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 
     <style>
+      /* Import modern font */
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+      /* === Lufthansa Theme & Modernization === */
+      :root {
+        --lufthansa-blue: #05164d;
+        --lufthansa-yellow: #ffb81c;
+        --lufthansa-bg: #f8f9fa;
+        --lufthansa-card-bg: #ffffff;
+        --lufthansa-border: #dee2e6;
+        --lufthansa-text: #212529;
+        --lufthansa-text-light: #495057;
+        --lufthansa-danger: #dc3545;
+        --lufthansa-success: #28a745;
+        --lufthansa-radius: 8px; /* Standardized border radius */
+      }
+
       body {
-        font-family: sans-serif;
-        margin: 20px;
-        background: #fafafa;
+        font-family: "Inter", sans-serif;
+        margin: 0;
+        background: var(--lufthansa-bg);
+        color: var(--lufthansa-text);
       }
-      h2 {
-        margin-bottom: 15px;
+
+      /* === Header === */
+      .plan-header {
+        top: 0;
+        z-index: 100;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--lufthansa-blue);
+        padding: 12px 20px;
+        margin-bottom: 20px;
+        color: white;
       }
-      h3 {
-        font-size: 14px;
+      .plan-heading {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--lufthansa-yellow);
+      }
+      .liveUpdate {
+        font-size: 0.8rem;
+        color: #cbd5e1;
+        margin-left: auto;
+        padding-right: 16px;
+      }
+      .logout-btn {
+        background: var(--lufthansa-yellow);
+        color: var(--lufthansa-blue);
+        border: none;
         padding: 6px 12px;
-        background: #0078d7;
-        border-radius: 12px;
-        color: #ffffff;
-        font-weight: normal;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: var(--lufthansa-radius);
+        cursor: pointer;
+        transition: background 0.2s ease;
       }
-      /* Controls */
+      .logout-btn:hover {
+        background: #ffca4d;
+      }
+
+      /* === Main Layout Wrappers === */
+      .main-wrapper {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        padding: 0 20px 20px;
+      }
+      .main-content {
+        flex: 4;
+        min-width: 0;
+      }
+      .history {
+        flex: 1;
+        background: var(--lufthansa-card-bg);
+        border: 1px solid var(--lufthansa-border);
+        border-radius: var(--lufthansa-radius);
+        padding: 16px;
+        min-width: 250px;
+        max-width: 350px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      }
+
+      /* === Controls & Buttons === */
       .controls {
         display: flex;
         gap: 10px;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
         flex-wrap: wrap;
       }
       .controls input {
         flex: 1;
         min-width: 220px;
-        padding: 6px;
-        font-size: 12px;
-        border-radius: 12px;
-        border: 1px solid #ccc;
+        padding: 8px 12px;
+        font-size: 14px;
+        border-radius: var(--lufthansa-radius);
+        border: 1px solid var(--lufthansa-border);
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
       }
       .btn {
-        padding: 6px 12px;
+        padding: 8px 14px;
         font-size: 14px;
+        font-weight: 500;
         border: none;
         color: #fff;
-        border-radius: 12px;
+        border-radius: var(--lufthansa-radius);
         cursor: pointer;
+        transition: all 0.2s ease;
       }
       #woSearchBtn {
-        background: #0078d7;
+        background: var(--lufthansa-blue);
       }
       #woSearchBtn:hover {
-        background: #005fa3;
+        background: #0a267c;
       }
       #startScanBtn {
-        background: #28a745;
+        background: var(--lufthansa-yellow);
+        color: var(--lufthansa-blue);
+        font-weight: 600;
+      }
+      #startScanBtn:hover {
+        background: #ffca4d;
       }
       #startScanBtn.scanning {
-        background: #218838;
-        box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2) inset;
+        background: #f0b01a;
+        box-shadow: 0 0 0 3px rgba(255, 184, 28, 0.3);
       }
       #stopScanBtn {
-        background: #dc3545;
-        border-radius: 12px;
+        background: var(--lufthansa-danger);
       }
       #stopScanBtn:hover {
         background: #c82333;
       }
 
-      #counter {
-        margin-bottom: 15px;
-        font-weight: bold;
+      /* === Skill Filters === */
+      .skill-filters {
+        margin: 10px 0 15px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
       }
-      #counter .highlight {
-        color: #00d748;
+      .skill-filters button {
+        position: relative;
+        padding: 6px 12px;
+        font-size: 14px;
+        background: #e9ecef;
+        color: var(--lufthansa-text-light);
+        border: 1px solid var(--lufthansa-border);
+        border-radius: 16px; /* Pill shape */
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .skill-filters button:hover {
+        background: #dee2e6;
+      }
+      .skill-filters button.active {
+        background: var(--lufthansa-blue);
+        border-color: var(--lufthansa-blue);
+        color: #fff;
+        font-weight: 600;
+      }
+      .comment-badge {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        background: var(--lufthansa-danger);
+        color: white;
+        font-size: 11px;
+        font-weight: bold;
+        border-radius: 50%;
+        padding: 2px 5px;
+        display: none;
+        transition: transform 0.2s ease;
+        border: 1px solid white;
+      }
+      .comment-badge.pulse {
+        transform: scale(1.25);
       }
 
-      /* ver07 */
-      /* Layout wrapper */
+      /* === Counter & Pill Buttons === */
+      #counter {
+        margin-bottom: 15px;
+        font-weight: 500;
+        color: var(--lufthansa-text-light);
+      }
+      #counter .highlight {
+        color: var(--lufthansa-blue);
+        font-weight: 600;
+      }
+      .pill-btn {
+        display: inline-block;
+        margin-top: 8px;
+        margin-bottom: 12px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        background: var(--lufthansa-card-bg);
+        border: 1px solid var(--lufthansa-border);
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-right: 8px;
+      }
+      .pill-btn:hover {
+        background: #f1f3f5;
+      }
+      .pill-btn.active {
+        background: var(--lufthansa-blue);
+        color: white;
+        border-color: var(--lufthansa-blue);
+      }
+      .printable {
+        margin-top: 10px;
+        font-size: 14px;
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: var(--lufthansa-radius);
+        cursor: pointer;
+      }
+      .logbook-btn {
+        background-color: var(--lufthansa-blue);
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        margin-left: 8px;
+        border-radius: var(--lufthansa-radius);
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.3s;
+      }
+      .logbook-btn:hover {
+        background-color: #0a267c;
+      }
+
+      /* === Main Layout (Tables & Charts) === */
       .layout {
         display: flex;
         gap: 20px;
         align-items: flex-start;
         flex-wrap: wrap;
       }
-
-      /* Left column (phase + skill) */
-      .left-column {
-        flex: 0 0 300px; /* fixed width */
+      /* Moved inline styles to CSS */
+      #phaseTotalsWrapper {
         display: flex;
-        flex-direction: column;
-        gap: 20px; /* space between phase and skill tables */
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: flex-start;
+        width: 100%; /* Ensure it takes full width to wrap children */
+      }
+      #phaseTotalsContainer {
+        flex: 1 1 400px;
+        min-width: 300px;
+      }
+      #phaseChartContainer,
+      #jcChartContainer {
+        flex: 1 1 300px;
+        min-width: 250px;
+        background: var(--lufthansa-card-bg);
+        border: 1px solid var(--lufthansa-border);
+        border-radius: var(--lufthansa-radius);
+        padding: 10px;
+      }
+      #jcChartContainer {
+        height: 270px; /* Give jcChart a bit more space */
+      }
+      #phaseChartContainer {
+        height: 270px;
       }
 
-      /* Main table */
+      /* === Main Data Table === */
       #scrollArea {
         flex: 1;
-        min-width: 400px;
+        width: 100%;
         height: 500px;
         overflow-y: auto;
-        border: 1px solid #aaa;
-        background: #fff;
-        border-radius: 12px;
-      }
-
-      /* Skill + Phase tables */
-      #phaseTotalsTable,
-      #phaseTotalsTable th,
-      #phaseTotalsTable td {
-        border: 1px solid #ddd;
-        padding: 6px;
-      }
-      #phaseTotalsTable th {
-        background: #f5f5f5;
-      }
-
-      /* Mobile responsive */
-      @media (max-width: 900px) {
-        .layout {
-          flex-direction: column;
-        }
-        .left-column,
-        #scrollArea {
-          flex: 1 1 100%;
-          max-width: 100%;
-        }
-        #phaseTotalsContainer {
-          max-width: 100%;
-          width: 100%;
-        }
-      }
-
-      /*ver07*/
-      /* Main scrollable table */
-      .clusterize-scroll {
-        flex: 1;
-        height: 500px;
-        overflow-y: auto;
-        border: 1px solid #aaa;
-        background: #fff;
-        border-radius: 12px;
+        border: 1px solid var(--lufthansa-border);
+        background: var(--lufthansa-card-bg);
+        border-radius: var(--lufthansa-radius);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
       }
       table {
         width: 100%;
@@ -157,27 +306,155 @@
       th,
       td {
         padding: 6px;
-        border: 1px solid #ddd;
+        border: 1px solid var(--lufthansa-border);
         font-size: 14px;
         text-align: left;
         overflow: hidden;
-        border-radius: 6px;
       }
       thead th {
-        background: #f5f5f5;
+        background: #f1f3f5;
         position: sticky;
         top: 0;
         z-index: 2;
+        padding: 8px 6px;
       }
       thead input {
         width: 95%;
-        padding: 4px;
+        padding: 4px 6px;
         font-size: 12px;
         box-sizing: border-box;
-        border-radius: 8px;
+        border-radius: 6px;
+        border: 1px solid #ced4da;
       }
 
-      /* Loading overlay */
+      /* === Specific Table Overrides === */
+      #phaseTotalsTable {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--lufthansa-card-bg);
+        border-radius: var(--lufthansa-radius);
+        border: 1px solid var(--lufthansa-border);
+        overflow: hidden;
+      }
+      #phaseTotalsTable th,
+      #phaseTotalsTable td {
+        border: 1px solid var(--lufthansa-border);
+        font-size: 12px;
+        padding: 4px 6px;
+      }
+      #phaseTotalsTable th {
+        background: #f1f3f5;
+      }
+      #scrollArea th,
+      #scrollArea td {
+        font-size: 11px;
+        padding: 2px 4px;
+      }
+      #scrollArea thead input {
+        font-size: 11px;
+        padding: 2px 4px;
+        height: 20px;
+      }
+      #clearSeqBtn {
+        display: none;
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--lufthansa-danger);
+        padding: 0;
+        line-height: 1;
+      }
+      .cmnt-btn {
+        display: flex;
+        margin-top: 2px;
+        margin-bottom: 2px;
+        padding: 2px 7px;
+        font-size: 11px;
+        font-weight: 500;
+        background: #f1f3f5;
+        border: 1px solid var(--lufthansa-border);
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .cmnt-btn:hover {
+        background: #e9ecef;
+      }
+      .comment-cell {
+        vertical-align: top;
+        border: 1px solid var(--lufthansa-border);
+        padding: 2px 6px;
+      }
+      .comment-input {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        font-size: 13px;
+        font-family: inherit;
+        line-height: 1.3;
+        resize: none;
+        overflow: hidden;
+        padding: 2px 4px;
+        box-sizing: border-box;
+        min-height: 18px;
+      }
+      .comment-input:focus {
+        background-color: #f5f5f5;
+      }
+
+      /* === History Panel === */
+      h3 {
+        font-size: 1rem;
+        padding: 6px 0;
+        margin-top: 0;
+        color: var(--lufthansa-blue);
+        font-weight: 600;
+      }
+      .history-list-scroll {
+        height: 80vh;
+        overflow-y: auto;
+        border: 1px solid var(--lufthansa-border);
+        border-radius: var(--lufthansa-radius);
+        background: #fff;
+      }
+      .history-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        max-height: none;
+        overflow-y: visible;
+        font-family: monospace;
+        font-size: 13px;
+      }
+      .history-list li {
+        border-bottom: 1px solid #eee;
+        padding: 8px 10px;
+        line-height: 1.5;
+      }
+      .history-list li span.time {
+        color: #777;
+        font-size: 12px;
+      }
+      .history-list li span.status {
+        font-weight: bold;
+      }
+      .history-list li span.closed {
+        color: var(--lufthansa-success);
+      }
+      .history-list li span.open {
+        color: var(--lufthansa-danger);
+      }
+      .history-list li span.modified {
+        color: var(--lufthansa-text-light);
+      }
+
+      /* === Loading Overlay === */
       #loadingOverlay {
         position: fixed;
         inset: 0;
@@ -188,10 +465,9 @@
         justify-content: center;
         z-index: 9999;
         font-size: 18px;
-        color: #333;
+        color: var(--lufthansa-text);
         opacity: 1;
         transition: opacity 0.5s ease;
-        border-radius: 0;
       }
       #loadingOverlay.hidden {
         opacity: 0;
@@ -199,7 +475,7 @@
       }
       #loadingOverlay .spinner {
         border: 4px solid #ccc;
-        border-top: 4px solid #0078d7;
+        border-top: 4px solid var(--lufthansa-blue);
         border-radius: 50%;
         width: 40px;
         height: 40px;
@@ -212,31 +488,7 @@
         }
       }
 
-      /* Skill filters */
-      .skill-filters {
-        margin: 10px 0 15px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .skill-filters button {
-        padding: 6px 12px;
-        font-size: 14px;
-        background: #555;
-        color: #fff;
-        border: none;
-        border-radius: 12px;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-      .skill-filters button:hover {
-        background: #333;
-      }
-      .skill-filters button.active {
-        background: #0078d7;
-      }
-
-      /* Scan Modal */
+      /* === Scan Modal === */
       #scanModal {
         display: none;
         position: fixed;
@@ -247,65 +499,93 @@
         z-index: 10000;
       }
       #scanModal .modal-content {
-        background: #fff;
-        padding: 16px;
-        border-radius: 8px;
-        width: 420px;
+        background: var(--lufthansa-card-bg);
+        padding: 20px;
+        border-radius: 12px;
+        width: 450px;
         max-width: calc(100% - 24px);
         max-height: 80vh;
         overflow: auto;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
       }
       #scanModal h3 {
+        color: var(--lufthansa-blue);
         margin: 0 0 8px;
       }
-      #scannedList {
-        list-style: none;
-        padding: 0;
-        margin: 8px 0;
-      }
-      #scannedList li {
+      #manualInputContainer {
+        margin-top: 10px;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
+        gap: 8px;
+      }
+      #manualInputContainer input {
+        flex-grow: 1;
+        padding: 6px 10px;
+        border: 1px solid var(--lufthansa-border);
+        border-radius: var(--lufthansa-radius);
+      }
+      #manualInputContainer button {
+        background: var(--lufthansa-blue);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: var(--lufthansa-radius);
+        cursor: pointer;
+      }
+      .scan-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-top: 6px;
+      }
+      .scan-table th,
+      .scan-table td {
+        border: 1px solid var(--lufthansa-border);
         padding: 6px 8px;
-        border: 1px solid #eee;
-        border-radius: 6px;
-        margin-bottom: 6px;
-        background: #f9f9f9;
-        font-variant-numeric: tabular-nums;
+        text-align: center;
+      }
+      .scan-table th {
+        background: #f1f3f5;
+        font-weight: bold;
+      }
+      .scan-table td button {
+        padding: 3px 6px;
+        font-size: 12px;
+        cursor: pointer;
+        border-radius: 4px;
+        border: none;
+        color: white;
+        background: var(--lufthansa-success);
+      }
+      .scan-table td button[data-reopen] {
+        background: var(--lufthansa-yellow);
+        color: var(--lufthansa-blue);
+      }
+      .scan-table td button[data-remove] {
+        background: var(--lufthansa-danger);
       }
       .pill {
         font-size: 12px;
-        padding: 2px 6px;
-        background: #eee;
+        padding: 2px 8px;
+        background: #e9ecef;
         border-radius: 10px;
-      }
-      .li-actions button {
-        border: none;
-        background: #ef5350;
-        color: #fff;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      .li-actions button:hover {
-        background: #d32f2f;
+        color: var(--lufthansa-text-light);
+        display: inline-block;
+        font-weight: 500;
       }
       .modal-actions {
         display: flex;
         gap: 8px;
-        margin-top: 10px;
+        margin-top: 16px;
         justify-content: flex-end;
       }
       #submitScanBtn {
-        background: #28a745;
+        background: var(--lufthansa-success);
       }
       #clearScanBtn {
         background: #6c757d;
       }
       #closeScanBtn {
-        background: #dc3545;
+        background: var(--lufthansa-danger);
       }
 
       /* Hidden barcode input */
@@ -314,7 +594,8 @@
         left: -9999px;
         top: -9999px;
       }
-      /* Toast Notifications */
+
+      /* === Toast Notifications === */
       #toastContainer {
         position: fixed;
         top: 20px;
@@ -324,158 +605,53 @@
         gap: 10px;
         z-index: 11000;
       }
-
       .toast {
-        background: #333;
+        background: var(--lufthansa-text);
         color: #fff;
-        padding: 10px 16px;
-        border-radius: 6px;
+        padding: 12px 18px;
+        border-radius: var(--lufthansa-radius);
         font-size: 14px;
+        font-weight: 500;
         opacity: 0;
         transform: translateX(100%);
         transition: all 0.4s ease;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       }
-
       .toast.show {
         opacity: 1;
         transform: translateX(0);
       }
-
       .toast.success {
-        background: #28a745;
+        background: var(--lufthansa-success);
       }
       .toast.error {
-        background: #dc3545;
+        background: var(--lufthansa-danger);
       }
       .toast.info {
-        background: #0078d7;
-      }
-      /* Phase Totals Table: smaller font */
-      #phaseTotalsTable th,
-      #phaseTotalsTable td {
-        font-size: 11px;
-        padding: 2px 4px; /* tighter padding */
-      }
-      #scrollArea th,
-      #scrollArea td {
-        font-size: 11px;
-        padding: 2px 4px; /* tighter padding */
-      }
-      /* Main table filter inputs compact */
-      #scrollArea thead input {
-        font-size: 11px;
-        padding: 2px 4px; /* smaller padding */
-        height: 18px; /* reduce input height */
-      }
-      .scan-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-        margin-top: 6px;
+        background: var(--lufthansa-blue);
       }
 
-      .scan-table th,
-      .scan-table td {
-        border: 1px solid #ccc;
-        padding: 6px 8px;
-        text-align: center;
-      }
-
-      .scan-table th {
-        background: #f5f5f5;
-        font-weight: bold;
-      }
-
-      .scan-table td button {
-        padding: 3px 6px;
-        font-size: 12px;
-        cursor: pointer;
-      }
-      .plan-header {
-        top: 0;
-        z-index: 100;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: linear-gradient(to bottom, var(--bg-top), var(--bg-bottom));
-        padding: 8px 12px;
-        border-radius: var(--radius);
-        margin-bottom: 20px;
-      }
-      .plan-heading {
-        font-size: 18px;
-        font-weight: 700;
-        color: #d0d0d0;
-      }
-      :root {
-        --bg-top: #0f172a;
-        --bg-bottom: #1e3a8a;
-        --card: rgba(255, 255, 255, 0.08);
-        --muted: #9ca3af;
-        --accent: #ffcc00; /* Lufthansa yellow */
-        --error: #ef4444;
-      }
-      .liveUpdate {
-        font-size: 0.8rem;
-        color: #cbd5e1;
-        margin-left: auto;
-        padding-right: 10px;
-      }
-      .pill-btn {
-        display: inline-block;
-        margin-top: 8px;
-        margin-bottom: 12px;
-        padding: 6px 14px;
-        font-size: 13px;
-        font-weight: 500;
-        background: #f5f5f5;
-        border: 1px solid #ccc;
-        border-radius: 20px; /* pill shape */
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-
-      .pill-btn:hover {
-        background: #eaeaea;
-      }
-
-      .pill-btn.active {
-        background: #007bff; /* blue highlight when active */
-        color: white;
-        border-color: #007bff;
-      }
-      .printable {
-        margin-top: 10px;
-      }
+      /* === Toggle Switch === */
       .switch {
         position: relative;
         display: inline-block;
         width: 30px;
         height: 12px;
+        vertical-align: middle;
       }
-
-      /* Hide default checkbox */
       .switch input {
         opacity: 0;
         width: 0;
         height: 0;
       }
-
-      /* Slider background */
       .slider {
         position: absolute;
         cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        inset: 0;
         background-color: #ccc;
         transition: 0.4s;
         border-radius: 10px;
       }
-
-      /* Slider circle */
       .slider:before {
         position: absolute;
         content: "";
@@ -486,98 +662,19 @@
         background-color: white;
         transition: 0.4s;
         border-radius: 50%;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
       }
-
-      /* Checked state */
       input:checked + .slider {
-        background-color: #4caf50; /* green when ON */
+        background-color: var(--lufthansa-success);
       }
-
       input:checked + .slider:before {
         transform: translateX(18px);
       }
 
-      /* Optional rounded slider */
-      .slider.round {
-        border-radius: 10px;
-      }
-      /* ==== Added for main wrapper + history panel ==== */
-      .main-wrapper {
-        display: flex;
-        gap: 20px;
-        align-items: flex-start;
-      }
-
-      /* Left side: your main content */
-      .main-content {
-        flex: 4; /* 75% width */
-        min-width: 0; /* prevent overflow in flex layout */
-      }
-
-      /* Right side: History panel (25%) */
-      .history {
-        flex: 1; /* 25% width */
-        background: #fcfbfb;
-        border: 1px solid #ccc;
-        border-radius: 12px;
-        padding: 16px;
-        min-width: 250px;
-        max-width: 350px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        overflow-y: auto;
-      }
-      .history-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        max-height: 80vh;
-        overflow-y: auto;
-        font-family: monospace;
-        font-size: 13px;
-      }
-
-      .history-list li {
-        border-bottom: 1px solid #eee;
-        padding: 6px 8px;
-        line-height: 1.4;
-      }
-
-      .history-list li span.time {
-        color: #999;
-        font-size: 12px;
-      }
-
-      .history-list li span.status {
-        font-weight: bold;
-        color: #007bff;
-      }
-
-      .history-list li span.closed {
-        color: green;
-      }
-
-      .history-list li span.open {
-        color: red;
-      }
-
-      .history-list li span.modified {
-        color: #555;
-      }
-
-      /* Responsive: stack vertically on small screens */
-      @media (max-width: 900px) {
-        .main-wrapper {
-          flex-direction: column;
-        }
-        .history {
-          width: 100%;
-          max-width: none;
-          border: 1px solid #ddd;
-        }
-      }
-      /* status  glow */
+      /* === History Glow Effects === */
       @keyframes pulseGlowGreen {
-        0% {
+        0%,
+        100% {
           background-color: #e8f5e9;
           box-shadow: 0 0 10px 2px #81c784;
         }
@@ -585,18 +682,13 @@
           background-color: #c8e6c9;
           box-shadow: 0 0 20px 5px #66bb6a;
         }
-        100% {
-          background-color: #e8f5e9;
-          box-shadow: 0 0 10px 2px #81c784;
-        }
       }
-
       .pulse-glow-green {
         animation: pulseGlowGreen 1.8s ease-in-out infinite;
-        transition: background-color 0.5s ease, box-shadow 0.5s ease;
       }
       @keyframes pulseGlowBlue {
-        0% {
+        0%,
+        100% {
           background-color: #fde8e3;
           box-shadow: 0 0 10px 2px #f66464;
         }
@@ -604,18 +696,13 @@
           background-color: #fbbbbb;
           box-shadow: 0 0 20px 5px #f54242;
         }
-        100% {
-          background-color: #fde3e3;
-          box-shadow: 0 0 10px 2px #f66464;
-        }
       }
-
       .pulse-glow-blue {
         animation: pulseGlowBlue 1.8s ease-in-out infinite;
-        transition: background-color 0.5s ease, box-shadow 0.5s ease;
       }
       @keyframes pulseGlowAmber {
-        0% {
+        0%,
+        100% {
           background-color: #fff8e1;
           box-shadow: 0 0 10px 2px #ffca28;
         }
@@ -623,106 +710,49 @@
           background-color: #ffecb3;
           box-shadow: 0 0 20px 5px #ffc107;
         }
-        100% {
-          background-color: #fff8e1;
-          box-shadow: 0 0 10px 2px #ffca28;
-        }
       }
-
       .pulse-glow-amber {
         animation: pulseGlowAmber 1.8s ease-in-out infinite;
-        transition: background-color 0.5s ease, box-shadow 0.5s ease;
-      }
-      .logbook-btn {
-        background-color: #003366; /* Lufthansa blue */
-        color: #fff;
-        border: none;
-        padding: 8px 16px;
-        margin-left: 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: background 0.3s;
-      }
-      .logbook-btn:hover {
-        background-color: #002147;
-      }
-      .comment-cell {
-        vertical-align: top;
-        border: 1px solid #ccc;
-        padding: 2px 6px;
       }
 
-      .comment-input {
-        width: 100%;
-        border: none;
-        outline: none;
-        background: transparent;
-        font-size: 13px;
-        line-height: 1.3;
-        resize: none; /* disable manual drag resize */
-        overflow: hidden;
-        padding: 2px 4px;
-        box-sizing: border-box;
-        min-height: 18px;
-      }
-
-      .comment-input:focus {
-        background-color: #f5f5f5;
-      }
-      .skill-filters button {
-        position: relative;
-        margin-right: 5px;
-      }
-
-      .comment-badge {
-        position: absolute;
-        top: -5px;
-        right: -6px;
-        background: red;
-        color: white;
-        font-size: 11px;
-        font-weight: bold;
-        border-radius: 50%;
-        padding: 2px 5px;
-        display: none;
-        transition: transform 0.2s ease;
-      }
-
-      .comment-badge.pulse {
-        transform: scale(1.25);
-      }
-      .cmnt-btn {
-        display: flex;
-        margin-top: 2px;
-        margin-bottom: 2px;
-        padding: 2px 7px;
-        font-size: 12px;
-        font-weight: 500;
-        background: #f5f5f5;
-        border: 1px solid #ccc;
-        border-radius: 20px; /* pill shape */
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-      /* Add this new style */
-      .history-list-scroll {
-        height: 80vh; /* You can adjust this height */
-        overflow-y: auto;
-        border: 1px solid #eee;
-        border-radius: 8px;
-        background: #fff;
-      }
-
-      /* Modify this existing style */
-      .history-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        max-height: none; /* 👈 Remove the max-height */
-        overflow-y: visible; /* 👈 Let the parent handle scrolling */
-        font-family: monospace;
-        font-size: 13px;
+      /* === Responsive (Merged) === */
+      @media (max-width: 900px) {
+        body {
+          margin: 0;
+        }
+        .plan-header {
+          margin-bottom: 10px;
+          padding: 10px;
+        }
+        .plan-heading {
+          font-size: 1rem;
+        }
+        .main-wrapper {
+          flex-direction: column;
+          padding: 0 10px 10px;
+        }
+        .history {
+          width: 100%;
+          max-width: none;
+          box-sizing: border-box;
+        }
+        .layout {
+          flex-direction: column;
+        }
+        .left-column,
+        #scrollArea {
+          flex: 1 1 100%;
+          max-width: 100%;
+        }
+        #phaseTotalsContainer {
+          max-width: 100%;
+          width: 100%;
+        }
+        #phaseChartContainer,
+        #jcChartContainer {
+          width: 100%;
+          box-sizing: border-box;
+        }
       }
     </style>
   </head>
@@ -732,6 +762,7 @@
       <span id="lastUpdate" class="liveUpdate"></span>
       <button onclick="logout()" class="logout-btn">Logout</button>
     </div>
+
     <div class="main-wrapper">
       <!-- Left side main content -->
       <div class="main-content">
@@ -744,7 +775,7 @@
             id="startScanBtn"
             title="Activate barcode scanner"
           >
-            Scan Here!!!
+            Scan Here!
           </button>
           <button
             class="btn"
@@ -801,22 +832,13 @@
         <div id="counter">Waiting for input...</div>
         <button id="multiSkillBtn" class="pill-btn">Multiskill MTC</button>
         <button id="singleSkillBtn" class="pill-btn">Single Skill MTC</button>
+
         <div class="layout">
           <!-- Phase totals and chart (responsive side-by-side) -->
-          <div
-            id="phaseTotalsWrapper"
-            style="
-              display: flex;
-              flex-wrap: wrap;
-              gap: 20px;
-              align-items: flex-start;
-            "
-          >
+          <!-- STYLES MOVED TO CSS -->
+          <div id="phaseTotalsWrapper">
             <!-- 📊 Phase Table -->
-            <div
-              id="phaseTotalsContainer"
-              style="flex: 1 1 400px; min-width: 300px"
-            >
+            <div id="phaseTotalsContainer">
               <table
                 id="phaseTotalsTable"
                 style="width: 100%; border-collapse: collapse"
@@ -839,24 +861,18 @@
               </table>
             </div>
 
-            <div
-              id="phaseChartContainer"
-              style="flex: 1 1 300px; min-width: 200px"
-            >
-              <canvas id="phaseChart" width="110%" height="180"></canvas>
+            <div id="phaseChartContainer">
+              <canvas id="phaseChart"></canvas>
             </div>
 
-            <div
-              id="jcChartContainer"
-              style="flex: 1 1 300px; min-width: 200px"
-            >
-              <canvas id="jcChart" width="100%" height="200"></canvas>
+            <div id="jcChartContainer">
+              <canvas id="jcChart"></canvas>
             </div>
           </div>
           <!-- hidden badge container -->
-          <div id="dynamicBadgeContainer"></div>
+          <div id="dynamicBadgeContainer" style="display: none"></div>
           <!-- Main scrollable table -->
-          <div id="scrollArea" class="clusterize-scroll">
+          <div id="scrollArea">
             <table>
               <thead>
                 <tr>
@@ -891,31 +907,16 @@
                       placeholder="Search Description"
                     />
                   </th>
-                  <th>
+                  <th style="position: relative">
                     <input
                       type="text"
                       class="filter"
                       data-field="seq"
                       placeholder="Search Seq"
-                      style="padding-right: 10px"
+                      style="padding-right: 18px"
                     />
-                    <button
-                      id="clearSeqBtn"
-                      style="
-                        display: none;
-                        position: absolute;
-                        right: 10px;
-                        top: 50%;
-                        transform: translateY(-50%);
-                        border: none;
-                        background: transparent;
-                        cursor: pointer;
-                        font-size: 14px;
-                        color: #e40a0a;
-                      "
-                    >
-                      ✖
-                    </button>
+                    <!-- STYLE MOVED TO CSS -->
+                    <button id="clearSeqBtn">✖</button>
                   </th>
                   <th>
                     <input
@@ -972,13 +973,34 @@
             <div style="font-size: 12px; color: #555">
               WO: <span id="activeWO" class="pill">—</span> • Count:
               <span id="scanCount" class="pill">0</span>
-              <span style="padding-left: 90px">
-                <label class="switch">
+              <span style="padding-left: 20px; float: right">
+                <label
+                  class="switch"
+                  style="margin-right: 8px"
+                  title="Toggle to show/hide already closed tasks"
+                >
                   <input type="checkbox" id="showClosedChk" />
                   <span class="slider round"></span>
                 </label>
-                <span style="margin-left: 8px"> Re-open Task Item(s)</span>
+                <span> Re-open Task Item(s)</span>
               </span>
+            </div>
+
+            <!-- Manual input for seq number -->
+            <div id="manualInputContainer">
+              <label for="manualSeqInput" style="display: none">
+                Manual Seq Number
+              </label>
+              <input
+                type="number"
+                id="manualSeqInput"
+                name="manualSeqInput"
+                placeholder="Enter Seq Number"
+                title="Enter sequence number manually"
+              />
+              <button id="manualAddBtn" title="Add entered sequence number">
+                Add
+              </button>
             </div>
 
             <!-- Search results for scanned/typed seq -->
@@ -1019,31 +1041,6 @@
               </table>
             </div>
 
-            <!-- Manual input for seq number -->
-            <div id="manualInputContainer" style="margin-top: 10px">
-              <label
-                for="manualSeqInput"
-                style="
-                  display: block;
-                  font-size: 12px;
-                  color: #444;
-                  margin-bottom: 4px;
-                "
-              >
-                Manual Seq Number
-              </label>
-              <input
-                type="number"
-                id="manualSeqInput"
-                name="manualSeqInput"
-                placeholder="Enter Seq Number"
-                title="Enter sequence number manually"
-              />
-              <button id="manualAddBtn" title="Add entered sequence number">
-                Add
-              </button>
-            </div>
-
             <div class="modal-actions">
               <button
                 class="btn"
@@ -1065,8 +1062,16 @@
 
       <!-- Right side history panel -->
       <div class="history">
-        <button id="clearNotifBtn" class="pill-btn">Clear Notification</button>
-        <h3>Updates</h3>
+        <h3 style="display: flex; justify-content: space-between">
+          Updates
+          <button
+            id="clearNotifBtn"
+            class="pill-btn"
+            style="margin: 0; padding: 4px 10px; font-size: 12px"
+          >
+            Clear Notifications
+          </button>
+        </h3>
 
         <div id="historyScrollArea" class="history-list-scroll">
           <ul id="historyList" class="history-list">
@@ -1085,10 +1090,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/clusterize.js@0.18.1/clusterize.min.js"></script>
     <script type="module">
-      import { logout } from "./auth.js";
-
-      window.logout = logout; // 👈 exposes it globally
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      // Updated to 10.12.2 for consistency
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
       import {
         getFirestore,
         collection,
@@ -1103,15 +1106,15 @@
         limit,
         addDoc,
         serverTimestamp,
-      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
       import {
         getAuth,
         onAuthStateChanged,
         signOut,
-      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
       /* =======================
-   Firebase Init
-  ======================== */
+        Firebase Init
+      ======================== */
       const firebaseConfig = {
         apiKey: "AIzaSyDCpHhUL8x4rs-fom1xyaNdWm5prSGf57U",
         authDomain: "onemtc-2222c.firebaseapp.com",
@@ -1123,33 +1126,47 @@
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
-      //signInAnonymously(auth).catch(console.error);
+      // REMOVED commented-out signInAnonymously
 
-      // ✅ Redirect user to login page if not signed in
+      // ✅ ADDED Global logout function
+      window.logout = function () {
+        signOut(auth)
+          .then(() => {
+            console.log("User signed out.");
+            localStorage.removeItem("lastWorkorder"); // Clear session
+            window.location.href = "index.html"; // Ensure full page name
+          })
+          .catch((error) => {
+            console.error("Sign out error", error);
+          });
+      };
+
+      // ✅ COMBINED Auth Listeners
+      let loginUser = "Unknown"; // Global state
       onAuthStateChanged(auth, (user) => {
         if (!user) {
           console.log("⚠️ No user signed in. Redirecting to login...");
-          window.location.href = "index";
+          loginUser = "Unknown"; // Reset on logout
+          window.location.href = "index.html";
         } else {
+          // User is signed in
           console.log(`✅ Logged in as: ${user.email || "Anonymous"}`);
-          // Optionally show email in UI
+
+          // Set loginUser
+          if (user.email) {
+            loginUser = user.email.includes("@")
+              ? user.email.split("@")[0]
+              : user.email;
+          } else {
+            loginUser = "Anonymous";
+          }
+
+          // This element doesn't seem to exist, but logic is harmless
           const userDisplay = document.getElementById("userDisplay");
           if (userDisplay) userDisplay.textContent = user.email || "Anonymous";
         }
       });
-      // ✅ Get currently logged-in user's email or fallback
-      let loginUser = "Unknown";
 
-      onAuthStateChanged(auth, (user) => {
-        if (user && user.email) {
-          // Trim everything after @
-          loginUser = user.email.includes("@")
-            ? user.email.split("@")[0]
-            : user.email;
-        } else {
-          loginUser = "Unknown";
-        }
-      });
       function debounce(func, wait) {
         let timeout;
         return function (...args) {
@@ -1159,8 +1176,8 @@
         };
       }
       /* =======================
-   UI refs
-  ======================== */
+        UI refs
+      ======================== */
       // Create a debounced version of applyFilters
       const debouncedApplyFilters = debounce(applyFilters, 300); // 300ms delay
       const counterEl = document.getElementById("counter");
@@ -1173,7 +1190,7 @@
       const barcodeInput = document.getElementById("barcodeInput");
 
       const scanModal = document.getElementById("scanModal");
-      const scannedList = document.getElementById("scannedList");
+      const scannedList = document.getElementById("scannedList"); // ✅ REMOVED duplicate
       const submitScanBtn = document.getElementById("submitScanBtn");
       const clearScanBtn = document.getElementById("clearScanBtn");
       const closeScanBtn = document.getElementById("closeScanBtn");
@@ -1184,8 +1201,8 @@
       const showClosedChk = document.getElementById("showClosedChk");
       const historyListEl = document.getElementById("historyList");
       /* =======================
-   Clusterize Table
-  ======================== */
+        Clusterize Table
+      ======================== */
       const clusterize = new Clusterize({
         scrollId: "scrollArea",
         contentId: "contentArea",
@@ -1201,8 +1218,8 @@
         tag: "li",
       });
       /* =======================
-   State
-  ======================== */
+        State
+      ======================== */
       let unsubscribe = null;
       let allDocs = []; // all docs for current WO
       let allHistoryData = []; // 👈 Add this line
@@ -1224,8 +1241,8 @@
       }
 
       /* =======================
-   History Realtime Listener
-======================= */
+        History Realtime Listener
+      ======================= */
       window.addEventListener("load", () => {
         const lastWO = localStorage.getItem("lastWorkorder");
         if (lastWO) {
@@ -1456,10 +1473,8 @@
       async function logHistoryEntry(task, newStatus) {
         try {
           const user = auth.currentUser;
-          const modifiedBy =
-            (user && (user.displayName || user.email)) ||
-            localStorage.getItem("username") ||
-            "Unknown";
+          // Use the global loginUser variable
+          const modifiedBy = loginUser || "Unknown";
 
           await addDoc(collection(db, "history"), {
             wo: task.wo || "N/A",
@@ -1468,7 +1483,7 @@
             phase: task.phase || "N/A",
             task_card: task.task_card || "N/A",
             status: newStatus,
-            modified_by: modifiedBy,
+            modified_by: modifiedBy, // Use the cleaned username
             timestamp: serverTimestamp(),
           });
 
@@ -1483,55 +1498,45 @@
       }
 
       /* =======================
-   Helpers
-  ======================== */
+        Helpers
+      ======================== */
 
       function calculateDayProgress(startDate, endDate, wo, filterWo) {
         if (filterWo && wo !== filterWo) return ""; // 🚫 Skip if WO doesn’t match
         if (!startDate || !endDate) return "";
 
         // ✨ FIX: Helper to safely parse dates in the LOCAL timezone
-        // This prevents the bug where "YYYY-MM-DD" strings are parsed as UTC.
         const parseDateAsLocal = (dateInput) => {
           if (dateInput.toDate) {
             return dateInput.toDate(); // Handle Firestore Timestamps
           }
-          // If it's a string 'YYYY-MM-DD', new Date() parses it as UTC.
-          // Appending 'T00:00:00' forces it to parse as LOCAL midnight.
           if (
             typeof dateInput === "string" &&
             dateInput.match(/^\d{4}-\d{2}-\d{2}$/)
           ) {
             return new Date(`${dateInput}T00:00:00`);
           }
-          // Handle all other cases (full ISO strings, Date objects, etc.)
           return new Date(dateInput);
         };
 
         const start = parseDateAsLocal(startDate);
         const end = parseDateAsLocal(endDate);
-        const today = new Date(); // This is always local
+        const today = new Date();
 
-        // Use .getTime() for robust checking
         if (isNaN(start.getTime()) || isNaN(end.getTime())) return "";
 
-        // 🕛 Ignore hours/minutes (sets to LOCAL midnight)
-        // This part of your original code was already correct.
         start.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
         today.setHours(0, 0, 0, 0);
 
         const msPerDay = 1000 * 60 * 60 * 24;
 
-        // ✨ Use Math.round for safety across Daylight Saving Time changes
         const totalDays =
           Math.round((end.getTime() - start.getTime()) / msPerDay) + 1;
 
-        if (totalDays <= 0) return ""; // Handle invalid date range
+        if (totalDays <= 0) return "";
 
-        // ✨ Use .getTime() for safer date comparisons
         if (today.getTime() < start.getTime()) {
-          // 📅 Format start date nicely (e.g. "Nov 3 2025")
           const formattedStart = start.toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -1547,29 +1552,33 @@
         }
       }
       const showLoading = () => {
+        overlay.classList.remove("hidden");
         overlay.style.display = "flex";
       };
       const hideLoading = () => {
-        overlay.style.display = "none";
+        overlay.classList.add("hidden");
+        // We use 'hidden' class to fade out, then display:none is set by animation
+        setTimeout(() => {
+          if (overlay.classList.contains("hidden")) {
+            overlay.style.display = "none";
+          }
+        }, 500); // Match transition duration
       };
 
       // PRINTING......
 
       function printFullTable() {
         if (!allDocs || allDocs.length === 0) {
-          alert("No data to print ❗");
+          showToast("No data to print ❗", "error");
           return;
         }
 
         let filteredDocs = [...allDocs];
 
-        // 🔹 Apply filters (include multiskill seqs unless phase is active)
-
-        // 🔹 Apply skill filter while keeping other skills in the same seq visible
+        // 🔹 Apply filters
         if (activeSkill !== "CLEAR") {
           let mainFiltered;
 
-          // Check if skill belongs to a predefined group
           if (skillGroups[activeSkill]) {
             mainFiltered = filteredDocs.filter((d) =>
               skillGroups[activeSkill].includes(d.skill)
@@ -1577,14 +1586,9 @@
           } else {
             mainFiltered = filteredDocs.filter((d) => d.skill === activeSkill);
           }
-
-          // Get all seq numbers where the mainFiltered skill exists
           const relatedSeqs = new Set(mainFiltered.map((d) => d.seq));
-
-          // Keep all tasks in those seqs (even with different skills)
           filteredDocs = filteredDocs.filter((d) => relatedSeqs.has(d.seq));
 
-          // Mark highlight only for the selected skill(s)
           filteredDocs = filteredDocs.map((d) => ({
             ...d,
             highlightTask:
@@ -1592,7 +1596,6 @@
               skillGroups[activeSkill]?.includes(d.skill),
           }));
 
-          // If a phase is active, show only the exact match (no others)
           if (activePhase) {
             filteredDocs = filteredDocs
               .filter((d) =>
@@ -1630,7 +1633,7 @@
         });
 
         if (filteredDocs.length === 0) {
-          alert("No data to print ❗");
+          showToast("No data to print ❗", "error");
           return;
         }
 
@@ -1667,70 +1670,67 @@
             const taskRows = tasks
               .map((d, index) => {
                 const status = (d.status ?? "").toLowerCase();
-                let bgColor = "background-color: salmon;";
+                let bgColor = "background-color: #ffebee;"; // Light red
                 let displayStatus = d.status ?? "";
 
                 if (status === "closed") {
-                  bgColor = "background-color: lightgreen;";
+                  bgColor = "background-color: #e8f5e9;"; // Light green
                   displayStatus = "Closed";
                 } else if (status === "cancel") {
-                  bgColor = "background-color: lightgreen;";
+                  bgColor = "background-color: #e8f5e9;"; // Light green
                   displayStatus = "Cancelled";
                 } else if (status === "open") {
-                  bgColor = "background-color: salmon;";
+                  bgColor = "background-color: #ffebee;"; // Light red
                   displayStatus = "Open";
                 }
 
                 return `
-          <tr class="${d.faded ? "faded" : ""}">
-
-            ${
-              index === 0
-                ? `<td rowspan="${tasks.length}">${
-                    d.reference_task_card ?? ""
-                  }</td>`
-                : ""
-            }
-            ${
-              index === 0
-                ? `<td rowspan="${tasks.length}">${
-                    d.task_card_description ?? ""
-                  }</td>`
-                : ""
-            }
-            ${index === 0 ? `<td rowspan="${tasks.length}">${seq}</td>` : ""}
-           <td class="taskcard-cell" style="${
-             d.highlightTask ? "background-color: #ededed;" : ""
-           }">
-  ${d.task_card ?? ""}
-</td>
-
-
-            <td>${d.comment ?? ""}</td>
-            <td>${d.status ?? ""}</td>
-            <td style="${d.phase === "PH" ? bgColor : ""}">${
+            <tr class="${d.faded ? "faded" : ""}">
+              ${
+                index === 0
+                  ? `<td rowspan="${tasks.length}">${
+                      d.reference_task_card ?? ""
+                    }</td>`
+                  : ""
+              }
+              ${
+                index === 0
+                  ? `<td rowspan="${tasks.length}">${
+                      d.task_card_description ?? ""
+                    }</td>`
+                  : ""
+              }
+              ${index === 0 ? `<td rowspan="${tasks.length}">${seq}</td>` : ""}
+              <td class="taskcard-cell" style="${
+                d.highlightTask ? "background-color: #f1f3f5;" : ""
+              }">
+                ${d.task_card ?? ""}
+              </td>
+              <td>${d.comment ?? ""}</td>
+              <td>${d.status ?? ""}</td>
+              <td style="${d.phase === "PH" ? bgColor : ""}">${
                   d.phase === "PH" ? d.skill : ""
                 }</td>
-            <td style="${d.phase === "P0" ? bgColor : ""}">${
+              <td style="${d.phase === "P0" ? bgColor : ""}">${
                   d.phase === "P0" ? d.skill : ""
                 }</td>
-            <td style="${d.phase === "P1" ? bgColor : ""}">${
+              <td style="${d.phase === "P1" ? bgColor : ""}">${
                   d.phase === "P1" ? d.skill : ""
                 }</td>
-            <td style="${d.phase === "P2" ? bgColor : ""}">${
+              <td style="${d.phase === "P2" ? bgColor : ""}">${
                   d.phase === "P2" ? d.skill : ""
                 }</td>
-            <td style="${d.phase === "P3" ? bgColor : ""}">${
+              <td style="${d.phase === "P3" ? bgColor : ""}">${
                   d.phase === "P3" ? d.skill : ""
                 }</td>
-            <td style="${d.phase === "P4" ? bgColor : ""}">${
+              <td style="${d.phase === "P4" ? bgColor : ""}">${
                   d.phase === "P4" ? d.skill : ""
                 }</td>
-            <td style="${d.phase === "P6" ? bgColor : ""}">${
+              <td style="${d.phase === "P6" ? bgColor : ""}">${
                   d.phase === "P6" ? d.skill : ""
                 }</td>
-          </tr>
-        `;
+            </tr>
+          `;
               })
               .join("");
 
@@ -1744,7 +1744,7 @@
 
         // 🔹 Get dynamic header content and add selected skill
         const dynamicHeader =
-          document.getElementById("dynamicHeader")?.innerHTML || "";
+          document.getElementById("dynamicHeader")?.textContent || "";
 
         let selectedSkillText = "";
         if (activeSkill && activeSkill !== "CLEAR") {
@@ -1754,113 +1754,92 @@
         const fullHeader = `${dynamicHeader}${selectedSkillText}`;
 
         const tableHTML = `
-  <table>
-    <thead>
-      <tr>
-        <th colspan="13" style="text-align:center; font-size:14px; font-weight:bold;">
-          ${fullHeader}
-        </th>
-      </tr>
-      <tr>
-        <th>Reference</th>
-        <th>Description</th>
-        <th>Seq.No</th>
-        <th>TaskCard Items</th>
-        <th>Comments</th>
-        <th>Status</th>
-        <th>PH</th>
-        <th>P0</th>
-        <th>P1</th>
-        <th>P2</th>
-        <th>P3</th>
-        <th>P4</th>
-        <th>P6</th>
-      </tr>
-    </thead>
-    ${rows}
-  </table>
-`;
+      <table>
+        <thead>
+          <tr>
+            <th colspan="13" style="text-align:center; font-size:14px; font-weight:bold; background:white; border-bottom: 2px solid #000;">
+              ${fullHeader}
+            </th>
+          </tr>
+          <tr>
+            <th>Reference</th>
+            <th>Description</th>
+            <th>Seq.No</th>
+            <th>TaskCard Items</th>
+            <th>Comments</th>
+            <th>Status</th>
+            <th>PH</th>
+            <th>P0</th>
+            <th>P1</th>
+            <th>P2</th>
+            <th>P3</th>
+            <th>P4</th>
+            <th>P6</th>
+          </tr>
+        </thead>
+        ${rows}
+      </table>
+    `;
 
         // 🔹 Open print window
         const printWindow = window.open("", "_blank");
         printWindow.document.write(`
-  <html>
-    <head>
-      <title>Print Table</title>
-      <style>
-        @page { 
-            size: landscape;
-          margin: 15mm 15mm 15mm 15mm;
-          @bottom-right {
-            content: "Page " counter(page) " of " counter(pages);
-            font-size: 10px;
-            color: #555;
-            font-family: Arial, sans-serif;
-          }
-        }
-
-        body { 
-          font-family: Arial, sans-serif; 
-          margin: 0;
-          padding: 5mm 5mm 5mm 5mm;
-          font-size: 10px; 
-          counter-reset: page;
-        }
-
-        table { 
-          border-collapse: collapse; 
-          width: 100%;
-          font-size: 10px;
-        } 
-
-        th, td { 
-  border: 1px solid #000; 
-  padding: 10px; 
-  text-align: center; 
-  vertical-align: middle;
-  word-wrap: break-word; /* allows long words to break nicely elsewhere */
-}
-
-/* ✅ Force TaskCard Items column into a single line */
-td.taskcard-cell {
-  white-space: nowrap;        /* Prevent wrapping */
-  text-overflow: ellipsis;    /* Add ... if too long */
-  overflow: hidden;           /* Hide overflow text */
-  max-width: 300px;           /* Optional: adjust width for better layout */
-}
-
-
-        th { background: #f2f2f2; }
-
-        thead {
-          display: table-header-group; /* ✅ Repeats on every page */
-        }
-
-        thead tr:first-child th {
-          border-top: 2px solid #000; /* ✅ Top border always visible */
-          background: white;
-        }
-
-        .seq-group {
-          page-break-inside: avoid;
-        }
-
-        tbody.seq-group:first-of-type tr:first-child td {
-          border-top: 1px solid #000;
-        }
-
-        tbody.seq-group:not(:first-of-type) tr:first-child td {
-          border-top: 2px solid #000;
-        }
-
-      
-      </style>
-    </head>
-    <body>
-      ${tableHTML}
-    </body>
-  </html>
-`);
+      <html>
+        <head>
+          <title>Print Table</title>
+          <style>
+            @page { 
+              size: landscape;
+              margin: 15mm;
+              @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 10px;
+                color: #555;
+                font-family: Arial, sans-serif;
+              }
+            }
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0;
+              padding: 0;
+              font-size: 10px; 
+              counter-reset: page;
+            }
+            table { 
+              border-collapse: collapse; 
+              width: 100%;
+              font-size: 10px;
+            } 
+            th, td { 
+              border: 1px solid #000; 
+              padding: 4px; 
+              text-align: center; 
+              vertical-align: middle;
+              word-wrap: break-word;
+            }
+            td.taskcard-cell {
+              white-space: nowrap; 
+              text-overflow: ellipsis; 
+              overflow: hidden; 
+              max-width: 300px;
+            }
+            th { background: #f2f2f2; }
+            thead {
+              display: table-header-group;
+            }
+            .seq-group {
+              page-break-inside: avoid;
+            }
+            tbody.seq-group:not(:first-of-type) tr:first-child td {
+              border-top: 2px solid #000;
+            }
+          </style>
+        </head>
+        <body>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
         printWindow.document.close();
       }
 
@@ -1890,68 +1869,67 @@ td.taskcard-cell {
         localStorage.setItem("badgeCounts", JSON.stringify(badgeCounts));
       }
       // === COMMENT POPUP WHEN BADGE CLICKED ===
-      // === Apple-style Popup Initialization ===
       let commentPopup = document.getElementById("commentListPopup");
 
       if (!commentPopup) {
         commentPopup = document.createElement("div");
         commentPopup.id = "commentListPopup";
         commentPopup.style.cssText = `
-    display: none;
-    position: fixed;
-    inset: 0;
-    backdrop-filter: blur(3px);
-    background: rgba(0, 0, 0, 0.55);
-    justify-content: flex-end;
-    align-items: center;
-    z-index: 99999;
-  `;
+      display: none;
+      position: fixed;
+      inset: 0;
+      backdrop-filter: blur(3px);
+      background: rgba(0, 0, 0, 0.55);
+      justify-content: flex-end;
+      align-items: center;
+      z-index: 99999;
+    `;
 
         commentPopup.innerHTML = `
-    <div class="popup-card" style="
-      background: rgba(255,255,255,0.85);
-      border: 1px solid rgba(255,255,255,0.5);
-      border-radius: 18px 0 0 18px;
-      padding: 24px;
-      width: 420px;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: -6px 0 30px rgba(0,0,0,0.25);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', Roboto, sans-serif;
-      animation: slideInRight 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-    ">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
-        <h3 id="popupTitle" style="margin:0; font-size:20px; font-weight:600; color:#111;">Comments</h3>
-        <button id="popupClose" style="
-          background:none;
-          border:none;
-          font-size:24px;
-          color:#666;
-          cursor:pointer;
-          transition:0.25s;
-        ">&times;</button>
+      <div class="popup-card" style="
+        background: rgba(255,255,255,0.9);
+        border: 1px solid rgba(255,255,255,0.5);
+        border-radius: 18px 0 0 18px;
+        padding: 24px;
+        width: 420px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: -6px 0 30px rgba(0,0,0,0.25);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', Roboto, sans-serif;
+        animation: slideInRight 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+      ">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <h3 id="popupTitle" style="margin:0; font-size:20px; font-weight:600; color:var(--lufthansa-blue);">Comments</h3>
+          <button id="popupClose" style="
+            background:none;
+            border:none;
+            font-size:24px;
+            color:#666;
+            cursor:pointer;
+            transition:0.25s;
+          ">&times;</button>
+        </div>
+        <div id="popupComments" style="font-size:14px; color:#222; line-height:1.6; border-top:1px solid rgba(0,0,0,0.05); padding-top:10px;">
+        </div>
       </div>
-      <div id="popupComments" style="font-size:14px; color:#222; line-height:1.6; border-top:1px solid rgba(0,0,0,0.05); padding-top:10px;">
-      </div>
-    </div>
-  `;
+    `;
         document.body.appendChild(commentPopup);
 
         const style = document.createElement("style");
         style.textContent = `
-    @keyframes slideInRight {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOutRight {
-      from { transform: translateX(0); opacity: 1; }
-      to { transform: translateX(100%); opacity: 0; }
-    }
-    #popupClose:hover {
-      color:#000;
-      transform: scale(1.1);
-    }
-  `;
+      @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+      #popupClose:hover {
+        color:#000;
+        transform: scale(1.1);
+      }
+    `;
         document.head.appendChild(style);
       }
 
@@ -1992,8 +1970,10 @@ td.taskcard-cell {
         return lines
           .map((line) => {
             line = line.trim();
-            // Ensure every line starts with 🕒
-            return line.startsWith("🕒") ? line : `🕒 ${line}`;
+            // Ensure every line starts with 🕒 or [
+            return line.startsWith("🕒") || line.startsWith("[")
+              ? line
+              : `[No Date] ${line}`;
           })
           .join("\n");
       }
@@ -2035,12 +2015,13 @@ td.taskcard-cell {
             : commentEntries
                 .map(
                   (c) => `
-🔹 <b>Seq ${c.seq}</b> — ${c.task_card}
-<div style="margin:3px 0 5px 10px; padding-left:5px; border-left:2px solid #0078d7; white-space:pre-line;">
-${formatComment(c.comment)}
-</div>
-<hr style="border:none; border-top:1px solid #eee; margin:8px 0;">
-`
+    <div style="margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+      <strong style="color: #333;">🔹 Seq ${c.seq}</strong> — ${c.task_card}
+      <div style="margin:3px 0 5px 10px; padding-left:5px; border-left:2px solid var(--lufthansa-blue); white-space:pre-line; font-size: 13px; color: #444;">
+        ${formatComment(c.comment)}
+      </div>
+    </div>
+    `
                 )
                 .join("");
 
@@ -2184,13 +2165,13 @@ ${formatComment(c.comment)}
           );
 
           let finalStatus = "Open";
-          let statusColor = "red";
+          let statusColor = "var(--lufthansa-danger)";
           if (hasCancelled) {
             finalStatus = "Cancelled";
-            statusColor = "green";
+            statusColor = "var(--lufthansa-success)";
           } else if (allClosed) {
             finalStatus = "Closed";
-            statusColor = "green";
+            statusColor = "var(--lufthansa-success)";
           }
 
           return tasks.map((t, index) => {
@@ -2210,7 +2191,7 @@ ${formatComment(c.comment)}
               !rowHasSelectedSkill
             ) {
               baseCellStyle =
-                " color:#cfcfcf; border-radius:3px; padding:2px 4px;";
+                " color:#adb5bd; border-radius:3px; padding:2px 4px;"; // Faded color
             }
 
             const phaseCells = fixedPhases
@@ -2223,8 +2204,8 @@ ${formatComment(c.comment)}
                     const status = (x.status ?? "").toLowerCase();
                     let color =
                       status === "closed" || status === "cancel"
-                        ? "green"
-                        : "red";
+                        ? "var(--lufthansa-success)"
+                        : "var(--lufthansa-danger)";
                     let highlightStyle = "";
 
                     if (
@@ -2232,15 +2213,15 @@ ${formatComment(c.comment)}
                       selectedSkills.includes(x.skill)
                     ) {
                       highlightStyle =
-                        "background:yellow; border-radius:3px; padding:1px 3px;";
+                        "background:var(--lufthansa-yellow); color: var(--lufthansa-blue); border-radius:3px; padding:1px 3px;";
                     } else if (hasSelectedSkill && !rowHasSelectedSkill) {
                       highlightStyle =
                         "opacity: 0.5; border-radius:3px; padding:1px 3px;";
                     }
 
                     return `<div style="color:${color}; font-weight:bold; ${highlightStyle}">
-                ${x.skill ?? ""}
-              </div>`;
+                      ${x.skill ?? ""}
+                    </div>`;
                   })
                   .join("<br>");
 
@@ -2249,57 +2230,62 @@ ${formatComment(c.comment)}
               .join("");
 
             return `
-<tr id="row-seq-${seq}">
-  ${
-    index === 0
-      ? `<td rowspan="${tasks.length}">${t.reference_task_card ?? ""}</td>`
-      : ""
-  }
-  ${
-    index === 0
-      ? `<td rowspan="${tasks.length}">${t.task_card_description ?? ""}</td>`
-      : ""
-  }
-  ${
-    index === 0
-      ? `<td rowspan="${tasks.length}" style="text-align:center; vertical-align:middle;">
-           <a href="https://ltpsystems.sharepoint.com/sites/BaseMaintenance/Shared Documents/ONEMTC/${currentWO}/${seq}.pdf" 
-              target="_blank" 
-              style="color:blue; text-decoration:underline; cursor:pointer;">
-             ${seq}
-           </a>
-         </td>`
-      : ""
-  }
-  ${
-    index === 0
-      ? `<td rowspan="${tasks.length}" style="text-align:center; vertical-align:middle; font-weight:bold; color:${statusColor};">
-           ${finalStatus}
-         </td>`
-      : ""
-  }
-  <td style="text-align:center; vertical-align:middle; ${baseCellStyle}">
-    ${t.task_card ?? ""}
-  </td>
+      <tr id="row-seq-${seq}">
+        ${
+          index === 0
+            ? `<td rowspan="${tasks.length}">${t.reference_task_card ?? ""}</td>`
+            : ""
+        }
+        ${
+          index === 0
+            ? `<td rowspan="${tasks.length}">${
+                t.task_card_description ?? ""
+              }</td>`
+            : ""
+        }
+        ${
+          index === 0
+            ? `<td rowspan="${
+                tasks.length
+              }" style="text-align:center; vertical-align:middle;">
+                  <a href="https://ltpsystems.sharepoint.com/sites/BaseMaintenance/Shared Documents/ONEMTC/${currentWO}/${seq}.pdf" 
+                    target="_blank" 
+                    style="color:var(--lufthansa-blue); text-decoration:underline; cursor:pointer; font-weight: 500;">
+                    ${seq}
+                  </a>
+                </td>`
+            : ""
+        }
+        ${
+          index === 0
+            ? `<td rowspan="${
+                tasks.length
+              }" style="text-align:center; vertical-align:middle; font-weight:bold; color:${statusColor};">
+                  ${finalStatus}
+                </td>`
+            : ""
+        }
+        <td style="text-align:center; vertical-align:middle; ${baseCellStyle}">
+          ${t.task_card ?? ""}
+        </td>
 
-  <td class="comment-cell">
-    <textarea class="comment-input" data-id="${t.id}" rows="1">${
+        <td class="comment-cell">
+          <textarea class="comment-input" data-id="${t.id}" rows="1">${
               t.comment || ""
             }</textarea>
-  </td>
+        </td>
 
-  ${phaseCells}
-</tr>`;
+        ${phaseCells}
+      </tr>`;
           });
         });
 
         // Preserve scroll
-        const scrollContainer = document.querySelector(".clusterize-scroll");
+        const scrollContainer = document.querySelector("#scrollArea");
         const prevScrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
 
         // 🪶 Smooth no-flicker refresh
-        const tableContainer = document.querySelector(".clusterize-scroll");
-        if (tableContainer) tableContainer.style.visibility = "hidden";
+        if (scrollContainer) scrollContainer.style.visibility = "hidden";
 
         requestAnimationFrame(() => {
           clusterize.clear();
@@ -2312,7 +2298,7 @@ ${formatComment(c.comment)}
           );
 
           if (scrollContainer) scrollContainer.scrollTop = prevScrollTop;
-          if (tableContainer) tableContainer.style.visibility = "visible";
+          if (scrollContainer) scrollContainer.style.visibility = "visible";
           // 🪄 Auto-resize all visible comments after render
           requestAnimationFrame(() => {
             document.querySelectorAll(".comment-input").forEach((ta) => {
@@ -2327,12 +2313,12 @@ ${formatComment(c.comment)}
           const style = document.createElement("style");
           style.id = "comment-style";
           style.textContent = `
-.comment-popup { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.2); z-index: 9999; }
-.comment-popup input { width: 380px; padding: 10px 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; background: white; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.1); outline: none; }
-.comment-popup input:focus { border-color: #0078d7; }
-.ta-highlight { outline: 2px solid #0078d7; background: #f5faff; }
-.comment-updated { transition: background 0.3s ease; background: #fff6a3; } /* 💡 yellow flash */
-`;
+      .comment-popup { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.2); z-index: 9999; }
+      .comment-popup input { width: 380px; padding: 10px 14px; border: 1px solid var(--lufthansa-border); border-radius: var(--lufthansa-radius); font-size: 15px; background: white; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.1); outline: none; }
+      .comment-popup input:focus { border-color: var(--lufthansa-blue); }
+      .ta-highlight { outline: 2px solid var(--lufthansa-blue); background: #f0f6ff; }
+      .comment-updated { transition: background 0.3s ease; background: #fff9db; } /* 💡 yellow flash */
+      `;
           document.head.appendChild(style);
         }
 
@@ -2369,9 +2355,7 @@ ${formatComment(c.comment)}
                 e2.preventDefault();
                 const docId = ta.dataset.id;
                 const rawComment = input.value.trim();
-                let modifiedBy = loginUser || "Unknown";
-                if (modifiedBy.includes("@"))
-                  modifiedBy = modifiedBy.split("@")[0];
+                let modifiedBy = loginUser || "Unknown"; // Use global var
 
                 const now = new Date();
                 const timestamp = now.toLocaleString("en-US", {
@@ -2401,7 +2385,7 @@ ${formatComment(c.comment)}
                   closePopup();
                 } catch (err) {
                   console.error("❌ Error saving comment:", err);
-                  alert("Failed to save comment");
+                  showToast("Failed to save comment", "error");
                   closePopup();
                 }
               } else if (e2.key === "Escape") {
@@ -2455,39 +2439,38 @@ ${formatComment(c.comment)}
           const total = phaseTotals[phase] || 0;
 
           if (total === 0) {
-            // Always show, but with dashes
             body.insertAdjacentHTML(
               "beforeend",
               `<tr>
-          <td class="phase-cell" data-phase="${phase}" style="cursor:pointer; color:gray;">
-            ${phase}
-          </td>
-          <td style="text-align:right; background:#f5f5f5;">-</td>
-          <td style="text-align:right; background:#f5f5f5;">-</td>
-          <td style="text-align:right; background:#f5f5f5;">-</td>
-          <td style="text-align:right; background:#f5f5f5;">-</td>
-          <td style="text-align:right; background:#f5f5f5;">-</td>
-        </tr>`
+            <td class="phase-cell" data-phase="${phase}" style="cursor:not-allowed; color:#adb5bd;">
+              ${phase}
+            </td>
+            <td style="text-align:right; background:#f8f9fa; color:#adb5bd;">-</td>
+            <td style="text-align:right; background:#f8f9fa; color:#adb5bd;">-</td>
+            <td style="text-align:right; background:#f8f9fa; color:#adb5bd;">-</td>
+            <td style="text-align:right; background:#f8f9fa; color:#adb5bd;">-</td>
+            <td style="text-align:right; background:#f8f9fa; color:#adb5bd;">-</td>
+          </tr>`
             );
           } else {
             const open = phaseOpen[phase] || 0;
             const closed = phaseClosed[phase] || 0;
-            const cancelledCount = phaseCancelled[phase] || 0; // ✅ FIXED
+            const cancelledCount = phaseCancelled[phase] || 0;
             const hold = phaseHold[phase] || 0;
             const pct = (((closed + cancelledCount) / total) * 100).toFixed(1);
 
             body.insertAdjacentHTML(
               "beforeend",
               `<tr>
-          <td class="phase-cell" data-phase="${phase}" style="cursor:pointer; color:blue; text-decoration:underline;">
-            ${phase}
-          </td>
-          <td style="text-align:right;">${open}</td>
-          <td style="text-align:right;">${closed}</td>
-          <td style="text-align:right;">${cancelledCount}</td>
-          <td style="text-align:right;">${hold}</td>
-          <td style="text-align:right;">${pct}%</td>
-        </tr>`
+            <td class="phase-cell" data-phase="${phase}" style="cursor:pointer; color:var(--lufthansa-blue); text-decoration:underline; font-weight: 500;">
+              ${phase}
+            </td>
+            <td style="text-align:right;">${open}</td>
+            <td style="text-align:right;">${closed}</td>
+            <td style="text-align:right;">${cancelledCount}</td>
+            <td style="text-align:right;">${hold}</td>
+            <td style="text-align:right;">${pct}%</td>
+          </tr>`
             );
           }
         });
@@ -2524,14 +2507,14 @@ ${formatComment(c.comment)}
 
         body.insertAdjacentHTML(
           "beforeend",
-          `<tr style="font-weight:bold; background:#eef;">
-    <td style="text-align:left;">TOTAL</td>
-    <td style="text-align:right;">${totalOpen}</td>
-    <td style="text-align:right;">${totalClosed}</td>
-    <td style="text-align:right;">${totalCancelled}</td>
-    <td style="text-align:right;">${totalHold}</td>
-    <td style="text-align:right;">${totalPct}%</td>
-  </tr>`
+          `<tr style="font-weight:bold; background:#e7f5ff;">
+        <td style="text-align:left;">TOTAL</td>
+        <td style="text-align:right;">${totalOpen}</td>
+        <td style="text-align:right;">${totalClosed}</td>
+        <td style="text-align:right;">${totalCancelled}</td>
+        <td style="text-align:right;">${totalHold}</td>
+        <td style="text-align:right;">${totalPct}%</td>
+      </tr>`
         );
         // ---- Render or Update Chart ----
         if (window.phaseChartInstance) {
@@ -2541,16 +2524,17 @@ ${formatComment(c.comment)}
         } else {
           const ctx = document.getElementById("phaseChart").getContext("2d");
           window.phaseChartInstance = new Chart(ctx, {
-            type: "bar", // change to 'line' if preferred
+            type: "bar",
             data: {
               labels: phaseLabels,
               datasets: [
                 {
                   label: "% Closed",
                   data: closedPercentages,
-                  backgroundColor: "rgba(54, 162, 235, 0.6)",
-                  borderColor: "rgba(54, 162, 235, 1)",
+                  backgroundColor: "rgba(5, 22, 77, 0.7)", // Lufthansa Blue
+                  borderColor: "rgba(5, 22, 77, 1)",
                   borderWidth: 1,
+                  borderRadius: 4,
                 },
               ],
             },
@@ -2594,7 +2578,6 @@ ${formatComment(c.comment)}
               }
 
               applyFilters();
-              // highlightActivePhase();
             });
           });
       }
@@ -2640,14 +2623,16 @@ ${formatComment(c.comment)}
         // Re-attach listeners
         attachSkillButtonListeners();
 
-        // Update badges immediately (in case comments already exist)
+        // Update badges immediately
         updateBadgeDisplay();
       }
 
       function attachSkillButtonListeners() {
         document.querySelectorAll(".skill-filters button").forEach((btn) => {
+          // Remove old listener to prevent duplicates
+          btn.onclick = null;
+          // Add new one
           btn.onclick = () => {
-            // ✅ Remove active from all, add to clicked
             document
               .querySelectorAll(".skill-filters button")
               .forEach((b) => b.classList.remove("active"));
@@ -2656,7 +2641,6 @@ ${formatComment(c.comment)}
             activeSkill = btn.dataset.skill;
             localStorage.setItem("activeSkill", activeSkill);
 
-            // Clear filters if "ALL"
             if (activeSkill === "CLEAR") {
               scannedSeqs = [];
               seqFilterValues = [];
@@ -2678,7 +2662,7 @@ ${formatComment(c.comment)}
         const singleBtn = document.getElementById("singleSkillBtn");
 
         multiBtn.classList.toggle("active", multiSkillActive);
-        singleBtn.classList.remove("active"); // ✅ always clear highlight
+        singleBtn.classList.remove("active");
 
         applyFilters();
       });
@@ -2692,7 +2676,7 @@ ${formatComment(c.comment)}
           const singleBtn = document.getElementById("singleSkillBtn");
 
           singleBtn.classList.toggle("active", singleSkillActive);
-          multiBtn.classList.remove("active"); // ✅ always clear highlight
+          multiBtn.classList.remove("active");
 
           applyFilters();
         });
@@ -2700,12 +2684,12 @@ ${formatComment(c.comment)}
         if (activeSkill === "CLEAR") return allDocs;
 
         if (skillGroups[activeSkill]) {
-          // Predefined group (AVI, CRG/ENG, etc.)
+          // Predefined group
           const skills = skillGroups[activeSkill];
           return allDocs.filter((d) => skills.includes(d.skill));
         }
 
-        // Dynamic skill (not in predefined groups)
+        // Dynamic skill
         return allDocs.filter((d) => d.skill === activeSkill);
       }
 
@@ -2772,7 +2756,6 @@ ${formatComment(c.comment)}
             continue;
           }
 
-          // If all checks pass, add the seq
           matchingSeqs.add(seqStr);
         }
 
@@ -2784,7 +2767,7 @@ ${formatComment(c.comment)}
         // 6. Render the final list
         renderRows(rowsToRender);
 
-        // 7. Update counters (using the initially skill-filtered list for context)
+        // 7. Update counters
         updateCounters(skillFilteredDocs, skillBaseTotal);
 
         // 8. Update JC Chart
@@ -2796,8 +2779,6 @@ ${formatComment(c.comment)}
         }
       }
 
-      // 💡 You'll need to create this new helper function
-      // I've moved the counter logic out of applyFilters for clarity
       function updateCounters(skillFilteredDocs, skillBaseTotal) {
         const pctClosed = getClosedPercentage(skillFilteredDocs);
 
@@ -2826,8 +2807,8 @@ ${formatComment(c.comment)}
     <span class="highlight">${pctClosed}% Closed</span>
     &nbsp;&nbsp;&nbsp; 
     Total MTC ${totalMTC} • 
-    <span style="color:red; font-weight:bold;">Open MTC ${openMTC}</span> • 
-    <span style="color:green; font-weight:bold;">Closed MTC ${closedMTC}</span>`;
+    <span style="color:var(--lufthansa-danger); font-weight:bold;">Open MTC ${openMTC}</span> • 
+    <span style="color:var(--lufthansa-success); font-weight:bold;">Closed MTC ${closedMTC}</span>`;
 
         if (activePhase) {
           counterText += ` • Filter: <span class="highlight">${activePhase}</span>
@@ -2886,11 +2867,11 @@ ${formatComment(c.comment)}
         .querySelectorAll(".filter")
         .forEach((input) =>
           input.addEventListener("input", debouncedApplyFilters)
-        ); // 👈 Use the debounced version
+        );
 
       /* =======================
-   Firestore Query by WO
-  ======================== */
+        Firestore Query by WO
+      ======================== */
       function searchWorkorder(wo) {
         if (!wo) return;
         showLoading();
@@ -2941,7 +2922,6 @@ ${formatComment(c.comment)}
             lastUpdateEl.textContent = "Live • " + new Date().toLocaleString();
             //################## Dynamic header
 
-            // 🔹 Preserve filters if active
             if (
               activeSkill !== "CLEAR" ||
               activePhase ||
@@ -2954,8 +2934,7 @@ ${formatComment(c.comment)}
             } else {
               renderRows(allDocs);
               renderPhaseTotals(allDocs);
-              // new: load the JC chart
-              renderJCChart(wo, allDocs); // 👈 PASS THE DATA
+              renderJCChart(wo, allDocs);
             }
 
             // 🔹 Preserve skill button highlight
@@ -2975,7 +2954,7 @@ ${formatComment(c.comment)}
           (err) => {
             console.error(err);
             hideLoading();
-            // alert("Error loading tasks.");
+            showToast("Error loading tasks.", "error");
           }
         );
       }
@@ -2989,11 +2968,13 @@ ${formatComment(c.comment)}
       if (lastWO) {
         woInput.value = lastWO;
         searchWorkorder(lastWO);
+      } else {
+        hideLoading(); // Hide loading if no WO is loaded
       }
 
       /* =======================
-   Scan Modal + Scanner
-  ======================== */
+        Scan Modal + Scanner
+      ======================== */
       async function updateTaskStatus(taskId, newStatus) {
         try {
           // 🔹 Update Firestore task
@@ -3022,7 +3003,8 @@ ${formatComment(c.comment)}
 
       function showToast(message, type = "info", duration = 4000) {
         const container = document.getElementById("toastContainer");
-        container.innerHTML = "";
+        // Clear previous toasts to avoid stacking
+        // container.innerHTML = "";
 
         const toast = document.createElement("div");
         toast.className = `toast ${type}`;
@@ -3050,7 +3032,7 @@ ${formatComment(c.comment)}
 
       let scannedTasks = []; // [{ id, display }]
       const scanResultsList = document.getElementById("scanResultsList");
-      //const scannedList = document.getElementById("scannedList");
+      // REMOVED redundant const scannedList
 
       manualAddBtn.addEventListener("click", () => {
         const value = manualSeqInput.value.trim();
@@ -3078,33 +3060,12 @@ ${formatComment(c.comment)}
         }
       }
 
-      function renderScannedTasks() {
-        scannedList.innerHTML = "";
-
-        if (!scannedTasks.length) {
-          scannedList.innerHTML = `<li style="justify-content:center;color:#777;">No tasks queued</li>`;
-        } else {
-          scannedTasks.forEach((task) => {
-            const phase = task.phase || "P?";
-            const skill = task.skill || "GEN";
-            const status = task.status || "OPEN";
-
-            const li = document.createElement("li");
-            li.innerHTML = `
-        <span>Seq ${task.seq}-${phase}-${skill}-${status}</span>
-        <span class="li-actions">
-          <button type="button" data-remove="${task.id}">Remove</button>
-        </span>`;
-            scannedList.appendChild(li);
-          });
-        }
-
-        scanCountEl.textContent = String(scannedTasks.length);
-      }
+      // This function seems to be unused, renderQueuedList is used instead.
+      // function renderScannedTasks() { ... }
 
       startScanBtn.addEventListener("click", () => {
         if (!currentWO && !woInput.value.trim()) {
-          alert("Enter a Workorder first, then click Search.");
+          showToast("Enter a Workorder first, then click Search.", "info");
           return;
         }
         if (!currentWO && woInput.value.trim()) {
@@ -3130,7 +3091,7 @@ ${formatComment(c.comment)}
       async function handleScannedValue(raw) {
         const num = Number(raw);
         if (Number.isNaN(num)) {
-          alert(`Invalid sequence (not a number): "${raw}"`);
+          showToast(`Invalid sequence (not a number): "${raw}"`, "error");
           return;
         }
 
@@ -3155,16 +3116,14 @@ ${formatComment(c.comment)}
           }
 
           let shown = 0;
-          const showClosed = showClosedChk.checked; // ✅ check state
+          const showClosed = showClosedChk.checked;
 
           snap.docs.forEach((docSnap) => {
             const task = { id: docSnap.id, ...docSnap.data() };
             const isClosed = (task.status ?? "").toUpperCase() === "CLOSED";
 
-            // ✅ skip CLOSED unless checkbox is ticked
             if (isClosed && !showClosed) return;
 
-            // ✅ filter by selected skill
             if (activeSkill !== "CLEAR") {
               if (skillGroups[activeSkill]) {
                 if (!skillGroups[activeSkill].includes(task.skill)) return;
@@ -3206,7 +3165,7 @@ ${formatComment(c.comment)}
           if (scanModal.style.display !== "flex") openModal();
         } catch (err) {
           console.error(err);
-          alert("Error fetching tasks.");
+          showToast("Error fetching tasks.", "error");
         }
       }
 
@@ -3217,13 +3176,11 @@ ${formatComment(c.comment)}
 
         const taskId = btn.getAttribute("data-add");
 
-        // prevent duplicates
         if (scannedTasks.some((t) => t.id === taskId)) {
           showToast("Task already queued", "info");
           return;
         }
 
-        // get row cells (td values)
         const row = btn.closest("tr");
         const seq = row.children[0].textContent.trim();
         const phase = row.children[1].textContent.trim();
@@ -3236,26 +3193,24 @@ ${formatComment(c.comment)}
           phase,
           skill,
           status,
-          display: `Seq ${seq}-${phase}-${skill}-${status}`, // still keep for reuse
+          display: `Seq ${seq}-${phase}-${skill}-${status}`,
         });
 
         renderQueuedList();
-
-        // remove the row from results once added (optional)
         row.remove();
       });
+
+      // Handle Re-open click
       scanResultsList.addEventListener("click", async (e) => {
         const reopenBtn = e.target.closest("button[data-reopen]");
         if (!reopenBtn) return;
 
         const taskId = reopenBtn.getAttribute("data-reopen");
-
         const ok = await updateTaskStatus(taskId, "OPEN");
         if (!ok) return;
 
-        // update row
         const row = reopenBtn.closest("tr");
-        row.children[3].textContent = "OPEN"; // update status cell
+        row.children[3].textContent = "OPEN";
         reopenBtn.outerHTML = `<button type="button" data-add="${taskId}">Add</button>`;
         showToast("Task reopened ✅", "success");
       });
@@ -3287,7 +3242,6 @@ ${formatComment(c.comment)}
             );
           });
         }
-
         scanCountEl.textContent = String(scannedTasks.length);
       }
 
@@ -3297,15 +3251,10 @@ ${formatComment(c.comment)}
         if (!btn) return;
 
         const id = btn.getAttribute("data-remove");
-
-        // find task before removing
         const task = scannedTasks.find((t) => t.id === id);
-
-        // filter it out
         scannedTasks = scannedTasks.filter((t) => t.id !== id);
         renderQueuedList();
 
-        // if task exists → put it back into Matching list
         if (task) {
           scanResultsList.insertAdjacentHTML(
             "beforeend",
@@ -3319,7 +3268,7 @@ ${formatComment(c.comment)}
           <button type="button" data-add="${task.id}">Add</button>
         </td>
       </tr>
-    `
+      `
           );
         }
       });
@@ -3327,11 +3276,11 @@ ${formatComment(c.comment)}
       // ✅ Submit queued tasks
       submitScanBtn.addEventListener("click", async () => {
         if (!currentWO) {
-          alert("Please search a Workorder first.");
+          showToast("Please search a Workorder first.", "error");
           return;
         }
         if (!scannedTasks.length) {
-          alert("No tasks queued.");
+          showToast("No tasks queued.", "info");
           return;
         }
 
@@ -3347,12 +3296,11 @@ ${formatComment(c.comment)}
           }
         } catch (err) {
           console.error(err);
-          alert("Error while updating tasks. Please try again.");
+          showToast("Error while updating tasks. Please try again.", "error");
         } finally {
-          applyFilters(); // keep data filtered
+          applyFilters();
           hideLoading();
 
-          // Keep the active skill button visually active
           document
             .querySelectorAll(".skill-filters button")
             .forEach((b) => b.classList.remove("active"));
@@ -3364,8 +3312,8 @@ ${formatComment(c.comment)}
         }
 
         scannedTasks = [];
-        renderScannedTasks();
-        scanResultsList.innerHTML = ""; // matching results
+        renderQueuedList();
+        scanResultsList.innerHTML = "";
         showToast(
           `Updated to CLOSED: ${updated}`,
           updated ? "success" : "info"
@@ -3378,23 +3326,21 @@ ${formatComment(c.comment)}
         showClosedChk.checked = false;
       });
       clearScanBtn.addEventListener("click", () => {
-        scannedTasks = []; // queue
-        renderScannedTasks();
-        scanResultsList.innerHTML = ""; // matching results
+        scannedTasks = [];
+        renderQueuedList();
+        scanResultsList.innerHTML = "";
       });
 
       renderQueuedList();
-      if (!lastWO) {
-        hideLoading();
-      }
+
       // Digital Logbook Button
       document.getElementById("logbookBtn").addEventListener("click", () => {
         const currentWO = document.getElementById("woInput").value?.trim();
-        const selectedSkill =
-          document.getElementById("skillDropdown")?.value || "";
+        // Use the activeSkill state variable
+        const selectedSkill = activeSkill !== "CLEAR" ? activeSkill : "";
 
         if (!currentWO) {
-          alert("Please select or enter a Work Order first.");
+          showToast("Please select or enter a Work Order first.", "error");
           return;
         }
 
@@ -3403,27 +3349,22 @@ ${formatComment(c.comment)}
         )}&skill=${encodeURIComponent(selectedSkill)}`;
         window.open(url, "_blank");
       });
+
       document.getElementById("manualTrigger").addEventListener("click", () => {
-        // ensure a badge exists for current skill
         const container = document.getElementById("dynamicBadgeContainer");
         container.innerHTML = `<div class="comment-badge" data-skill="${activeSkill}"></div>`;
 
-        // Create a fake event targeting the active-skill badge
         const badge = document.querySelector(
           `.comment-badge[data-skill="${activeSkill}"]`
         );
-        if (badge) badge.click(); // 🔹 triggers your original event listener
+        if (badge) badge.click();
       });
 
       async function renderJCChart(workorder, filteredDocs = []) {
-        // -----------------------------
-        // 🆕 Helper function for local date strings
-        // -----------------------------
         const getLocalDateKey = (date) => {
-          // Check for a valid Date object
           if (!date || isNaN(date.getTime())) return null;
           const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, "0"); // getMonth() is 0-indexed
+          const month = String(date.getMonth() + 1).padStart(2, "0");
           const day = String(date.getDate()).padStart(2, "0");
           return `${year}-${month}-${day}`;
         };
@@ -3460,9 +3401,6 @@ ${formatComment(c.comment)}
           rawData.push({ dateKey, tasktarget, skill });
         });
 
-        // ✅✅✅ CHANGE 1: We REMOVED the "if (rawData.length === 0)" block that used to be here.
-        // This allows the function to continue even if no targets are found.
-
         // -----------------------------
         // 🔹 Filter by active skill
         // -----------------------------
@@ -3492,13 +3430,12 @@ ${formatComment(c.comment)}
 
         const histSnap = await getDocs(histQ);
         const historyDocs = [];
-        const uniqueTasks = new Set(); // 🧠 to prevent duplicate task counts
+        const uniqueTasks = new Set();
 
         histSnap.forEach((doc) => {
           const h = doc.data();
           if (!h.timestamp) return;
 
-          // optional filter by skill
           if (activeSkill && activeSkill !== "CLEAR") {
             const selectedSkills = skillGroups[activeSkill] || [activeSkill];
             if (!selectedSkills.includes(h.skill)) return;
@@ -3513,9 +3450,8 @@ ${formatComment(c.comment)}
             return;
           }
 
-          // Use a unique key of Seq + TaskCard to only count each item once
           const uniqueKey = `${h.seq || ""}-${h.task_card || ""}`.trim();
-          if (uniqueTasks.has(uniqueKey)) return; // skip duplicates
+          if (uniqueTasks.has(uniqueKey)) return;
           uniqueTasks.add(uniqueKey);
 
           const date = h.timestamp.toDate?.() || new Date(h.timestamp);
@@ -3534,7 +3470,7 @@ ${formatComment(c.comment)}
         });
 
         // -----------------------------
-        // ✅✅✅ CHANGE 2: Build a master x-axis from BOTH target and actual dates
+        // ✅ Build a master x-axis from BOTH target and actual dates
         // -----------------------------
         const allDatesSet = new Set([
           ...Object.keys(groupedTarget),
@@ -3545,7 +3481,6 @@ ${formatComment(c.comment)}
           (a, b) => new Date(a) - new Date(b)
         );
 
-        // ✅✅✅ CHANGE 3: Add a new guard clause to exit if NO data (neither target nor actual) is found
         if (sortedDates.length === 0) {
           console.warn("ℹ️ No target or actual data found for WO:", workorder);
           if (window.jcChartInstance) {
@@ -3563,8 +3498,8 @@ ${formatComment(c.comment)}
         let runningTarget = 0;
 
         sortedDates.forEach((d, i) => {
-          runningTarget += groupedTarget[d] || 0; // 👈 Will add 0 if no target for this date
-          labels.push(`Day ${i + 1}`);
+          runningTarget += groupedTarget[d] || 0;
+          labels.push(`Day ${i + 1} (${d.slice(5)})`); // Shorten label
           cumulativeTargets.push(runningTarget);
         });
 
@@ -3577,7 +3512,7 @@ ${formatComment(c.comment)}
 
         sortedDates.forEach((d) => {
           if (d <= todayKey) {
-            runningActual += groupedActual[d] || 0; // 👈 Will add 0 if no actuals for this date
+            runningActual += groupedActual[d] || 0;
             cumulativeActual.push(runningActual);
           } else {
             cumulativeActual.push(null);
@@ -3617,9 +3552,9 @@ ${formatComment(c.comment)}
             datasets: [
               {
                 label: "Cumulative Target",
-                data: cumulativeTargets, // 👈 This will be [0, 0, 0...] if no targets exist
-                borderColor: "rgba(54,162,235,1)",
-                backgroundColor: "rgba(54,162,235,0.1)",
+                data: cumulativeTargets,
+                borderColor: "rgba(5, 22, 77, 1)", // Lufthansa Blue
+                backgroundColor: "rgba(5, 22, 77, 0.1)",
                 borderWidth: 2,
                 fill: true,
                 tension: 0.35,
@@ -3627,8 +3562,8 @@ ${formatComment(c.comment)}
               },
               {
                 label: "Cumulative Closed",
-                data: cumulativeActual, // 👈 This will show the actual data
-                borderColor: "rgba(34,197,94,1)",
+                data: cumulativeActual,
+                borderColor: "rgba(34,197,94,1)", // Green
                 backgroundColor: "rgba(34,197,94,0.1)",
                 borderWidth: 2,
                 fill: false,
@@ -3652,7 +3587,12 @@ ${formatComment(c.comment)}
                   color: "#374151",
                 },
               },
-              title: { display: false },
+              title: {
+                display: true,
+                text: chartTitle, // Use the title
+                font: { size: 14, weight: "600" },
+                color: "#333",
+              },
               tooltip: {
                 backgroundColor: "#1f2937",
                 titleColor: "#f9fafb",
