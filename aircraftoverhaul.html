@@ -96,6 +96,18 @@
         min-width: 250px;
         max-width: 350px;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        /* 🔽 ADD ALL OF THESE LINES 🔽 */
+        position: sticky;
+        top: 20px; /* This is the 20px padding from main-wrapper */
+
+        /* Set a max height based on the screen, not the content */
+        max-height: calc(
+          100vh - 40px
+        ); /* 100% viewport height - 40px for padding */
+
+        /* Use flex to make the list inside fill the space */
+        display: flex;
+        flex-direction: column;
       }
 
       /* === Controls & Buttons === */
@@ -417,7 +429,8 @@
         font-weight: 600;
       }
       .history-list-scroll {
-        height: 80vh;
+        flex-grow: 1; /* 👈 Replaces height: 80vh */
+        min-height: 0; /* 👈 Add this for flex stability */
         overflow-y: auto;
         border: 1px solid var(--lufthansa-border);
         border-radius: var(--lufthansa-radius);
@@ -754,6 +767,20 @@
           box-sizing: border-box;
         }
       }
+      /* Example CSS - add this to your main stylesheet */
+      .notification-badge {
+        background-color: var(--lufthansa-danger, #e53935);
+        color: white;
+        border-radius: 10px;
+        padding: 2px 7px;
+        font-size: 11px;
+        font-weight: bold;
+        line-height: 1;
+        display: inline-block;
+        vertical-align: top;
+        margin-left: 8px;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -1061,9 +1088,23 @@
       </div>
 
       <!-- Right side history panel -->
-      <div class="history">
-        <h3 style="display: flex; justify-content: space-between">
-          Updates
+      <div class="history" id="historyPanel">
+        <h3
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          "
+        >
+          <div>
+            Updates
+            <span
+              id="historyBadge"
+              class="notification-badge"
+              style="display: none"
+            ></span>
+          </div>
+
           <button
             id="clearNotifBtn"
             class="pill-btn"
@@ -1223,6 +1264,7 @@
       let unsubscribe = null;
       let allDocs = []; // all docs for current WO
       let allHistoryData = []; // 👈 Add this line
+      let newHistoryItems = [];
       let activeSkill = "CLEAR";
       let scanningActive = false;
       let scannedSeqs = []; // numbers only
@@ -1266,10 +1308,24 @@
           unsubscribeHistory();
           unsubscribeHistory = null;
         }
-
-        historyListEl.innerHTML = `<li>Loading history for ${workorder}...</li>`;
-
         const workorderValue = isNaN(workorder) ? workorder : Number(workorder);
+        const badgeData = JSON.parse(
+          localStorage.getItem("historyBadgeData") || "{}"
+        ); // Check if the stored WO matches the one we are loading
+
+        if (badgeData.wo === workorderValue) {
+          // It matches, so load the saved items
+          newHistoryItems = badgeData.items || [];
+        } else {
+          // It's a new WO, so reset the counter
+          newHistoryItems = [];
+        }
+        updateHistoryBadge(); // Update display with loaded (or cleared) data
+
+        // ✅ FIXED: Use clusterize.update to show loading, not innerHTML
+        historyClusterize.update([
+          `<li class='clusterize-no-data'>Loading history for ${workorder}...</li>`,
+        ]);
 
         const qHistory = query(
           collection(db, "history"),
@@ -1310,11 +1366,7 @@
             snapshot.docChanges().forEach((change) => {
               const data = change.doc.data();
               const id = change.doc.id;
-
               if (change.type === "added") {
-                // This logic assumes new items are always at the top (due to orderBy desc)
-                clearGlow();
-
                 // 1. Render the new <li> string
                 const liString = renderHistoryItem(data, id);
 
@@ -1324,29 +1376,13 @@
                 // 3. Prepend to Clusterize
                 historyClusterize.prepend([liString]);
 
-                // 4. Handle the glow
-                // We must wait a frame for Clusterize to render the new <li>
-                requestAnimationFrame(() => {
-                  const newLi = historyListEl.querySelector(
-                    `[data-id="${id}"]`
-                  );
-                  if (!newLi) return;
+                // 4. 🔽 NEW BADGE LOGIC (replaces all glow logic) 🔽
 
-                  let glowClass = "";
-                  if (data.status === "CLOSED") glowClass = "pulse-glow-green";
-                  else if (data.status === "OPEN")
-                    glowClass = "pulse-glow-blue";
-                  else if (
-                    data.status === "Warning" ||
-                    data.status === "NEWLY ADDED"
-                  )
-                    glowClass = "pulse-glow-amber";
-
-                  if (glowClass) {
-                    newLi.classList.add(glowClass);
-                    saveGlowState(id, glowClass);
-                  }
-                });
+                // Only count items if this isn't the first, initial load
+                if (!initialLoad) {
+                  newHistoryItems.push(id);
+                  updateHistoryBadge();
+                }
               }
 
               if (change.type === "removed") {
@@ -1500,6 +1536,28 @@
       /* =======================
         Helpers
       ======================== */
+      /**
+       * Updates the history notification badge with the current count.
+       */
+      function updateHistoryBadge() {
+        const badge = document.getElementById("historyBadge");
+        if (!badge) return; // Failsafe if HTML is not ready
+
+        const count = newHistoryItems.length;
+
+        if (count > 0) {
+          badge.textContent = count;
+          badge.style.display = "inline-block";
+        } else {
+          badge.style.display = "none";
+          badge.textContent = "";
+        }
+        const badgeData = {
+          wo: currentWO, // The globally stored work order
+          items: newHistoryItems,
+        };
+        localStorage.setItem("historyBadgeData", JSON.stringify(badgeData));
+      }
 
       function calculateDayProgress(startDate, endDate, wo, filterWo) {
         if (filterWo && wo !== filterWo) return ""; // 🚫 Skip if WO doesn’t match
@@ -2212,14 +2270,13 @@
                       selectedSkills.length > 0 &&
                       selectedSkills.includes(x.skill)
                     ) {
-                      highlightStyle =
-                        "background:var(--lufthansa-yellow); color: var(--lufthansa-blue); border-radius:3px; padding:1px 3px;";
+                      highlightStyle = "font-weight: bold;";
                     } else if (hasSelectedSkill && !rowHasSelectedSkill) {
                       highlightStyle =
                         "opacity: 0.5; border-radius:3px; padding:1px 3px;";
                     }
 
-                    return `<div style="color:${color}; font-weight:bold; ${highlightStyle}">
+                    return `<div style="color:${color}; ${highlightStyle}">
                       ${x.skill ?? ""}
                     </div>`;
                   })
@@ -3359,6 +3416,49 @@
           `.comment-badge[data-skill="${activeSkill}"]`
         );
         if (badge) badge.click();
+      });
+
+      /**
+       * Handles clicking the history panel.
+       * This will "mark as read" all new items, make them glow, and reset the badge.
+       */
+      document.getElementById("historyBadge").addEventListener("click", () => {
+        // If there are no new items, do nothing
+        if (newHistoryItems.length === 0) return;
+
+        // 1. Clear any old glows
+        clearGlow();
+        clearGlowState();
+
+        // 2. Loop through all NEW item IDs and make them glow
+        newHistoryItems.forEach((id) => {
+          const li = document.querySelector(`#historyList [data-id="${id}"]`);
+          if (li) {
+            const statusEl = li.querySelector(".status");
+            let glowClass = "pulse-glow-amber"; // Default glow
+
+            if (statusEl) {
+              const statusText = statusEl.textContent.trim().toUpperCase();
+              if (statusText === "CLOSED") {
+                glowClass = "pulse-glow-green";
+              } else if (statusText === "RE-OPEN") {
+                glowClass = "pulse-glow-blue";
+              } else if (
+                statusText === "WARNING" ||
+                statusText === "NEWLY ADDED"
+              ) {
+                glowClass = "pulse-glow-amber";
+              }
+            }
+
+            li.classList.add(glowClass);
+            saveGlowState(id, glowClass); // Save glow to localStorage
+          }
+        });
+
+        // 3. Reset the counter and hide the badge
+        newHistoryItems = [];
+        updateHistoryBadge();
       });
 
       async function renderJCChart(workorder, filteredDocs = []) {
