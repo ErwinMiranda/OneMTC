@@ -2233,7 +2233,9 @@
       <tr id="row-seq-${seq}">
         ${
           index === 0
-            ? `<td rowspan="${tasks.length}">${t.reference_task_card ?? ""}</td>`
+            ? `<td rowspan="${tasks.length}">${
+                t.reference_task_card ?? ""
+              }</td>`
             : ""
         }
         ${
@@ -2245,9 +2247,7 @@
         }
         ${
           index === 0
-            ? `<td rowspan="${
-                tasks.length
-              }" style="text-align:center; vertical-align:middle;">
+            ? `<td rowspan="${tasks.length}" style="text-align:center; vertical-align:middle;">
                   <a href="https://ltpsystems.sharepoint.com/sites/BaseMaintenance/Shared Documents/ONEMTC/${currentWO}/${seq}.pdf" 
                     target="_blank" 
                     style="color:var(--lufthansa-blue); text-decoration:underline; cursor:pointer; font-weight: 500;">
@@ -2258,9 +2258,7 @@
         }
         ${
           index === 0
-            ? `<td rowspan="${
-                tasks.length
-              }" style="text-align:center; vertical-align:middle; font-weight:bold; color:${statusColor};">
+            ? `<td rowspan="${tasks.length}" style="text-align:center; vertical-align:middle; font-weight:bold; color:${statusColor};">
                   ${finalStatus}
                 </td>`
             : ""
@@ -2763,12 +2761,15 @@
         const rowsToRender = allDocs.filter((d) =>
           matchingSeqs.has(String(d.seq))
         );
-
+        // 5b. 🔽 NEW: Get docs for counters (only tasks matching skill *and* seq filters)
+        const finalFilteredDocs = skillFilteredDocs.filter((d) =>
+          matchingSeqs.has(String(d.seq))
+        );
         // 6. Render the final list
         renderRows(rowsToRender);
 
         // 7. Update counters
-        updateCounters(skillFilteredDocs, skillBaseTotal);
+        updateCounters(finalFilteredDocs, skillBaseTotal); // 👈 ✅ FIXED
 
         // 8. Update JC Chart
         if (
