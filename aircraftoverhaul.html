@@ -515,8 +515,8 @@
         background: var(--lufthansa-card-bg);
         padding: 20px;
         border-radius: 12px;
-        width: 450px;
-        max-width: calc(100% - 24px);
+        width: 1000px;
+        max-width: 1200px;
         max-height: 80vh;
         overflow: auto;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
@@ -1039,6 +1039,7 @@
                 <thead>
                   <tr>
                     <th>Seq</th>
+                    <th>Task Items</th>
                     <th>Phase</th>
                     <th>Skill</th>
                     <th>Status</th>
@@ -1058,6 +1059,7 @@
                 <thead>
                   <tr>
                     <th>Seq</th>
+                    <th>Task Items</th>
                     <th>Phase</th>
                     <th>Skill</th>
                     <th>Status</th>
@@ -3166,7 +3168,7 @@
           if (snap.empty) {
             scanResultsList.innerHTML = `
         <tr>
-          <td colspan="5" style="text-align:center; color:#777;">
+          <td colspan="6" style="text-align:center; color:#777;">
             No tasks found for Seq ${num}
           </td>
         </tr>`;
@@ -3196,7 +3198,7 @@
               `
         <tr>
           <td>${task.seq ?? ""}</td>
-          <td>${task.phase ?? "P?"}</td>
+          <td>${task.task_card ?? ""}</td><td>${task.phase ?? "P?"}</td>
           <td>${task.skill ?? "GEN"}</td>
           <td>${task.status ?? "OPEN"}</td>
           <td>
@@ -3214,7 +3216,7 @@
           if (shown === 0) {
             scanResultsList.innerHTML = `
         <tr>
-          <td colspan="5" style="text-align:center; color:#777;">
+          <td colspan="6" style="text-align:center; color:#777;">
             No OPEN tasks found for Seq ${num}
           </td>
         </tr>`;
@@ -3241,17 +3243,20 @@
 
         const row = btn.closest("tr");
         const seq = row.children[0].textContent.trim();
-        const phase = row.children[1].textContent.trim();
-        const skill = row.children[2].textContent.trim();
-        const status = row.children[3].textContent.trim();
+        const task_card = row.children[1].textContent.trim(); // ADDED
+        const phase = row.children[2].textContent.trim(); // Was [1]
+        const skill = row.children[3].textContent.trim(); // Was [2]
+        const status = row.children[4].textContent.trim(); // Was [3]
 
         scannedTasks.push({
           id: taskId,
           seq,
+          task_card, // ADDED
           phase,
           skill,
           status,
-          display: `Seq ${seq}-${phase}-${skill}-${status}`,
+          // Updated display string to include task_card (optional)
+          display: `Seq ${seq}-${task_card}-${phase}-${skill}-${status}`,
         });
 
         renderQueuedList();
@@ -3280,7 +3285,7 @@
         if (!scannedTasks.length) {
           scannedList.innerHTML = `
       <tr>
-        <td colspan="5" style="text-align:center; color:#777;">No tasks queued</td>
+        <td colspan="6" style="text-align:center; color:#777;">No tasks queued</td>
       </tr>`;
         } else {
           scannedTasks.forEach((task) => {
@@ -3289,7 +3294,7 @@
               `
         <tr>
           <td>${task.seq}</td>
-          <td>${task.phase}</td>
+          <td>${task.task_card}</td><td>${task.phase}</td>
           <td>${task.skill}</td>
           <td>${task.status}</td>
           <td>
@@ -3319,7 +3324,7 @@
             `
       <tr>
         <td>${task.seq}</td>
-        <td>${task.phase}</td>
+       <td>${task.task_card}</td> <td>${task.phase}</td>
         <td>${task.skill}</td>
         <td>${task.status}</td>
         <td>
