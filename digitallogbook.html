@@ -692,9 +692,7 @@
     <script type="module">
       import { logout } from "./auth.js";
       window.logout = logout;
-      import {
-        initializeApp,
-      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
         getFirestore,
         collection,
@@ -885,32 +883,52 @@
           filtered.forEach((r) => {
             const item = document.createElement("div");
             item.className = "log-item";
+            // ✅ START: Replace the old item.innerHTML with this new version
             item.innerHTML = `
               <div class="meta">
                 <div class="meta-left">
                   <div style="font-weight:700">${r.seq_or_nr || "—"}</div>
                   <div class="chip">${r.skill}</div>
                 </div>
-                <div style="text-align:right">
-                  <div style="font-size:0.9rem;color:var(--muted)">
-                    ${r.logged_by || r.modified_by || "—"}
+                
+                <div style="text-align:right; font-size: 0.85rem; color: var(--muted); line-height: 1.4;">
+                  <div>
+                    Created: <strong>${r.logged_by || "N/A"}</strong>
                   </div>
-                  <div style="font-size:0.85rem;color:var(--muted)">
+                  <div>
                     ${
-                      r.modified_at
-                        ? new Date(
+                      r.created_at
+                        ? new Date(r.created_at.seconds * 1000).toLocaleString()
+                        : new Date(
                             r.modified_at.seconds * 1000
-                          ).toLocaleString()
-                        : "-"
+                          ).toLocaleString() // Fallback for old data
                     }
                   </div>
+                  
+                  ${
+                    r.created_at &&
+                    r.modified_at &&
+                    r.created_at.seconds !== r.modified_at.seconds
+                      ? `
+                        <div style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 4px;">
+                          Updated: <strong>${r.modified_by || "N/A"}</strong>
+                        </div>
+                        <div>
+                          ${new Date(
+                            r.modified_at.seconds * 1000
+                          ).toLocaleString()}
+                        </div>
+                      `
+                      : ""
+                  }
                 </div>
-              </div>
+                </div>
               <div class="remarks">${escapeHtml(r.remarks || "")}</div>
               <div style="display:flex;justify-content:flex-end;margin-top:8px">
                 <button class="update-btn" data-id="${r.__id}">Update</button>
               </div>
             `;
+            // ✅ END: Replaced section
             listEl.appendChild(item);
           });
 
@@ -948,6 +966,7 @@
           logged_by: localStorage.getItem("userEmail") || "Unknown",
           modified_by: localStorage.getItem("userEmail") || "Unknown",
           date,
+          created_at: serverTimestamp(), // <-- ✅ ADD THIS LINE
           modified_at: serverTimestamp(),
         };
 
