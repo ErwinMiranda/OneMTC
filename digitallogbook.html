@@ -232,7 +232,6 @@
         white-space: pre-wrap;
         word-break: break-word;
       }
-      /* ✅ Renamed .edit-btn to .update-btn */
       .log-item .update-btn {
         background: #f8fafc;
         color: #334155;
@@ -381,7 +380,6 @@
         color: white;
       }
 
-      /* ✅ Style for the previous remarks box */
       #m-old-remarks {
         background-color: #f8fafc;
         padding: 8px 12px;
@@ -626,7 +624,7 @@
 
           <div class="modal-row" style="grid-column: 1 / -1">
             <label for="m-seq">Seq or NR</label>
-            <input id="m-seq" type="text" />
+            <input id="m-seq" type="text" readonly />
           </div>
 
           <div class="modal-row" style="grid-column: 1 / -1">
@@ -764,14 +762,14 @@
       const formSave = $("form-save");
       const formClear = $("form-clear");
 
-      // ✅ Update Modal
+      // Update Modal
       const updateModal = $("update-modal");
       const modalClose = $("modal-close");
       const modalTitle = $("modal-title");
       const mWo = $("m-wo");
       const mSkill = $("m-skill");
       const mSeq = $("m-seq");
-      const mOldRemarks = $("m-old-remarks"); // ✅ New helper
+      const mOldRemarks = $("m-old-remarks");
       const mRemarks = $("m-remarks");
       const modalSave = $("modal-save");
       const modalDelete = $("modal-delete");
@@ -786,7 +784,7 @@
       let currentWO = null;
       let currentSkill = null;
       let searchTimer = null;
-      let originalRemarksForUpdate = ""; // ✅ State for update
+      let originalRemarksForUpdate = "";
       /* ---------- Initialization ---------- */
       function init() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -972,11 +970,11 @@
         formRemarks.value = "";
       });
 
-      // ✅ Save from UPDATE MODAL
+      // Save from UPDATE MODAL
       modalSave.addEventListener("click", async () => {
         const wo = mWo.value.trim();
         const skill = mSkill.value.trim();
-        const seq = mSeq.value.trim();
+        const seq = mSeq.value.trim(); // This is from the readonly input
         const newComment = mRemarks.value.trim(); // This is the NEW comment
         const date = inputDate.value;
 
@@ -991,28 +989,25 @@
           if (editingDocId) {
             // This is an UPDATE (append)
             const user = localStorage.getItem("userEmail") || "Unknown";
-            const timestamp = new Date().toLocaleString();
-            
-            // Format the new update string
-            const updateString = `\n\n---\nUpdate by ${user} on ${timestamp}:\n${newComment}`;
-            
-            // Append new update to the original remarks
-            const combinedRemarks = originalRemarksForUpdate + updateString;
+
+            // ✅ CHANGED: Simpler append logic as requested.
+            // Using two newlines for a clean visual break.
+            const combinedRemarks =
+              originalRemarksForUpdate + "\n\n" + newComment;
 
             const payload = {
               wo,
               skill,
-              seq_or_nr: seq || "", // Allow updating Seq/NR
+              seq_or_nr: seq, // Pass the original (readonly) seq
               remarks: combinedRemarks, // The new appended remarks
-              modified_by: user,
+              modified_by: user, // This will update the right-side user
               date,
-              modified_at: serverTimestamp(),
+              modified_at: serverTimestamp(), // This will update the right-side time
             };
 
             const ref = doc(db, "turnover", editingDocId);
             await updateDoc(ref, payload);
           }
-          // This modal is only for editing, so no 'else'
           updateModal.classList.remove("show");
           loadLogs();
         } catch (err) {
@@ -1043,7 +1038,7 @@
         }
       });
 
-      // ✅ Renamed function to open UPDATE modal
+      // open UPDATE modal
       async function openUpdate(docId) {
         editingDocId = docId;
         modalTitle.textContent = "Update Turnover Entry";
@@ -1059,14 +1054,15 @@
 
           // Store original remarks in state
           originalRemarksForUpdate = data.remarks || "";
-          
+
           // Populate modal fields
           mWo.value = data.wo;
           mSkill.value = data.skill;
           mSeq.value = data.seq_or_nr || "";
-          
+
           // Display old remarks and clear new comment box
-          mOldRemarks.textContent = originalRemarksForUpdate || "(No previous remarks)";
+          mOldRemarks.textContent =
+            originalRemarksForUpdate || "(No previous remarks)";
           mRemarks.value = ""; // Clear textarea for new comment
           mRemarks.placeholder = "Enter new update/comment here...";
 
@@ -1081,9 +1077,9 @@
 
       // Log list delegation for update buttons
       listEl.addEventListener("click", (e) => {
-        const btn = e.target.closest("button.update-btn"); // ✅ Listen for .update-btn
+        const btn = e.target.closest("button.update-btn");
         if (btn && btn.dataset.id) {
-          openUpdate(btn.dataset.id); // ✅ Call openUpdate
+          openUpdate(btn.dataset.id);
         }
       });
 
