@@ -232,7 +232,8 @@
         white-space: pre-wrap;
         word-break: break-word;
       }
-      .log-item .edit-btn {
+      /* ✅ Renamed .edit-btn to .update-btn */
+      .log-item .update-btn {
         background: #f8fafc;
         color: #334155;
         border: 1px solid var(--border);
@@ -243,7 +244,7 @@
         cursor: pointer;
         transition: all 0.2s ease;
       }
-      .log-item .edit-btn:hover {
+      .log-item .update-btn:hover {
         background: #f1f5f9;
         border-color: #cbd5e1;
       }
@@ -378,6 +379,21 @@
       .btn-danger:hover {
         background-color: var(--danger);
         color: white;
+      }
+
+      /* ✅ Style for the previous remarks box */
+      #m-old-remarks {
+        background-color: #f8fafc;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font-size: 0.9rem;
+        color: var(--muted);
+        white-space: pre-wrap; /* important */
+        word-break: break-word; /* important */
+        max-height: 150px;
+        overflow-y: auto;
+        font-family: "Inter", sans-serif;
       }
 
       /* Loading Spinner */
@@ -589,10 +605,10 @@
       </div>
     </main>
 
-    <div class="modal" id="edit-modal">
+    <div class="modal" id="update-modal">
       <div class="modal-card">
         <div class="modal-header">
-          <div class="modal-title" id="modal-title">Edit Turnover</div>
+          <div class="modal-title" id="modal-title">Update Turnover</div>
           <button id="modal-close" class="ghost" style="padding: 6px 8px">
             Close
           </button>
@@ -614,8 +630,13 @@
           </div>
 
           <div class="modal-row" style="grid-column: 1 / -1">
-            <label for="m-remarks">Remarks</label>
-            <textarea id="m-remarks" rows="6"></textarea>
+            <label>Previous Remarks</label>
+            <pre id="m-old-remarks"></pre>
+          </div>
+
+          <div class="modal-row" style="grid-column: 1 / -1">
+            <label for="m-remarks">New Update / Comment</label>
+            <textarea id="m-remarks" rows="5"></textarea>
           </div>
         </div>
 
@@ -644,7 +665,7 @@
             <span class="btn-text">Delete</span>
           </button>
           <button id="modal-save" class="btn">
-            <span class="btn-text">Save Changes</span>
+            <span class="btn-text">Post Update</span>
           </button>
         </div>
       </div>
@@ -673,7 +694,9 @@
     <script type="module">
       import { logout } from "./auth.js";
       window.logout = logout;
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import {
+        initializeApp,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
         getFirestore,
         collection,
@@ -741,13 +764,14 @@
       const formSave = $("form-save");
       const formClear = $("form-clear");
 
-      // Edit Modal
-      const editModal = $("edit-modal");
+      // ✅ Update Modal
+      const updateModal = $("update-modal");
       const modalClose = $("modal-close");
       const modalTitle = $("modal-title");
       const mWo = $("m-wo");
       const mSkill = $("m-skill");
       const mSeq = $("m-seq");
+      const mOldRemarks = $("m-old-remarks"); // ✅ New helper
       const mRemarks = $("m-remarks");
       const modalSave = $("modal-save");
       const modalDelete = $("modal-delete");
@@ -762,7 +786,7 @@
       let currentWO = null;
       let currentSkill = null;
       let searchTimer = null;
-
+      let originalRemarksForUpdate = ""; // ✅ State for update
       /* ---------- Initialization ---------- */
       function init() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -784,12 +808,12 @@
         const skillDisplay = currentSkill || "No Skill";
         selectSkill.value = skillDisplay;
         formSkill.value = skillDisplay;
-        mSkill.value = skillDisplay; // Pre-fill edit modal too
+        mSkill.value = skillDisplay; // Pre-fill update modal too
 
         // Update WO header
         inputWO.value = currentWO;
         formWO.value = currentWO;
-        mWo.value = currentWO; // Pre-fill edit modal
+        mWo.value = currentWO; // Pre-fill update modal
         $("header-wo").textContent = currentWO ? `WO: ${currentWO}` : "No WO";
 
         // default date = today
@@ -886,7 +910,7 @@
               </div>
               <div class="remarks">${escapeHtml(r.remarks || "")}</div>
               <div style="display:flex;justify-content:flex-end;margin-top:8px">
-                <button class="edit-btn" data-id="${r.__id}">Edit</button>
+                <button class="update-btn" data-id="${r.__id}">Update</button>
               </div>
             `;
             listEl.appendChild(item);
@@ -948,38 +972,48 @@
         formRemarks.value = "";
       });
 
-      // Save from EDIT MODAL
+      // ✅ Save from UPDATE MODAL
       modalSave.addEventListener("click", async () => {
         const wo = mWo.value.trim();
         const skill = mSkill.value.trim();
         const seq = mSeq.value.trim();
-        const remarks = mRemarks.value.trim();
-        const date = inputDate.value; // Date is from the main page filter
+        const newComment = mRemarks.value.trim(); // This is the NEW comment
+        const date = inputDate.value;
 
-        if (!wo || !skill || !date || !remarks) {
-          alert("Please fill all fields and remarks.");
+        if (!newComment) {
+          alert("Please enter a new update/comment.");
           return;
         }
 
         modalSave.classList.add("loading");
 
-        const payload = {
-          wo,
-          skill,
-          seq_or_nr: seq || "",
-          remarks,
-          modified_by: localStorage.getItem("userEmail") || "Unknown",
-          date,
-          modified_at: serverTimestamp(),
-        };
-
         try {
           if (editingDocId) {
+            // This is an UPDATE (append)
+            const user = localStorage.getItem("userEmail") || "Unknown";
+            const timestamp = new Date().toLocaleString();
+            
+            // Format the new update string
+            const updateString = `\n\n---\nUpdate by ${user} on ${timestamp}:\n${newComment}`;
+            
+            // Append new update to the original remarks
+            const combinedRemarks = originalRemarksForUpdate + updateString;
+
+            const payload = {
+              wo,
+              skill,
+              seq_or_nr: seq || "", // Allow updating Seq/NR
+              remarks: combinedRemarks, // The new appended remarks
+              modified_by: user,
+              date,
+              modified_at: serverTimestamp(),
+            };
+
             const ref = doc(db, "turnover", editingDocId);
             await updateDoc(ref, payload);
           }
-          // Note: This modal is only for editing, not adding.
-          editModal.classList.remove("show");
+          // This modal is only for editing, so no 'else'
+          updateModal.classList.remove("show");
           loadLogs();
         } catch (err) {
           console.error("Error saving from modal:", err);
@@ -989,7 +1023,7 @@
         }
       });
 
-      // Delete from EDIT MODAL
+      // Delete from UPDATE MODAL
       modalDelete.addEventListener("click", async () => {
         if (!editingDocId) return;
         if (!confirm("Delete this turnover entry? This cannot be undone."))
@@ -999,7 +1033,7 @@
 
         try {
           await deleteDoc(doc(db, "turnover", editingDocId));
-          editModal.classList.remove("show");
+          updateModal.classList.remove("show");
           loadLogs();
         } catch (err) {
           console.error("Error deleting:", err);
@@ -1009,10 +1043,10 @@
         }
       });
 
-      // open edit modal
-      async function openEdit(docId) {
+      // ✅ Renamed function to open UPDATE modal
+      async function openUpdate(docId) {
         editingDocId = docId;
-        modalTitle.textContent = "Edit Turnover Entry";
+        modalTitle.textContent = "Update Turnover Entry";
 
         try {
           const dRef = doc(db, "turnover", docId);
@@ -1022,25 +1056,34 @@
             return;
           }
           const data = snap.data();
+
+          // Store original remarks in state
+          originalRemarksForUpdate = data.remarks || "";
+          
+          // Populate modal fields
           mWo.value = data.wo;
           mSkill.value = data.skill;
           mSeq.value = data.seq_or_nr || "";
-          mRemarks.value = data.remarks || "";
+          
+          // Display old remarks and clear new comment box
+          mOldRemarks.textContent = originalRemarksForUpdate || "(No previous remarks)";
+          mRemarks.value = ""; // Clear textarea for new comment
+          mRemarks.placeholder = "Enter new update/comment here...";
 
-          editModal.classList.add("show");
+          updateModal.classList.add("show");
         } catch (err) {
-          console.error("Error loading document for edit:", err);
-          alert("Failed to load entry for edit");
+          console.error("Error loading document for update:", err);
+          alert("Failed to load entry for update");
         }
       }
 
       /* ---------- Event Listeners ---------- */
 
-      // Log list delegation for edit buttons
+      // Log list delegation for update buttons
       listEl.addEventListener("click", (e) => {
-        const btn = e.target.closest("button.edit-btn");
+        const btn = e.target.closest("button.update-btn"); // ✅ Listen for .update-btn
         if (btn && btn.dataset.id) {
-          openEdit(btn.dataset.id);
+          openUpdate(btn.dataset.id); // ✅ Call openUpdate
         }
       });
 
@@ -1060,7 +1103,7 @@
         summaryModal.classList.remove("show")
       );
       modalClose.addEventListener("click", () =>
-        editModal.classList.remove("show")
+        updateModal.classList.remove("show")
       );
 
       // Keyboard shortcut for main form
