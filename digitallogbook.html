@@ -1,150 +1,454 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Digital Turnover Logbook — Lufthansa</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Digital Turnover Logbook — Lufthansa</title>
     <script type="module">
       import { requireLogin, logout } from "./auth.js";
       requireLogin();
       window.logout = logout;
     </script>
-  <!-- Google font -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-  <style>
-    :root{
-      --lh-blue:#021a4b;
-      --lh-yellow:#ffcc00;
-      --muted:#6b7280;
-      --bg:#f4f7fb;
-      --card:#ffffff;
-      --border:#e6eefc;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;
-      background:var(--bg);
-      color:#0b2242;
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-    }
-
-    /* Header */
-    header{
-      background:var(--lh-blue);
-      color:white;
-      padding:16px 24px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:20px;
-    }
-    header .left{display:flex;align-items:center;gap:16px}
-    header h1{font-size:1.05rem;margin:0;font-weight:600;letter-spacing:0.2px}
-    header .small{font-size:0.85rem;color:rgba(255,255,255,0.9)}
-
-    /* Toolbar */
-    .toolbar{
-      max-width:1100px;
-      margin:18px auto 0;
-      width:calc(100% - 48px);
-      display:flex;
-      gap:12px;
-      align-items:center;
-      justify-content:space-between;
-    }
-    .controls{display:flex;gap:8px;align-items:center}
-    input[type="text"], select, input[type="date"]{
-      padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:white;
-      font-size:0.95rem;
-    }
-    button.btn{
-      background:var(--lh-blue);color:white;border:none;padding:8px 12px;border-radius:8px;font-weight:600;cursor:pointer;
-    }
-    button.ghost{
-      background:transparent;color:var(--lh-blue);border:1px solid rgba(11,34,66,0.08);
-    }
-    .primary-yellow{
-      background:linear-gradient(90deg,var(--lh-yellow),#ffd34d); color:var(--lh-blue);
-    }
-
-    /* Page content */
-    main{
-      max-width:1100px;margin:18px auto;padding:18px;width:calc(100% - 48px);flex:1;display:flex;flex-direction:column;gap:14px;
-    }
-
-    .panel{
-      background:var(--card);border-radius:10px;padding:14px;border:1px solid var(--border);
-      box-shadow:0 2px 6px rgba(2,26,75,0.03);
-    }
-
-    .grid{
-      display:grid;
-      grid-template-columns: 1fr 320px;
-      gap:18px;
-      align-items:start;
-    }
-
-    /* Log list */
-    .log-list{display:flex;flex-direction:column;gap:12px}
-    .log-item{
-      border-radius:8px;padding:12px;border:1px solid var(--border);background:linear-gradient(180deg,#fff,#fbfdff);
-      display:flex;flex-direction:column;gap:8px;
-    }
-    .meta{
-      display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:0.9rem;color:var(--muted);
-    }
-    .meta-left{display:flex;gap:10px;align-items:center}
-    .chip{
-      font-size:0.82rem;padding:4px 8px;border-radius:999px;background:#f1f6ff;color:var(--lh-blue);font-weight:600;
-    }
-    .remarks{font-size:0.95rem;color:#16324b;white-space:pre-wrap}
-
-    /* Form */
-    .form-row{display:flex;flex-direction:column;gap:8px}
-    label{font-size:0.85rem;color:var(--muted)}
-    textarea{min-height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);font-size:0.95rem}
-
-    /* actions */
-    .actions{display:flex;gap:8px;align-items:center}
-    .small-btn{padding:6px 10px;border-radius:8px;border:none;background:#0b2f66;color:white;cursor:pointer;font-weight:600}
-
-    /* modal */
-    .modal{
-      position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,26,75,0.36);
-      z-index:9999;padding:24px;
-    }
-    .modal.show{display:flex}
-    .modal-card{background:white;border-radius:10px;padding:18px;width:100%;max-width:600px;box-shadow:0 8px 30px rgba(2,26,75,0.12)}
-    .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .modal-row{display:flex;flex-direction:column;gap:6px}
-
-    /* responsive */
-    @media (max-width:880px){
-      .grid{grid-template-columns:1fr}
-      .toolbar{flex-direction:column;align-items:stretch}
-    }
-       #summary ul li {
-        border-bottom: 1px solid #ddd;
-        padding-bottom: 4px;
+    <style>
+      :root {
+        --lh-blue: #021a4b;
+        --lh-yellow: #ffcc00;
+        --muted: #6b7280;
+        --bg: #f4f7fb;
+        --card: #ffffff;
+        --border: #e2e8f0;
+        --lh-blue-light: #f1f6ff;
+        --success: #10b981;
+        --danger: #ef4444;
+        --danger-light: #fee2e2;
       }
-  </style>
-</head>
-<body>
- <header>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Inter", system-ui, Segoe UI, Roboto, "Helvetica Neue",
+          Arial;
+        background: var(--bg);
+        color: #0b2242;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Header */
+      header {
+        background: var(--lh-blue);
+        color: white;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        border-bottom: 3px solid var(--lh-yellow);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+      }
+      header h1 {
+        font-size: 1.1rem;
+        margin: 0;
+        font-weight: 700;
+      }
+      header .small {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      /* Toolbar */
+      .toolbar {
+        max-width: 900px;
+        margin: 18px auto 0;
+        width: calc(100% - 48px);
+        display: flex;
+        flex-wrap: wrap; /* Allow wrapping on small screens */
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      input[type="text"],
+      select,
+      input[type="date"],
+      textarea {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: white;
+        font-size: 0.95rem;
+        font-family: "Inter", sans-serif;
+        color: #334155;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      input[type="text"]:focus,
+      input[type="date"]:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--lh-blue);
+        box-shadow: 0 0 0 3px rgba(2, 26, 75, 0.1);
+      }
+      input[readonly] {
+        background-color: #f8fafc;
+        color: var(--muted);
+      }
+
+      button.btn,
+      button.ghost {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        font-family: "Inter", sans-serif;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      button.btn {
+        background: var(--lh-blue);
+        color: white;
+      }
+      button.btn:hover {
+        filter: brightness(1.15);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(2, 26, 75, 0.08);
+      }
+      button.ghost {
+        background: transparent;
+        color: var(--lh-blue);
+        border: 1px solid var(--border);
+      }
+      button.ghost:hover {
+        background: var(--lh-blue-light);
+        border-color: var(--lh-blue-light);
+      }
+      .primary-yellow {
+        background: var(--lh-yellow);
+        color: var(--lh-blue);
+      }
+      .primary-yellow:hover {
+        filter: brightness(1.05);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(255, 204, 0, 0.2);
+      }
+      button svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Page content */
+      main {
+        max-width: 900px;
+        margin: 18px auto;
+        padding: 0 24px 24px;
+        width: 100%;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .panel {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 18px 20px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 12px rgba(2, 26, 75, 0.04);
+        transition: all 0.2s ease;
+      }
+      .panel-header {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: var(--lh-blue);
+      }
+
+      /* Log list */
+      .log-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .log-item {
+        border-radius: 8px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, #fff, #fbfdff);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: all 0.2s ease;
+      }
+      .log-item:hover {
+        box-shadow: 0 4px 12px rgba(2, 26, 75, 0.05);
+        border-color: #dbeaff;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .meta-left {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .chip {
+        font-size: 0.82rem;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: var(--lh-blue-light);
+        color: var(--lh-blue);
+        font-weight: 600;
+      }
+      .remarks {
+        font-size: 0.95rem;
+        color: #16324b;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .log-item .edit-btn {
+        background: #f8fafc;
+        color: #334155;
+        border: 1px solid var(--border);
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .log-item .edit-btn:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+      }
+
+      /* Form */
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(
+          auto-fit,
+          minmax(150px, 1fr)
+        ); /* Responsive grid */
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .form-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .form-row.full-width {
+        grid-column: 1 / -1;
+      }
+      .form-row label {
+        font-size: 0.85rem;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      textarea {
+        min-height: 90px;
+        padding: 10px;
+        font-size: 0.95rem;
+        resize: vertical;
+      }
+      .form-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .btn-success {
+        background-color: var(--success);
+        color: white;
+      }
+      .btn-success:hover {
+        filter: brightness(1.1);
+      }
+
+      /* Summary Box */
+      #summary ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      #summary li {
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      #summary li:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      /* modal */
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 26, 75, 0.36);
+        z-index: 9999;
+        padding: 24px;
+        opacity: 0;
+        transform: scale(0.98);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+      .modal.show {
+        display: flex;
+        opacity: 1;
+        transform: scale(1);
+      }
+      .modal-card {
+        background: white;
+        border-radius: 10px;
+        padding: 18px 24px;
+        width: 100%;
+        max-width: 600px;
+        box-shadow: 0 8px 30px rgba(2, 26, 75, 0.12);
+        transform: translateY(20px);
+        transition: transform 0.25s ease;
+      }
+      .modal.show .modal-card {
+        transform: translateY(0);
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .modal-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+      }
+      .modal-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .modal-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .modal-row label {
+        font-size: 0.85rem;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 16px;
+      }
+      .btn-danger {
+        background-color: var(--danger-light);
+        color: var(--danger);
+        border: 1px solid var(--danger-light);
+      }
+      .btn-danger:hover {
+        background-color: var(--danger);
+        color: white;
+      }
+
+      /* Loading Spinner */
+      .btn.loading {
+        cursor: not-allowed;
+      }
+      .btn.loading .btn-text {
+        display: none;
+      }
+      .btn.loading svg {
+        display: none;
+      }
+      .btn.loading::after {
+        content: "";
+        display: block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto;
+      }
+      /* Special spinners */
+      .primary-yellow.loading::after,
+      .ghost.loading::after {
+        border-color: rgba(2, 26, 75, 0.5);
+        border-top-color: var(--lh-blue);
+      }
+      .btn-danger.loading::after {
+        border-color: rgba(239, 68, 68, 0.5);
+        border-top-color: var(--danger);
+      }
+      .btn-success.loading::after {
+        border-color: rgba(255, 255, 255, 0.5);
+        border-top-color: #fff;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* responsive */
+      @media (max-width: 768px) {
+        .toolbar {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .controls {
+          justify-content: center;
+        }
+        main {
+          padding: 0 16px 16px;
+          width: 100%;
+        }
+        .toolbar {
+          width: calc(100% - 32px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
       <div class="left">
         <h1>Digital Turnover Logbook</h1>
-        <div class="small" id="header-wo">—</div>
       </div>
-      <div class="small">Last modified logs are editable</div>
+      <div class="small" id="header-wo">—</div>
     </header>
 
-    <!-- Toolbar / Filters -->
     <div class="toolbar">
       <div class="controls">
         <input
@@ -154,9 +458,21 @@
           readonly
         />
         <input type="text" id="select-skill" readonly />
-
         <input type="date" id="input-date" />
-        <button class="btn" id="btn-load">Load</button>
+        <button class="btn" id="btn-load">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M15.312 11.424a5.5 5.5 0 01-9.324 0H4a1 1 0 010-2h1.988a5.5 5.5 0 019.324 0H16a1 1 0 110 2h-1.988a5.5 5.5 0 010-9.324H16a1 1 0 110-2h-1.988a5.5 5.5 0 01-9.324 0H4a1 1 0 010-2h1.988a5.5 5.5 0 019.324 0H16a1 1 0 110 2h-1.988zM10 12a2 2 0 110-4 2 2 0 010 4z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          <span class="btn-text">Load</span>
+        </button>
       </div>
 
       <div class="controls">
@@ -165,41 +481,45 @@
           id="input-filter"
           placeholder="Search seq / NR / remarks..."
         />
-        <button class="ghost" id="btn-export">Export CSV</button>
-        <button class="primary-yellow" id="btn-add">+ Add Turnover</button>
+        <button class="ghost" id="btn-summary">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              d="M15.75 2a.75.75 0 00-.75.75v14.5a.75.75 0 001.5 0V2.75A.75.75 0 0015.75 2zM5.75 11a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v6a.75.75 0 01-1.5 0v-5.25H6.5a.75.75 0 01-.75-.75zm4.5 0a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v6a.75.75 0 01-1.5 0v-5.25h-.75a.75.75 0 01-.75-.75z"
+            />
+            <path
+              d="M2.75 14a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v3a.75.75 0 01-1.5 0v-2.25H3.5a.75.75 0 01-.75-.75z"
+            />
+          </svg>
+          <span class="btn-text">View Summary</span>
+        </button>
+        <button class="ghost" id="btn-export">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.21a.75.75 0 00-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.154V2.75z"
+            />
+            <path
+              d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"
+            />
+          </svg>
+          <span class="btn-text">Export CSV</span>
+        </button>
       </div>
     </div>
 
     <main>
-      <div class="grid">
-        <!-- left: logs -->
-        <div class="panel">
-          <div
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 10px;
-            "
-          >
-            <div style="font-weight: 600">Turnover entries</div>
-            <div style="font-size: 0.9rem; color: var(--muted)" id="count-info">
-              —
-            </div>
-          </div>
-
-          <div class="log-list" id="log-list">
-            <div style="text-align: center; color: var(--muted)">
-              No logs loaded. Select WO / skill / date and click Load.
-            </div>
-          </div>
-        </div>
-
-        <!-- right: quick form & summary -->
-        <div class="panel">
-          <div style="font-weight: 600; margin-bottom: 8px">Quick Add</div>
+      <div class="panel">
+        <div class="panel-header">Add New Turnover Entry</div>
+        <div class="form-grid">
           <div class="form-row">
-            <label>WO</label>
+            <label for="form-wo">WO</label>
             <input
               type="text"
               id="form-wo"
@@ -208,55 +528,71 @@
             />
           </div>
           <div class="form-row">
-            <label>Skill</label>
+            <label for="form-skill">Skill</label>
             <input type="text" id="form-skill" readonly />
           </div>
           <div class="form-row">
-            <label>Seq / NR (e.g., 123 or NR-00001)</label>
+            <label for="form-seq">Seq / NR (e.g., 123)</label>
             <input type="text" id="form-seq" placeholder="Seq or NR-" />
           </div>
-          <div class="form-row">
-            <label>Remarks</label>
-            <textarea
-              id="form-remarks"
-              placeholder="Enter turnover notes..."
-            ></textarea>
-          </div>
-          <div style="display: flex; gap: 8px; margin-top: 8px">
-            <button class="btn" id="form-save">Save</button>
-            <button class="ghost" id="form-clear">Clear</button>
-          </div>
-
-          <hr
-            style="
-              margin: 14px 0;
-              border: none;
-              border-top: 1px solid var(--border);
-            "
-          />
-
-          <div style="font-weight: 600; margin-bottom: 8px">
-            Shift Summary (by skill)
-          </div>
-          <div id="summary" style="font-size: 0.95rem; color: var(--muted)">
-            —
-          </div>
+        </div>
+        <div class="form-row full-width">
+          <label for="form-remarks">Remarks</label>
+          <textarea
+            id="form-remarks"
+            placeholder="Enter turnover notes... (Ctrl+Enter to save)"
+          ></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-success" id="form-save">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.847a.75.75 0 011.05-.143z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span class="btn-text">Save Entry</span>
+          </button>
+          <button class="ghost" id="form-clear">
+            <span class="btn-text">Clear Form</span>
+          </button>
         </div>
       </div>
-    </main>
 
-    <!-- Add/Edit Modal -->
-    <div class="modal" id="modal">
-      <div class="modal-card">
+      <div class="panel">
         <div
           style="
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
           "
         >
-          <div style="font-weight: 700" id="modal-title">New Turnover</div>
+          <div class="panel-header" style="margin-bottom: 0">
+            Turnover Entries
+          </div>
+          <div style="font-size: 0.9rem; color: var(--muted)" id="count-info">
+            —
+          </div>
+        </div>
+
+        <div class="log-list" id="log-list">
+          <div style="text-align: center; color: var(--muted); padding: 16px">
+            No logs loaded. Select WO / skill / date and click Load.
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div class="modal" id="edit-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title" id="modal-title">Edit Turnover</div>
           <button id="modal-close" class="ghost" style="padding: 6px 8px">
             Close
           </button>
@@ -264,56 +600,84 @@
 
         <div class="modal-grid">
           <div class="modal-row">
-            <label>WO</label>
+            <label for="m-wo">WO</label>
             <input id="m-wo" type="text" readonly />
           </div>
           <div class="modal-row">
-            <label>Skill</label>
+            <label for="m-skill">Skill</label>
             <input type="text" id="m-skill" readonly />
           </div>
 
           <div class="modal-row" style="grid-column: 1 / -1">
-            <label>Seq or NR</label>
+            <label for="m-seq">Seq or NR</label>
             <input id="m-seq" type="text" />
           </div>
 
           <div class="modal-row" style="grid-column: 1 / -1">
-            <label>Remarks</label>
+            <label for="m-remarks">Remarks</label>
             <textarea id="m-remarks" rows="6"></textarea>
           </div>
         </div>
 
-        <div
-          style="
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            margin-top: 12px;
-          "
-        >
-          <button id="modal-delete" class="ghost" style="color: #b00">
-            Delete
+        <div class="modal-footer">
+          <button
+            id="modal-delete"
+            class="btn-danger ghost"
+            style="margin-right: auto"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M16.5 4.478v.227a48.816 48.816 0 01-8.841 1.5.75.75 0 01-.709-.73V3.667a.75.75 0 01.71-.73c2.93-.243 5.86-.666 8.841-1.253a.75.75 0 01.709.73v.227zM2.75 4.478A.75.75 0 002 5.207v.227c0 .414.336.75.75.75h14.5a.75.75 0 00.75-.75V5.207a.75.75 0 00-.75-.729c-2.98-.586-5.91-.98-8.841-1.253a.75.75 0 00-.709.73v.227z"
+                clip-rule="evenodd"
+              />
+              <path
+                fill-rule="evenodd"
+                d="M3.25 6.73v9.761c0 .621.504 1.125 1.125 1.125h11.25c.621 0 1.125-.504 1.125-1.125V6.73a.75.75 0 00-1.5 0v9.761a.375.375 0 01-.375.375H4.375a.375.375 0 01-.375-.375V6.73a.75.75 0 00-1.5 0zM6.5 7.75a.75.75 0 00-1.5 0v7.5a.75.75 0 001.5 0v-7.5zm3.5 0a.75.75 0 00-1.5 0v7.5a.75.75 0 001.5 0v-7.5zm3.5 0a.75.75 0 00-1.5 0v7.5a.75.75 0 001.5 0v-7.5z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span class="btn-text">Delete</span>
           </button>
-          <button id="modal-save" class="btn">Save</button>
+          <button id="modal-save" class="btn">
+            <span class="btn-text">Save Changes</span>
+          </button>
         </div>
       </div>
     </div>
 
-  <!-- Firestore + App script -->
-  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <div class="modal" id="summary-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title">Shift Summary</div>
+          <button
+            id="summary-modal-close"
+            class="ghost"
+            style="padding: 6px 8px"
+          >
+            Close
+          </button>
+        </div>
+        <div id="summary" style="font-size: 0.95rem; color: var(--muted)">
+          —
+        </div>
+      </div>
+    </div>
 
-    <!-- ✅ Fixed Firebase Logic -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
     <script type="module">
       import { logout } from "./auth.js";
-
-      window.logout = logout; // 👈 exposes it globally
+      window.logout = logout;
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
         getFirestore,
         collection,
         doc,
-        writeBatch,
-        onSnapshot,
         query,
         where,
         orderBy,
@@ -326,12 +690,10 @@
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
       import {
         getAuth,
-        signInWithEmailAndPassword,
-        signOut,
         onAuthStateChanged,
-        signInAnonymously,
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
+      // --- Firebase Config ---
       const firebaseConfig = {
         apiKey: "AIzaSyDCpHhUL8x4rs-fom1xyaNdWm5prSGf57U",
         authDomain: "onemtc-2222c.firebaseapp.com",
@@ -340,12 +702,11 @@
         messagingSenderId: "447271556426",
         appId: "1:447271556426:web:562ba4d72e40b754599db3",
       };
-
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
 
-      // ✅ Redirect user to login page if not signed in
+      // --- Auth Check ---
       onAuthStateChanged(auth, (user) => {
         if (!user) {
           console.log("⚠️ No user signed in. Redirecting to login...");
@@ -353,25 +714,26 @@
         } else {
           console.log(`✅ Logged in as: ${user.email || "Anonymous"}`);
           localStorage.setItem("userEmail", user.email || "Anonymous");
-
-          // Optionally show email in UI
-          const userDisplay = document.getElementById("userDisplay");
-          if (userDisplay) userDisplay.textContent = user.email || "Anonymous";
         }
       });
 
       /* ---------- Helpers & state ---------- */
       const $ = (id) => document.getElementById(id);
+
+      // Toolbar
       const inputWO = $("input-wo");
       const selectSkill = $("select-skill");
       const inputDate = $("input-date");
       const btnLoad = $("btn-load");
+      const filterInput = $("input-filter");
+      const btnExport = $("btn-export");
+      const btnSummary = $("btn-summary");
+
+      // Log List
       const listEl = $("log-list");
       const countInfo = $("count-info");
-      const filterInput = $("input-filter");
-      const btnAdd = $("btn-add");
-      const btnExport = $("btn-export");
 
+      // Add Form
       const formWO = $("form-wo");
       const formSkill = $("form-skill");
       const formSeq = $("form-seq");
@@ -379,7 +741,8 @@
       const formSave = $("form-save");
       const formClear = $("form-clear");
 
-      const modal = $("modal");
+      // Edit Modal
+      const editModal = $("edit-modal");
       const modalClose = $("modal-close");
       const modalTitle = $("modal-title");
       const mWo = $("m-wo");
@@ -389,167 +752,161 @@
       const modalSave = $("modal-save");
       const modalDelete = $("modal-delete");
 
+      // Summary Modal
+      const summaryModal = $("summary-modal");
+      const summaryModalClose = $("summary-modal-close");
+      const summaryEl = $("summary");
+
+      // State
       let editingDocId = null;
       let currentWO = null;
       let currentSkill = null;
-
-      // read WO & skill from URL params or fallback to localStorage
-      const urlParams = new URLSearchParams(window.location.search);
-      const paramWO = urlParams.get("wo");
-      const paramSkill = urlParams.get("skill");
-
-      // try localStorage fallback keys (from your monitoring app you may store lastWorkorder/currentWO/activeSkill)
-      const lsWO =
-        localStorage.getItem("lastWorkorder") ||
-        localStorage.getItem("currentWO") ||
-        null;
-
-      // ✅ Read skill from localStorage (and nullify CLEAR)
-      let localSkill = localStorage.getItem("activeSkill");
-      if (localSkill === "CLEAR") localSkill = null;
-
-      // ✅ Determine the active skill (param overrides localStorage)
-      currentSkill = paramSkill || localSkill || null;
-      currentWO = paramWO || lsWO || "";
-
-      // ✅ Update all visible skill fields
-
-      const skillDisplay = currentSkill || "No Skill";
-      document.getElementById("select-skill").value = skillDisplay;
-      document.getElementById("form-skill").value = skillDisplay;
-      document.getElementById("m-skill").value = skillDisplay;
-
-      // ✅ Update WO header
-      inputWO.value = currentWO;
-      formWO.value = currentWO;
-      $("header-wo").textContent = currentWO ? `WO: ${currentWO}` : "No WO";
-
-      // default date = today
-      const today = new Date();
-      function toYMD(d) {
-        const z = (n) => (n < 10 ? "0" + n : n);
-        return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
-      }
-      inputDate.value = toYMD(today);
-
-      // search debounce helper
       let searchTimer = null;
+
+      /* ---------- Initialization ---------- */
+      function init() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramWO = urlParams.get("wo");
+        const paramSkill = urlParams.get("skill");
+
+        const lsWO =
+          localStorage.getItem("lastWorkorder") ||
+          localStorage.getItem("currentWO") ||
+          null;
+
+        let localSkill = localStorage.getItem("activeSkill");
+        if (localSkill === "CLEAR") localSkill = null;
+
+        currentSkill = paramSkill || localSkill || null;
+        currentWO = paramWO || lsWO || "";
+
+        // Update all visible skill fields
+        const skillDisplay = currentSkill || "No Skill";
+        selectSkill.value = skillDisplay;
+        formSkill.value = skillDisplay;
+        mSkill.value = skillDisplay; // Pre-fill edit modal too
+
+        // Update WO header
+        inputWO.value = currentWO;
+        formWO.value = currentWO;
+        mWo.value = currentWO; // Pre-fill edit modal
+        $("header-wo").textContent = currentWO ? `WO: ${currentWO}` : "No WO";
+
+        // default date = today
+        if (!inputDate.value) inputDate.value = toYMD(new Date());
+
+        // Auto-load if all params are present
+        if (currentWO && currentSkill && inputDate.value) {
+          console.log("Auto-loading data from params...");
+          loadLogs();
+        }
+      }
 
       /* ---------- Firestore operations ---------- */
       async function loadLogs() {
+        btnLoad.classList.add("loading");
+
         const wo = inputWO.value.trim();
         const skill =
           localStorage.getItem("activeSkill") === "CLEAR"
             ? null
             : localStorage.getItem("activeSkill");
-
         const date = inputDate.value;
         const search = filterInput.value.trim().toLowerCase();
 
-        if (!wo) {
-          alert("Please set WO (from monitoring app or URL).");
-          return;
-        }
-        if (!skill) {
-          alert("Please pick a Skill to view.");
-          return;
-        }
-        if (!date) {
-          alert("Please pick a Date.");
+        if (!wo || !skill || !date) {
+          alert("Please pick a WO, Skill, and Date to load logs.");
+          btnLoad.classList.remove("loading");
           return;
         }
 
         currentWO = wo;
         currentSkill = skill;
-
-        // Save to localStorage so next time the monitoring app can re-use
         localStorage.setItem("lastWorkorder", currentWO);
         localStorage.setItem("activeSkill", currentSkill);
 
-        // Build query: equality filters for WO, skill and date string
-        const col = collection(db, "turnover");
-        const q = query(
-          col,
-          where("wo", "==", currentWO),
-          where("skill", "==", currentSkill),
-          where("date", "==", date),
-          orderBy("modified_at", "asc")
-        );
+        try {
+          const col = collection(db, "turnover");
+          const q = query(
+            col,
+            where("wo", "==", currentWO),
+            where("skill", "==", currentSkill),
+            where("date", "==", date),
+            orderBy("modified_at", "asc")
+          );
 
-        const snap = await getDocs(q);
-        listEl.innerHTML = "";
-        let count = 0;
-        const rows = [];
+          const snap = await getDocs(q);
+          listEl.innerHTML = "";
+          const rows = [];
+          snap.forEach((docSnap) => {
+            const data = docSnap.data();
+            data.__id = docSnap.id;
+            rows.push(data);
+          });
 
-        snap.forEach((docSnap) => {
-          const data = docSnap.data();
-          data.__id = docSnap.id;
-          rows.push(data);
-        });
+          // Client-side search
+          const filtered = rows.filter((r) => {
+            if (!search) return true;
+            const concat = `${r.seq_or_nr || ""} ${
+              r.remarks || ""
+            }`.toLowerCase();
+            return concat.includes(search);
+          });
 
-        // client-side search filter if search text present (search seq_or_nr and remarks)
-        const filtered = rows.filter((r) => {
-          if (!search) return true;
-          const concat = `${r.seq_or_nr || ""} ${
-            r.remarks || ""
-          }`.toLowerCase();
-          return concat.includes(search);
-        });
+          if (filtered.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center;color:var(--muted);padding:18px">No logs for ${currentWO} · ${currentSkill} · ${date}</div>`;
+            countInfo.textContent = `0 entries`;
+            updateShiftSummary([]); // Clear summary
+            return;
+          }
 
-        if (filtered.length === 0) {
-          listEl.innerHTML = `<div style="text-align:center;color:var(--muted);padding:18px">No logs for ${currentWO} · ${currentSkill} · ${date}</div>`;
-          countInfo.textContent = `0 entries`;
+          filtered.forEach((r) => {
+            const item = document.createElement("div");
+            item.className = "log-item";
+            item.innerHTML = `
+              <div class="meta">
+                <div class="meta-left">
+                  <div style="font-weight:700">${r.seq_or_nr || "—"}</div>
+                  <div class="chip">${r.skill}</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:0.9rem;color:var(--muted)">
+                    ${r.logged_by || r.modified_by || "—"}
+                  </div>
+                  <div style="font-size:0.85rem;color:var(--muted)">
+                    ${
+                      r.modified_at
+                        ? new Date(
+                            r.modified_at.seconds * 1000
+                          ).toLocaleString()
+                        : "-"
+                    }
+                  </div>
+                </div>
+              </div>
+              <div class="remarks">${escapeHtml(r.remarks || "")}</div>
+              <div style="display:flex;justify-content:flex-end;margin-top:8px">
+                <button class="edit-btn" data-id="${r.__id}">Edit</button>
+              </div>
+            `;
+            listEl.appendChild(item);
+          });
 
-          // also clear summary when no data
-          updateShiftSummary([]);
-          return;
+          const count = filtered.length;
+          countInfo.textContent = `${count} entr${count > 1 ? "ies" : "y"}`;
+          updateShiftSummary(filtered); // Update summary
+        } catch (err) {
+          console.error("Error loading logs:", err);
+          alert("Failed to load logs. Check console.");
+        } finally {
+          btnLoad.classList.remove("loading");
         }
-
-        filtered.forEach((r) => {
-          count++;
-          const item = document.createElement("div");
-          item.className = "log-item";
-          item.innerHTML = `
-      <div class="meta">
-        <div class="meta-left">
-          <div style="font-weight:700">${r.seq_or_nr || "—"}</div>
-          <div class="chip">${r.skill}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:0.9rem;color:var(--muted)">
-            ${r.logged_by || r.modified_by || "—"}
-          </div>
-          <div style="font-size:0.85rem;color:var(--muted)">
-            ${
-              r.modified_at
-                ? new Date(r.modified_at.seconds * 1000).toLocaleString()
-                : "-"
-            }
-          </div>
-        </div>
-      </div>
-      <div class="remarks">${escapeHtml(r.remarks || "")}</div>
-      <div style="display:flex;justify-content:flex-end;margin-top:8px">
-        <button class="edit-btn" data-id="${r.__id}">Edit</button>
-      </div>
-    `;
-          listEl.appendChild(item);
-        });
-
-        countInfo.textContent = `${count} entr${count > 1 ? "ies" : "y"}`;
-
-        // 🔹 FIXED: call summary function with the actual array
-        updateShiftSummary(filtered);
       }
 
-      // Save quick form
+      // Save from TOP form
       formSave.addEventListener("click", async () => {
-        const wo = formWO.value.trim() || inputWO.value.trim();
-        const skill =
-          localStorage.getItem("activeSkill") === "CLEAR"
-            ? null
-            : localStorage.getItem("activeSkill");
-
+        const wo = formWO.value.trim();
+        const skill = formSkill.value.trim();
         const seq = formSeq.value.trim();
         const remarks = formRemarks.value.trim();
         const date = inputDate.value;
@@ -558,6 +915,8 @@
           alert("Please fill WO, skill, date and remarks.");
           return;
         }
+
+        formSave.classList.add("loading");
 
         const payload = {
           wo,
@@ -570,47 +929,39 @@
           modified_at: serverTimestamp(),
         };
 
-        await addDoc(collection(db, "turnover"), payload);
-        // clear quick form
-        formSeq.value = "";
-        formRemarks.value = "";
-        // reload
-        loadLogs();
+        try {
+          await addDoc(collection(db, "turnover"), payload);
+          formSeq.value = "";
+          formRemarks.value = "";
+          loadLogs(); // Reload list
+        } catch (err) {
+          console.error("Error saving quick form:", err);
+          alert("Failed to save. Check console.");
+        } finally {
+          formSave.classList.remove("loading");
+        }
       });
 
+      // Clear TOP form
       formClear.addEventListener("click", () => {
         formSeq.value = "";
         formRemarks.value = "";
-        formSkill.value = selectSkill.value || "";
       });
 
-      // Open add modal
-      btnAdd.addEventListener("click", () => {
-        editingDocId = null;
-        modalTitle.textContent = "New Turnover Entry";
-        mWo.value = inputWO.value || formWO.value || "";
-        mSkill.value = selectSkill.value || formSkill.value || "";
-        mSeq.value = "";
-        mRemarks.value = "";
-        modal.classList.add("show");
-      });
-
-      // Modal close & save & delete
-      modalClose.addEventListener("click", () =>
-        modal.classList.remove("show")
-      );
-
+      // Save from EDIT MODAL
       modalSave.addEventListener("click", async () => {
         const wo = mWo.value.trim();
         const skill = mSkill.value.trim();
         const seq = mSeq.value.trim();
         const remarks = mRemarks.value.trim();
-        const date = inputDate.value;
+        const date = inputDate.value; // Date is from the main page filter
 
         if (!wo || !skill || !date || !remarks) {
-          alert("Please fill WO, skill, date and remarks.");
+          alert("Please fill all fields and remarks.");
           return;
         }
+
+        modalSave.classList.add("loading");
 
         const payload = {
           wo,
@@ -622,28 +973,43 @@
           modified_at: serverTimestamp(),
         };
 
-        if (editingDocId) {
-          // update
-          const ref = doc(db, "turnover", editingDocId);
-          await updateDoc(ref, payload);
-        } else {
-          await addDoc(collection(db, "turnover"), payload);
+        try {
+          if (editingDocId) {
+            const ref = doc(db, "turnover", editingDocId);
+            await updateDoc(ref, payload);
+          }
+          // Note: This modal is only for editing, not adding.
+          editModal.classList.remove("show");
+          loadLogs();
+        } catch (err) {
+          console.error("Error saving from modal:", err);
+          alert("Failed to save. Check console.");
+        } finally {
+          modalSave.classList.remove("loading");
         }
-
-        modal.classList.remove("show");
-        loadLogs();
       });
 
-      // Delete button in modal
+      // Delete from EDIT MODAL
       modalDelete.addEventListener("click", async () => {
         if (!editingDocId) return;
-        if (!confirm("Delete this turnover entry?")) return;
-        await deleteDoc(doc(db, "turnover", editingDocId));
-        modal.classList.remove("show");
-        loadLogs();
+        if (!confirm("Delete this turnover entry? This cannot be undone."))
+          return;
+
+        modalDelete.classList.add("loading");
+
+        try {
+          await deleteDoc(doc(db, "turnover", editingDocId));
+          editModal.classList.remove("show");
+          loadLogs();
+        } catch (err) {
+          console.error("Error deleting:", err);
+          alert("Failed to delete. Check console.");
+        } finally {
+          modalDelete.classList.remove("loading");
+        }
       });
 
-      // open edit workflow - uses doc id
+      // open edit modal
       async function openEdit(docId) {
         editingDocId = docId;
         modalTitle.textContent = "Edit Turnover Entry";
@@ -651,119 +1017,66 @@
         try {
           const dRef = doc(db, "turnover", docId);
           const snap = await getDoc(dRef);
-
           if (!snap.exists()) {
             alert("Document not found");
             return;
           }
-
-          // ✅ define data only after snapshot is retrieved
           const data = snap.data();
-
-          mWo.value = data.wo || inputWO.value || formWO.value || "";
-          mSkill.value =
-            data.skill || localStorage.getItem("activeSkill") || "No Skill";
+          mWo.value = data.wo;
+          mSkill.value = data.skill;
           mSeq.value = data.seq_or_nr || "";
           mRemarks.value = data.remarks || "";
 
-          modal.classList.add("show");
+          editModal.classList.add("show");
         } catch (err) {
           console.error("Error loading document for edit:", err);
           alert("Failed to load entry for edit");
         }
       }
 
-      // delegate edit button clicks in the log list
+      /* ---------- Event Listeners ---------- */
+
+      // Log list delegation for edit buttons
       listEl.addEventListener("click", (e) => {
         const btn = e.target.closest("button.edit-btn");
-        if (!btn) return;
-        const id = btn.dataset.id;
-        if (!id) return;
-        openEdit(id);
+        if (btn && btn.dataset.id) {
+          openEdit(btn.dataset.id);
+        }
       });
 
-      // search debounce
+      // Toolbar
+      btnLoad.addEventListener("click", loadLogs);
       filterInput.addEventListener("input", () => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(loadLogs, 350);
       });
+      btnExport.addEventListener("click", exportCSV);
 
-      // binding load button
-      btnLoad.addEventListener("click", loadLogs);
+      // Modals
+      btnSummary.addEventListener("click", () =>
+        summaryModal.classList.add("show")
+      );
+      summaryModalClose.addEventListener("click", () =>
+        summaryModal.classList.remove("show")
+      );
+      modalClose.addEventListener("click", () =>
+        editModal.classList.remove("show")
+      );
 
-      // Export CSV
-      btnExport.addEventListener("click", async () => {
-        const wo = inputWO.value.trim();
-        const skill =
-          localStorage.getItem("activeSkill") === "CLEAR"
-            ? null
-            : localStorage.getItem("activeSkill");
-
-        const date = inputDate.value;
-        if (!wo || !skill || !date) {
-          alert("Please pick WO/skill/date before exporting");
-          return;
-        }
-        const col = collection(db, "turnover");
-        const q = query(
-          col,
-          where("wo", "==", wo),
-          where("skill", "==", skill),
-          where("date", "==", date),
-          orderBy("modified_at", "asc")
-        );
-        const snap = await getDocs(q);
-        const rows = [];
-        snap.forEach((s) => {
-          const d = s.data();
-          rows.push([
-            d.seq_or_nr || "",
-            d.skill || "",
-            (d.remarks || "").replace(/\n/g, " "),
-            d.logged_by || d.modified_by || "",
-            d.date || "",
-            d.modified_at
-              ? new Date(d.modified_at.seconds * 1000).toLocaleString()
-              : "",
-          ]);
-        });
-        if (rows.length === 0) {
-          alert("No data to export");
-          return;
-        }
-        // CSV
-        const header = [
-          "Seq/NR",
-          "Skill",
-          "Remarks",
-          "User",
-          "Date",
-          "Modified At",
-        ];
-        const csv = [header, ...rows]
-          .map((r) =>
-            r
-              .map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`)
-              .join(",")
-          )
-          .join("\n");
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `turnover_${wo}_${skill}_${date}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      });
-
-      // keyboard: Enter in quick form saves
+      // Keyboard shortcut for main form
       formRemarks.addEventListener("keydown", (e) => {
-        if (e.ctrlKey && e.key === "Enter") formSave.click();
+        if (e.ctrlKey && e.key === "Enter") {
+          e.preventDefault();
+          formSave.click();
+        }
       });
 
-      // utility: escape HTML when rendering remarks
+      /* ---------- Utilities ---------- */
+      function toYMD(d) {
+        const z = (n) => (n < 10 ? "0" + n : n);
+        return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+      }
+
       function escapeHtml(str) {
         if (!str) return "";
         return String(str).replace(
@@ -779,37 +1092,12 @@
         );
       }
 
-      // initial UI population
-      (function init() {
-        // map incoming skill param into dropdown if custom
-
-        // set WO fields
-        if (currentWO) {
-          inputWO.value = currentWO;
-          formWO.value = currentWO;
-          mWo.value = currentWO;
-        }
-
-        // ensure date default
-        if (!inputDate.value) inputDate.value = toYMD(new Date());
-
-        // load initial list if enough inputs are set
-        // We won't auto-load unless user clicks Load to avoid accidental heavy reads
-      })();
-
-      // helper for toYMD defined earlier in CSS block? define now:
-
-      // expose loadLogs globally for convenience
-      window.loadTurnoverLogs = loadLogs;
+      // Summary logic
       function updateShiftSummary(turnovers) {
-        const summaryEl = document.getElementById("summary");
-
         if (!turnovers || turnovers.length === 0) {
           summaryEl.innerHTML = "No turnovers logged for this shift.";
           return;
         }
-
-        // Group by skill and find latest remark
         const grouped = {};
         turnovers.forEach((t) => {
           const skill = t.skill || "Unspecified";
@@ -819,23 +1107,110 @@
 
         let html = "<ul style='list-style:none; padding:0; margin:0;'>";
         for (const [skill, entries] of Object.entries(grouped)) {
-          // Sort by modified or date field (if exists)
-          entries.sort((a, b) => (b.modified_at || 0) - (a.modified_at || 0));
+          entries.sort(
+            (a, b) =>
+              (b.modified_at?.seconds || 0) - (a.modified_at?.seconds || 0)
+          );
           const latest = entries[0];
-          const latestRemark = latest.remarks || "(no remarks)";
+          const latestRemark = escapeHtml(latest.remarks) || "(no remarks)";
+          const shortRemark =
+            latestRemark.length > 100
+              ? latestRemark.substring(0, 100) + "..."
+              : latestRemark;
+
           html += `
-      <li style="margin-bottom: 8px">
-        <strong>${skill}</strong><br>
-        <span style="font-size: 0.9rem; color: var(--muted)">
-          ${latestRemark}
-        </span>
-      </li>
-    `;
+            <li>
+              <strong>${escapeHtml(skill)}</strong> (${entries.length} ${
+            entries.length > 1 ? "entries" : "entry"
+          })<br>
+              <span style="font-size: 0.9rem; color: var(--muted); white-space: pre-wrap; word-break: break-word;">
+                ${shortRemark}
+              </span>
+            </li>
+          `;
         }
         html += "</ul>";
-
         summaryEl.innerHTML = html;
       }
+
+      // Export logic
+      async function exportCSV() {
+        btnExport.classList.add("loading");
+        const wo = inputWO.value.trim();
+        const skill =
+          localStorage.getItem("activeSkill") === "CLEAR"
+            ? null
+            : localStorage.getItem("activeSkill");
+        const date = inputDate.value;
+
+        if (!wo || !skill || !date) {
+          alert("Please pick WO/skill/date before exporting");
+          btnExport.classList.remove("loading");
+          return;
+        }
+
+        try {
+          const col = collection(db, "turnover");
+          const q = query(
+            col,
+            where("wo", "==", wo),
+            where("skill", "==", skill),
+            where("date", "==", date),
+            orderBy("modified_at", "asc")
+          );
+          const snap = await getDocs(q);
+          const rows = [];
+          snap.forEach((s) => {
+            const d = s.data();
+            rows.push([
+              d.seq_or_nr || "",
+              d.skill || "",
+              (d.remarks || "").replace(/\n/g, " "),
+              d.logged_by || d.modified_by || "",
+              d.date || "",
+              d.modified_at
+                ? new Date(d.modified_at.seconds * 1000).toLocaleString()
+                : "",
+            ]);
+          });
+          if (rows.length === 0) {
+            alert("No data to export");
+            return;
+          }
+          const header = [
+            "Seq/NR",
+            "Skill",
+            "Remarks",
+            "User",
+            "Date",
+            "Modified At",
+          ];
+          const csv = [header, ...rows]
+            .map((r) =>
+              r
+                .map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`)
+                .join(",")
+            )
+            .join("\n");
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `turnover_${wo}_${skill}_${date}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          console.error("Error exporting CSV:", err);
+          alert("Failed to export. Check console.");
+        } finally {
+          btnExport.classList.remove("loading");
+        }
+      }
+
+      // --- Run App ---
+      init();
     </script>
   </body>
 </html>
