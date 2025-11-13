@@ -967,12 +967,12 @@
                     </button>
                   </th>
                   <th>PH</th>
-                  <th>P0</th>
                   <th>P1</th>
                   <th>P2</th>
                   <th>P3</th>
                   <th>P4</th>
                   <th>P6</th>
+                  <th>P0</th>
                 </tr>
               </thead>
               <tbody id="contentArea" class="clusterize-content">
@@ -1239,7 +1239,7 @@
       const closeScanBtn = document.getElementById("closeScanBtn");
       const activeWOEl = document.getElementById("activeWO");
       const scanCountEl = document.getElementById("scanCount");
-      const fixedPhases = ["PH", "P0", "P1", "P2", "P3", "P4", "P6"];
+      const fixedPhases = ["PH", "P1", "P2", "P3", "P4", "P6", "P0"];
       const lastUpdateEl = document.getElementById("lastUpdate");
       const showClosedChk = document.getElementById("showClosedChk");
       const historyListEl = document.getElementById("historyList");
@@ -1771,9 +1771,6 @@
               <td style="${d.phase === "PH" ? bgColor : ""}">${
                   d.phase === "PH" ? d.skill : ""
                 }</td>
-              <td style="${d.phase === "P0" ? bgColor : ""}">${
-                  d.phase === "P0" ? d.skill : ""
-                }</td>
               <td style="${d.phase === "P1" ? bgColor : ""}">${
                   d.phase === "P1" ? d.skill : ""
                 }</td>
@@ -1788,6 +1785,9 @@
                 }</td>
               <td style="${d.phase === "P6" ? bgColor : ""}">${
                   d.phase === "P6" ? d.skill : ""
+                }</td>
+              <td style="${d.phase === "P0" ? bgColor : ""}">${
+                  d.phase === "P0" ? d.skill : ""
                 }</td>
             </tr>
           `;
@@ -1829,12 +1829,12 @@
             <th>Comments</th>
             <th>Status</th>
             <th>PH</th>
-            <th>P0</th>
             <th>P1</th>
             <th>P2</th>
             <th>P3</th>
             <th>P4</th>
             <th>P6</th>
+            <th>P0</th>
           </tr>
         </thead>
         ${rows}
