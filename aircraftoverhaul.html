@@ -1643,29 +1643,65 @@
         }
 
         let filteredDocs = [...allDocs];
+        // ==========================================================
+        // 1) MULTI-SKILL and SINGLE-SKILL FILTER (MUST COME FIRST)
+        // ==========================================================
+
+        // Build map: seq → unique skills
+        const seqSkillMap = {};
+        allDocs.forEach((d) => {
+          const seq = String(d.seq);
+          if (!seqSkillMap[seq]) seqSkillMap[seq] = new Set();
+          if (d.skill) seqSkillMap[seq].add(d.skill);
+        });
+
+        // --- MULTI-SKILL MODE ---
+        if (multiSkillActive) {
+          filteredDocs = filteredDocs.filter((d) => {
+            const sz = seqSkillMap[String(d.seq)]?.size || 0;
+            return sz > 1; // keep seqs with more than 1 skill
+          });
+
+          // highlight
+          filteredDocs = filteredDocs.map((d) => ({
+            ...d,
+            highlightTask: true,
+          }));
+        }
+
+        // --- SINGLE-SKILL MODE ---
+        else if (singleSkillActive) {
+          filteredDocs = filteredDocs.filter((d) => {
+            const sz = seqSkillMap[String(d.seq)]?.size || 0;
+            return sz === 1; // keep seqs with only 1 skill
+          });
+
+          filteredDocs = filteredDocs.map((d) => ({
+            ...d,
+            highlightTask: true,
+          }));
+        }
 
         // Skill filter (clean version)
-if (activeSkill !== "CLEAR") {
+        if (activeSkill !== "CLEAR") {
+          // If grouped skills (example: AVI includes AVI1, AVI2)
+          if (skillGroups[activeSkill]) {
+            filteredDocs = filteredDocs.filter((d) =>
+              skillGroups[activeSkill].includes(d.skill)
+            );
+          }
 
-  // If grouped skills (example: AVI includes AVI1, AVI2)
-  if (skillGroups[activeSkill]) {
-    filteredDocs = filteredDocs.filter((d) =>
-      skillGroups[activeSkill].includes(d.skill)
-    );
-  } 
+          // Single skill
+          else {
+            filteredDocs = filteredDocs.filter((d) => d.skill === activeSkill);
+          }
 
-  // Single skill
-  else {
-    filteredDocs = filteredDocs.filter((d) => d.skill === activeSkill);
-  }
-
-  // Highlight all tasks that remain
-  filteredDocs = filteredDocs.map((d) => ({
-    ...d,
-    highlightTask: true,
-  }));
-}
-
+          // Highlight all tasks that remain
+          filteredDocs = filteredDocs.map((d) => ({
+            ...d,
+            highlightTask: true,
+          }));
+        }
 
         if (seqFilterValues && seqFilterValues.length > 0) {
           filteredDocs = filteredDocs.filter((d) =>
@@ -1806,7 +1842,37 @@ if (activeSkill !== "CLEAR") {
           selectedSkillText = ` - Selected Skill: <b>${activeSkill}</b>`;
         }
 
-        const fullHeader = `${dynamicHeader}${selectedSkillText}`;
+        // Build header additions
+        let headerFilters = "";
+
+        // Skill filter
+        if (activeSkill && activeSkill !== "CLEAR") {
+          headerFilters += ` | Skill: ${activeSkill}`;
+        }
+
+        // Multi / Single Skill
+        if (multiSkillActive) headerFilters += " | Multi-Skill MTC";
+        if (singleSkillActive) headerFilters += " | Single-Skill MTC";
+
+        // Phase filter
+        if (activePhase) headerFilters += ` | Phase: ${activePhase}`;
+
+        // Seq filter(s)
+        if (seqFilterValues && seqFilterValues.length > 0) {
+          headerFilters += ` | Seq: ${seqFilterValues.join(", ")}`;
+        }
+
+        // Text filters
+        document.querySelectorAll(".filter").forEach((input) => {
+          const field = input.dataset.field;
+          const value = input.value.trim();
+          if (value) {
+            headerFilters += ` | ${field}: "${value}"`;
+          }
+        });
+
+        // Final header
+        const fullHeader = `${dynamicHeader}${headerFilters}`;
 
         const tableHTML = `
       <table>
