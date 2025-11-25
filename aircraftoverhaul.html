@@ -1644,42 +1644,28 @@
 
         let filteredDocs = [...allDocs];
 
-        // 🔹 Apply filters
-        if (activeSkill !== "CLEAR") {
-          let mainFiltered;
+        // Skill filter (clean version)
+if (activeSkill !== "CLEAR") {
 
-          if (skillGroups[activeSkill]) {
-            mainFiltered = filteredDocs.filter((d) =>
-              skillGroups[activeSkill].includes(d.skill)
-            );
-          } else {
-            mainFiltered = filteredDocs.filter((d) => d.skill === activeSkill);
-          }
-          const relatedSeqs = new Set(mainFiltered.map((d) => d.seq));
-          filteredDocs = filteredDocs.filter((d) => relatedSeqs.has(d.seq));
+  // If grouped skills (example: AVI includes AVI1, AVI2)
+  if (skillGroups[activeSkill]) {
+    filteredDocs = filteredDocs.filter((d) =>
+      skillGroups[activeSkill].includes(d.skill)
+    );
+  } 
 
-          filteredDocs = filteredDocs.map((d) => ({
-            ...d,
-            highlightTask:
-              d.skill === activeSkill ||
-              skillGroups[activeSkill]?.includes(d.skill),
-          }));
+  // Single skill
+  else {
+    filteredDocs = filteredDocs.filter((d) => d.skill === activeSkill);
+  }
 
-          if (activePhase) {
-            filteredDocs = filteredDocs
-              .filter((d) =>
-                skillGroups[activeSkill]
-                  ? skillGroups[activeSkill].includes(d.skill)
-                  : d.skill === activeSkill
-              )
-              .map((d) => ({ ...d, highlightTask: true }));
-          }
-        } else {
-          filteredDocs = filteredDocs.map((d) => ({
-            ...d,
-            highlightTask: false,
-          }));
-        }
+  // Highlight all tasks that remain
+  filteredDocs = filteredDocs.map((d) => ({
+    ...d,
+    highlightTask: true,
+  }));
+}
+
 
         if (seqFilterValues && seqFilterValues.length > 0) {
           filteredDocs = filteredDocs.filter((d) =>
