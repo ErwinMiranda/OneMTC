@@ -496,7 +496,7 @@
             });
           }
           const item = summaryMap.get(key);
-          item.total += 1;
+          item.total += Number(r.tasktarget || 0);
           if (r.uploadedBy) item.uploadedBy = r.uploadedBy;
           if (r.uploadedAt) item.uploadedAt = r.uploadedAt;
         }
