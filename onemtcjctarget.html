@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JC Target Loader</title>
+    <script type="module">
+      import { requireLogin, logout } from "./auth.js";
+      requireLogin();
+      window.logout = logout;
+    </script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0f172a;
+        --card-bg: rgba(255, 255, 255, 0.08);
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
+        --accent-hover: #0ea5e9;
+        --radius: 14px;
+        --border: rgba(255, 255, 255, 0.15);
+        --error: #ef4444;
+        --bg-top: #0f172a;
+        --bg-bottom: #1e3a8a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", system-ui, sans-serif;
+        background: linear-gradient(to bottom, var(--bg-top), var(--bg-bottom));
+        color: var(--text);
+        margin: 0;
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin: 8px 0 12px;
+        text-align: center;
+      }
+
+      .small {
+        font-size: 0.9rem;
+        color: var(--muted);
+        text-align: center;
+        max-width: 600px;
+        line-height: 1.4;
+        margin-bottom: 24px;
+      }
+
+      .card {
+        background: var(--card-bg);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        width: 100%;
+        max-width: 1100px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        animation: fadeIn 0.6s ease forwards;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+      }
+
+      select,
+      input[type="file"],
+      button {
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text);
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+      }
+
+      input[type="file"]::file-selector-button {
+        background: var(--accent);
+        border: none;
+        border-radius: 6px;
+        color: white;
+        padding: 6px 10px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      input[type="file"]::file-selector-button:hover {
+        background: var(--accent-hover);
+      }
+
+      button {
+        cursor: pointer;
+        font-weight: 500;
+      }
+
+      button.primary {
+        background: var(--accent);
+        color: white;
+        border: none;
+      }
+
+      button.primary:hover {
+        background: var(--accent-hover);
+        transform: translateY(-1px);
+      }
+
+      .status {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+        overflow-x: auto;
+        font-size: 0.85rem;
+      }
+
+      th,
+      td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      th {
+        background: rgba(255, 255, 255, 0.08);
+        position: sticky;
+        top: 0;
+        backdrop-filter: blur(10px);
+      }
+
+      tr:hover td {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      /* 🔐 Login/Logout Button */
+      .auth-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+      }
+
+      .auth-btn:hover {
+        background: var(--accent-hover);
+        transform: scale(1.05);
+      }
+
+      @media (max-width: 700px) {
+        .controls {
+          flex-direction: column;
+          align-items: stretch;
+        }
+      }
+      /* Minimalist loading overlay */
+      #loadingOverlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(3px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        font-family: "Inter", sans-serif;
+        color: #333;
+        font-size: 1.1rem;
+        letter-spacing: 0.5px;
+      }
+
+      .loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid #ddd;
+        border-top-color: #007bff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .delete-btn {
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+    </style>
+  </head>
+
+  <body>
+    <button onclick="logout()" class="auth-btn">Logout</button>
+
+    <h1>JC Target Uploader</h1>
+    <div class="small">
+      Upload Excel rows to One MTC db (<code>tasks</code>) with live updates.
+    </div>
+
+    <div class="card">
+      <div class="controls">
+        <input id="file" type="file" accept=".xlsx,.xls,.csv" />
+        <button id="uploadBtn" class="primary">Upload</button>
+        <span class="status" id="status">Initializing Firebase...</span>
+      </div>
+
+      <div style="overflow-x: auto">
+        <table id="tasksTable">
+          <thead>
+            <tr id="headerRow"></tr>
+          </thead>
+          <tbody id="tasksBody">
+            <tr>
+              <td colspan="12" class="small">No tasks loaded yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="loadingOverlay">
+      <div class="loader">
+        <div class="spinner"></div>
+        <div id="loadingMessage">Uploading, please wait...</div>
+      </div>
+    </div>
+
+    <!-- SheetJS -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <!-- ✅ Fixed Firebase Logic -->
+    <script type="module">
+      import { logout } from "./auth.js";
+
+      window.logout = logout; // 👈 exposes it globally
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        doc,
+        writeBatch,
+        onSnapshot,
+        query,
+        where,
+        orderBy,
+        getDocs,
+        serverTimestamp,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+        signOut,
+        onAuthStateChanged,
+        signInAnonymously,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDCpHhUL8x4rs-fom1xyaNdWm5prSGf57U",
+        authDomain: "onemtc-2222c.firebaseapp.com",
+        projectId: "onemtc-2222c",
+        storageBucket: "onemtc-2222c.appspot.com",
+        messagingSenderId: "447271556426",
+        appId: "1:447271556426:web:562ba4d72e40b754599db3",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+      onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          console.log("⚠️ No user signed in. Redirecting to login...");
+          window.location.href = "index";
+        } else {
+          console.log(`✅ Logged in as: ${user.email || "Anonymous"}`);
+          // Optionally show email in UI
+          const userDisplay = document.getElementById("userDisplay");
+          if (userDisplay) userDisplay.textContent = user.email || "Anonymous";
+          // ✅ Attach your Firestore realtime listener here
+          attachRealtimeListener();
+
+          // ✅ Update UI
+          setStatus("✅ Connected to One MTC , loading data...");
+        }
+      });
+      const authBtn = document.getElementById("authBtn");
+      const loginModal = document.getElementById("loginModal");
+      const loginSubmit = document.getElementById("loginSubmit");
+      const cancelLogin = document.getElementById("cancelLogin");
+      const emailInput = document.getElementById("email");
+      const passwordInput = document.getElementById("password");
+      const statusSpan = document.getElementById("status");
+      let unsubscribeListener = null;
+
+      function setStatus(msg, isError = false) {
+        statusSpan.textContent = msg;
+        statusSpan.style.color = isError ? "#ef4444" : "#94a3b8";
+      }
+      function showLoading(message = "Uploading, please wait...") {
+        const overlay = document.getElementById("loadingOverlay");
+        const msg = document.getElementById("loadingMessage");
+        if (msg) msg.textContent = message;
+        overlay.style.display = "flex";
+      }
+
+      function hideLoading() {
+        document.getElementById("loadingOverlay").style.display = "none";
+      }
+
+      async function uploadExcelDataToFirestore(excelData, db) {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        const userEmail = user?.email || user?.displayName || "Unknown User";
+
+        for (const rawRow of excelData) {
+          const mapped = mapRow(rawRow);
+          if (!mapped.id) continue;
+
+          // 🔁 Save or overwrite the document with new user info
+          await setDoc(
+            doc(db, "jctargets", mapped.id), // 👈 uses WO+TaskCard as the Firestore doc ID
+            {
+              ...mapped,
+              uploadedBy: userEmail, // 👈 who last uploaded
+              uploadedAt: new Date().toISOString(), // 👈 when
+            },
+            { merge: true }, // 👈 keep existing fields, just update the new info
+          );
+        }
+
+        console.log(
+          "✅ Upload complete. Firestore updated with last uploader info.",
+        );
+      }
+
+      const fileInput = document.getElementById("file");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const tasksBody = document.getElementById("tasksBody");
+      const headerRow = document.getElementById("headerRow");
+      const useRemote = document.getElementById("useRemote");
+      const ADMIN_EMAILS = [
+        "admin@lht-philippines.com",
+        "anotheradmin@company.com",
+      ];
+
+      const TASKS_COLLECTION = "jctargets";
+      const BATCH_LIMIT = 500;
+
+      function normalizeDate(value) {
+        if (value == null) return null;
+        if (Object.prototype.toString.call(value) === "[object Date]") {
+          if (isNaN(value)) return null;
+          const y = value.getFullYear();
+          const m = String(value.getMonth() + 1).padStart(2, "0");
+          const d = String(value.getDate()).padStart(2, "0");
+          return `${y}-${m}-${d}`;
+        }
+        if (typeof value === "number") {
+          const excelEpoch = new Date(1899, 11, 30);
+          const dt = new Date(excelEpoch.getTime() + value * 86400000);
+          return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(
+            2,
+            "0",
+          )}-${String(dt.getDate()).padStart(2, "0")}`;
+        }
+        const maybe = new Date(value);
+        if (!isNaN(maybe)) {
+          return `${maybe.getFullYear()}-${String(
+            maybe.getMonth() + 1,
+          ).padStart(2, "0")}-${String(maybe.getDate()).padStart(2, "0")}`;
+        }
+        return String(value);
+      }
+      function formatDate(iso) {
+        if (!iso) return "-";
+        const d = new Date(iso);
+        return d.toLocaleString("en-PH", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: "Asia/Manila", // ensure PH time
+        });
+      }
+
+      async function parseFileToRows(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const wb = XLSX.read(e.target.result, { type: "binary" });
+              const sheet = wb.Sheets[wb.SheetNames[0]];
+              const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+              resolve(rows);
+            } catch (err) {
+              reject(err);
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsBinaryString(file);
+        });
+      }
+
+      function mapRow(raw) {
+        const mapKey = (names) => {
+          const keys = Object.keys(raw);
+          for (const n of names) {
+            const found = keys.find(
+              (k) => k.trim().toLowerCase() === n.toLowerCase(),
+            );
+            if (found) return found;
+          }
+          return null;
+        };
+
+        const wo = raw[mapKey(["wo", "workorder"])] ?? null;
+        const skill = raw[mapKey(["Skill"])] ?? null;
+        const tdate = normalizeDate([mapKey(["tdate", "TDate"])] ?? null);
+
+        return {
+          id: wo && task_card ? `${wo}_${skill}_${tdate}` : null,
+          wo,
+          tdate,
+          ac: raw[mapKey(["ac", "aircraft"])] ?? null,
+          skill,
+          tasktarget: raw[mapKey(["jctarget", "target"])] ?? null,
+        };
+      }
+
+      async function renderTable(rows) {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        const userEmail = user?.email || "Unknown";
+        const isAdmin = ADMIN_EMAILS.includes(userEmail);
+
+        // Group rows by WO + AC
+        const summaryMap = new Map();
+        for (const r of rows) {
+          if (!r.wo) continue;
+          const key = `${r.wo}_${r.ac || "N/A"}`;
+          if (!summaryMap.has(key)) {
+            summaryMap.set(key, {
+              wo: r.wo,
+              ac: r.ac || "N/A",
+              total: 0,
+              uploadedBy: r.uploadedBy || "Unknown",
+              uploadedAt: r.uploadedAt || "",
+            });
+          }
+          const item = summaryMap.get(key);
+          item.total += 1;
+          if (r.uploadedBy) item.uploadedBy = r.uploadedBy;
+          if (r.uploadedAt) item.uploadedAt = r.uploadedAt;
+        }
+
+        const summaryRows = Array.from(summaryMap.values());
+
+        // Headers
+        const headers = ["wo", "ac", "total", "uploadedBy", "uploadedAt"];
+        if (isAdmin) headers.push("delete"); // 👈 only show if admin
+
+        const headerLabels = {
+          wo: "Work Order",
+          ac: "Aircraft",
+          total: "Total Taskcards",
+          uploadedBy: "Uploaded By",
+          uploadedAt: "Uploaded At",
+          delete: "Delete",
+        };
+
+        // Render table header
+        headerRow.innerHTML = "";
+        headers.forEach((h) => {
+          const th = document.createElement("th");
+          th.textContent = headerLabels[h];
+          headerRow.appendChild(th);
+        });
+
+        // Render body
+        tasksBody.innerHTML = "";
+        if (summaryRows.length === 0) {
+          tasksBody.innerHTML = `<tr><td colspan="${headers.length}" class="small">No summary data found.</td></tr>`;
+          return;
+        }
+
+        for (const row of summaryRows) {
+          const tr = document.createElement("tr");
+          headers.forEach((h) => {
+            const td = document.createElement("td");
+
+            if (h === "delete" && isAdmin) {
+              const btn = document.createElement("button");
+              btn.textContent = "🗑 Delete";
+              btn.className =
+                "delete-btn bg-red-500 text-white rounded px-2 py-1 text-sm hover:bg-red-600";
+              btn.addEventListener("click", () =>
+                handleDeleteWO(row.wo, row.ac, userEmail),
+              );
+              td.appendChild(btn);
+            } else if (h === "uploadedAt") {
+              // ✅ format the uploadedAt date properly
+              td.textContent = formatDate(row.uploadedAt);
+            } else {
+              td.textContent = row[h] ?? "";
+            }
+
+            tr.appendChild(td);
+          });
+
+          tasksBody.appendChild(tr);
+        }
+      }
+
+      async function handleDeleteWO(wo, ac, userEmail) {
+        if (!confirm(`Delete all JC Targets for WO: ${wo}?`)) return;
+
+        try {
+          showLoading(`Deleting ${wo}…`);
+
+          const tasksQuery = query(
+            collection(db, TASKS_COLLECTION),
+            where("wo", "==", wo),
+          );
+
+          const tasksSnap = await getDocs(tasksQuery);
+
+          if (tasksSnap.empty) {
+            hideLoading();
+            alert("No matching documents found.");
+            return;
+          }
+
+          const docs = tasksSnap.docs;
+          const BATCH_LIMIT = 500;
+
+          for (let i = 0; i < docs.length; i += BATCH_LIMIT) {
+            const batch = writeBatch(db);
+
+            docs
+              .slice(i, i + BATCH_LIMIT)
+              .forEach((docSnap) => batch.delete(docSnap.ref));
+
+            await batch.commit();
+          }
+
+          hideLoading();
+          alert(`✅ Deleted ${docs.length} records for WO: ${wo}`);
+          console.log(`${userEmail} deleted ${docs.length} records for ${wo}`);
+        } catch (err) {
+          hideLoading();
+          alert("❌ Delete failed: " + err.message);
+          console.error("Delete failed:", err);
+        }
+      }
+
+      async function uploadRowsToFirestore(mappedRows) {
+        const db = getFirestore();
+        const auth = getAuth();
+        const user = auth.currentUser;
+        const userEmail = user?.email || user?.displayName || "Unknown User";
+
+        if (!mappedRows.length) {
+          setStatus("No rows to upload.", true);
+          return;
+        }
+
+        showLoading("Uploading (create + update)...");
+
+        let created = 0;
+        let updated = 0;
+
+        const validRows = mappedRows.filter((r) => r.id && r.wo);
+
+        const totalChunks = Math.ceil(validRows.length / BATCH_LIMIT);
+
+        for (let i = 0; i < totalChunks; i++) {
+          const chunk = validRows.slice(i * BATCH_LIMIT, (i + 1) * BATCH_LIMIT);
+
+          const batch = writeBatch(db);
+
+          for (const row of chunk) {
+            const ref = doc(db, TASKS_COLLECTION, row.id);
+            const snap = await getDoc(ref);
+
+            const payload = {
+              ...row,
+              uploadedBy: userEmail,
+              uploadedAt: new Date().toISOString(),
+              updatedAt: serverTimestamp(),
+            };
+
+            // 👇 only add createdAt if doc does not exist
+            if (!snap.exists()) {
+              payload.createdAt = serverTimestamp();
+              created++;
+            } else {
+              updated++;
+            }
+
+            // 🔥 UPSERT
+            batch.set(ref, payload, { merge: true });
+          }
+
+          await batch.commit();
+
+          setStatus(
+            `Batch ${i + 1}/${totalChunks} — Created: ${created}, Updated: ${updated}`,
+          );
+        }
+
+        hideLoading();
+
+        setStatus(`🎉 Upload complete! Created ${created}, Updated ${updated}`);
+
+        console.log("UPSERT RESULT", { created, updated });
+      }
+
+      function attachRealtimeListener() {
+        const q = query(collection(db, TASKS_COLLECTION), orderBy("wo"));
+        unsubscribeListener = onSnapshot(
+          q,
+          (snapshot) => {
+            const rows = [];
+            snapshot.forEach((docSnap) => rows.push(docSnap.data()));
+            renderTable(rows);
+            setStatus(`Realtime: ${rows.length} tasks`);
+          },
+          (err) => setStatus("Listener error: " + err.message, true),
+        );
+      }
+
+      uploadBtn.addEventListener("click", async () => {
+        const file = fileInput.files?.[0];
+        if (!file) return setStatus("Select file", true);
+
+        try {
+          showLoading("Uploading to Firestore...");
+          const rows = (await parseFileToRows(file)).map((r) => mapRow(r));
+          await uploadRowsToFirestore(rows);
+
+          // ✅ Clear chosen file after successful upload
+          fileInput.value = "";
+
+          setStatus("✅ Upload complete!");
+        } catch (err) {
+          setStatus("❌ Upload failed: " + err.message, true);
+        } finally {
+          hideLoading();
+        }
+      });
+    </script>
+  </body>
+</html>
