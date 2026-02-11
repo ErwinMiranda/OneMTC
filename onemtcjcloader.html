@@ -466,7 +466,7 @@
         const tdate = normalizeDate([mapKey(["tdate", "TDate"])] ?? null);
 
         return {
-          id: wo ? `${wo}_${skill}_${tdate}` : null,
+          id: wo && skill && tdate? `${wo}_${skill}_${tdate}` : null,
           wo,
           tdate,
           ac: raw[mapKey(["ac", "aircraft"])] ?? null,
