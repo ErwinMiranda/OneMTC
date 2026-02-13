@@ -1511,7 +1511,7 @@
   <span class="tag skill">Skill: ${skill}</span> • 
   <span class="tag phase">Phase: ${phase}</span><br>
   <span class="status ${status === "CLOSED" ? "closed" : "open"}">
-    Item ${task.slice(-3)} ${
+    Item ${parseInt(task.split('-').pop(), 10)} ${
     status === "OPEN"
       ? "RE-OPEN"
       : status === "CLOSED"
