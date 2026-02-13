@@ -3512,13 +3512,13 @@
 
             if (statusEl) {
               const statusText = statusEl.textContent.trim().toUpperCase();
-              if (statusText === "CLOSED") {
+              if (statusText.includes("COMPLETED")) {
                 glowClass = "pulse-glow-green";
-              } else if (statusText === "RE-OPEN") {
+              } else if (statusText.includes("RE-OPEN")) {
                 glowClass = "pulse-glow-blue";
               } else if (
-                statusText === "WARNING" ||
-                statusText === "NEWLY ADDED"
+                statusText.includes("WARNING")||
+                statusText.includes("NEWLY ADDED")
               ) {
                 glowClass = "pulse-glow-amber";
               }
