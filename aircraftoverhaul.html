@@ -3799,6 +3799,61 @@
           },
         });
       }
+      const APP_VERSION = "1.0.1"; // Change this every time you deploy
+const storedVersion = localStorage.getItem("app_version");
+
+if (storedVersion && storedVersion !== APP_VERSION) {
+  showUpdateNotification();
+}
+
+localStorage.setItem("app_version", APP_VERSION);
+
+function showUpdateNotification() {
+  const banner = document.createElement("div");
+  banner.innerHTML = `
+    <span style="color:#05164D;">New version available</span>
+    <button id="refreshBtn">Refresh</button>
+  `;
+
+  banner.style.position = "fixed";
+  banner.style.bottom = "20px";
+  banner.style.right = "20px";
+  banner.style.background = "#ffffff";
+  banner.style.padding = "8px 16px";
+  banner.style.borderRadius = "24px";
+  banner.style.display = "flex";
+  banner.style.alignItems = "center";
+  banner.style.gap = "12px";
+  banner.style.boxShadow = "0 4px 12px rgba(0,0,0,0.12)";
+  banner.style.fontSize = "13px";
+  banner.style.fontWeight = "500";
+  banner.style.zIndex = "9999";
+  banner.style.border = "1px solid #e5e5e5";
+
+  document.body.appendChild(banner);
+
+  const btn = document.getElementById("refreshBtn");
+
+  btn.style.background = "#05164D";   // Lufthansa blue
+  btn.style.color = "#ffffff";
+  btn.style.border = "none";
+  btn.style.padding = "6px 14px";
+  btn.style.borderRadius = "16px";
+  btn.style.cursor = "pointer";
+  btn.style.fontSize = "12px";
+
+  btn.onmouseenter = () => {
+    btn.style.background = "#FFCC00"; // Lufthansa yellow hover
+    btn.style.color = "#05164D";
+  };
+
+  btn.onmouseleave = () => {
+    btn.style.background = "#05164D";
+    btn.style.color = "#ffffff";
+  };
+
+  btn.onclick = () => location.reload();
+}
     </script>
   </body>
 </html>
