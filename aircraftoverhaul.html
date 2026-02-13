@@ -1506,14 +1506,21 @@
         // 👇 This is the change: return a string, not an element
         return `
     <li data-id="${id}"> 
-      <span class="time">${time}</span><br>
-      <strong>Seq ${seq}</strong> — ${task}<br>
-      <span class="tag skill">Skill: ${skill}</span> • 
-      <span class="tag phase">Phase: ${phase}</span><br>
-      <span class="status ${status === "CLOSED" ? "closed" : "open"}">
-        ${status === "OPEN" ? "RE-" + status : status}
-      </span> <small>by ${modifiedBy}</small>
-    </li>
+  <span class="time">${time}</span><br>
+  <strong>Seq ${seq}</strong> — ${task}<br>
+  <span class="tag skill">Skill: ${skill}</span> • 
+  <span class="tag phase">Phase: ${phase}</span><br>
+  <span class="status ${status === "CLOSED" ? "closed" : "open"}">
+    Item ${task.slice(-3)} ${
+    status === "OPEN"
+      ? "RE-OPEN"
+      : status === "CLOSED"
+      ? "COMPLETED"
+      : status
+  }
+  </span> 
+  <span class="time"><small>by ${modifiedBy}</small></span>
+</li>
   `;
       }
 
