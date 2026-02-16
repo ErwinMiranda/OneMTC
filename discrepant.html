@@ -13,6 +13,24 @@
   <h1>Discrepancy Dashboard</h1>
   <div id="woHeader" style="font-size:14px; margin-top:5px;"></div>
 </header>
+<section style="padding:15px;">
+  <button id="showAllBtn" class="filterBtn active">Show All</button>
+  <button id="showOpenBtn" class="filterBtn">Show OPEN Only</button>
+
+  <div class="skill-filter-container">
+  <button id="skillToggleBtn" class="filterBtn">
+    Filter Skills ▼
+  </button>
+
+  <div id="skillDropdown" class="skill-dropdown hidden">
+    <!-- Dynamic checkboxes will be inserted here -->
+  </div>
+</div>
+
+   
+  </select>
+</section>
+
 
 <section class="table-section" style="padding:20px;">
   <table>
@@ -24,6 +42,7 @@
         <th>Phase</th>
         <th>Type</th>
         <th>Remarks</th>
+        <th>Aging</th>
         <th>Status</th>
         <th>Action</th>
       </tr>
