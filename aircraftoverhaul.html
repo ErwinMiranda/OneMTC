@@ -781,6 +781,17 @@
         margin-left: 8px;
         cursor: pointer;
       }
+      .skill-filters button.has-discrepancy {
+  background: #dc3545 !important;
+  color: white !important;
+  border-color: #dc3545 !important;
+}
+
+.skill-filters button.has-discrepancy .comment-badge {
+  background: white !important;
+  color: #dc3545 !important;
+}
+
     </style>
   </head>
   <body>
@@ -992,7 +1003,7 @@
       id="dashboardToggleBtn" 
       class="logbook-btn" 
       style="background-color: var(--lufthansa-yellow); color: var(--lufthansa-blue);"
-      onclick="window.open('discrepant.html', '_blank')"
+      
     >
       Discrepant Dashboard
     </button>
@@ -1139,6 +1150,54 @@
     </div>
     <!-- Toast Notifications -->
     <div id="toastContainer"></div>
+    <!-- Discrepancy Modal -->
+<div id="discrepancyModal" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.5);
+  justify-content:center;
+  align-items:center;
+  z-index:100000;
+">
+  <div style="
+    background:white;
+    padding:25px;
+    border-radius:12px;
+    width:400px;
+    max-width:90%;
+  ">
+    <h3 style="margin-top:0;">Report Discrepancy</h3>
+
+    <div style="margin-bottom:10px;">
+      <label>Discrepancy Type</label>
+      <select id="discType" style="width:100%; padding:6px;">
+        <option value="Incomplete signature-stamp-date">Incomplete signature-stamp-date</option>
+        <option value="Incomplete forms">Incomplete forms</option>
+        <option value="Voiding and Card Handling Issues">Voiding and Card Handling Issues</option>
+        <option value="Customer Findings and Reporting Issues">Customer Findings and Reporting Issues</option>
+        <option value="Cards Status In Progress">Cards Status In Progress</option>
+        <option value="Document Quality Issues">Document Quality Issues </option>
+        <option value="Reopened/Pulled Out Tasks and Documents">Reopened/Pulled Out Tasks and Documents</option>
+        <option value="Missing-Incorrect Data">Missing-Incorrect Data</option>
+        <option value="NR Work Accomplishment not encoded">NR Work Accomplishment not encoded</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <label>Remarks</label>
+      <textarea id="discRemarks" rows="3" style="width:100%;"></textarea>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button id="closeDiscBtn">Cancel</button>
+      <button id="saveDiscBtn" style="background:#05164d; color:white;">
+        Save
+      </button>
+    </div>
+  </div>
+</div>
 
     <script src="https://cdn.jsdelivr.net/npm/clusterize.js@0.18.1/clusterize.min.js"></script>
     <script type="module">
@@ -1157,6 +1216,7 @@
         orderBy,
         limit,
         addDoc,
+        setDoc,
         serverTimestamp,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
       import {
@@ -1252,6 +1312,114 @@
       const lastUpdateEl = document.getElementById("lastUpdate");
       const showClosedChk = document.getElementById("showClosedChk");
       const historyListEl = document.getElementById("historyList");
+      const discrepancyModal = document.getElementById("discrepancyModal");
+      const discType = document.getElementById("discType");
+      const discRemarks = document.getElementById("discRemarks");
+      const saveDiscBtn = document.getElementById("saveDiscBtn");
+      const closeDiscBtn = document.getElementById("closeDiscBtn");
+
+      let selectedTaskData = null;
+
+      document.addEventListener("click", (e) => {
+  const el = e.target.closest(".taskcard-click");
+  if (!el) return;
+
+  selectedTaskData = {
+    id: el.dataset.id,
+    wo: el.dataset.wo,
+    seq: el.dataset.seq,
+    task: el.dataset.task,
+    skill: el.dataset.skill,
+    phase: el.dataset.phase
+  };
+
+  discRemarks.value = "";
+  discType.value = "Missing Signature";
+
+  discrepancyModal.style.display = "flex";
+});
+saveDiscBtn.addEventListener("click", async () => {
+
+  if (!selectedTaskData) return;
+
+  try {
+
+    const woDocRef = doc(db, "discrepancies", String(selectedTaskData.wo));
+
+    const itemsCollectionRef = collection(woDocRef, "items");
+    await setDoc(woDocRef, {
+  last_updated: serverTimestamp()
+}, { merge: true });
+
+    await addDoc(itemsCollectionRef, {
+      wo: selectedTaskData.wo,
+      seq: selectedTaskData.seq,
+      task_card: selectedTaskData.task,
+      skill: selectedTaskData.skill,
+      phase: selectedTaskData.phase,
+      discrepancy_type: discType.value,
+      remarks: discRemarks.value,
+      reported_by: loginUser || "Unknown",
+      created_at: serverTimestamp(),
+      status: "OPEN"
+    });
+
+    showToast("Discrepancy logged under WO successfully", "success");
+    discrepancyModal.style.display = "none";
+
+  } catch (err) {
+    console.error("Discrepancy Save Error:", err);
+    showToast("Error saving discrepancy", "error");
+  }
+});
+
+closeDiscBtn.addEventListener("click", () => {
+  discrepancyModal.style.display = "none";
+});
+
+//   Discrepancy Listener Per WO
+let unsubscribeDiscrepancies = null;
+function listenToDiscrepancies(wo) {
+  if (unsubscribeDiscrepancies) {
+    unsubscribeDiscrepancies();
+  }
+  const discRef = collection(db, "discrepancies", String(wo), "items");
+  unsubscribeDiscrepancies = onSnapshot(discRef, (snapshot) => {
+    const skillDiscMap = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.status === "OPEN") {
+        const skill = data.skill;
+        skillDiscMap[skill] = (skillDiscMap[skill] || 0) + 1;
+      }
+    });
+    updateSkillDiscrepancyIndicators(skillDiscMap);
+  });
+}
+// Update Skill Buttons
+function updateSkillDiscrepancyIndicators(skillDiscMap) {
+  document.querySelectorAll(".skill-filters button").forEach(btn => {
+    const buttonSkill = btn.dataset.skill;
+    if (buttonSkill === "CLEAR") return;
+    let hasDisc = false; 
+    if (skillGroups[buttonSkill]) {
+      const members = skillGroups[buttonSkill];
+      hasDisc = members.some(memberSkill =>
+        skillDiscMap[memberSkill] > 0
+      );
+    } else {
+      hasDisc = skillDiscMap[buttonSkill] > 0;
+    }
+    if (hasDisc) {
+      btn.classList.add("has-discrepancy");
+    } else {
+      btn.classList.remove("has-discrepancy");
+    }
+  });
+}
+
+
+
       /* =======================
         Clusterize Table
       ======================== */
@@ -1284,6 +1452,18 @@
       let activePhase = null; // currently selected phase filter
       let multiSkillActive = false;
       let singleSkillActive = false;
+      
+
+// 🔹 Open Discrepancy Dashboard with current WO
+const dashboardBtn = document.getElementById("dashboardToggleBtn");
+dashboardBtn.addEventListener("click", () => {
+  if (!currentWO) {
+    showToast("No Work Order loaded.", "error");
+    return;
+  }
+  window.open(`discrepant.html?wo=${currentWO}`, "_blank");
+});
+
       function getClosedPercentage(docs) {
         if (!docs.length) return 0;
         const closedCount = docs.filter((d) => {
@@ -1505,7 +1685,7 @@
 
         // 👇 This is the change: return a string, not an element
         return `
-    <li data-id="${id}"> 
+   <li data-id="${id}"> 
   <span class="time">${time}</span><br>
   <strong>Seq ${seq}</strong> — ${task}<br>
   <span class="tag skill">Skill: ${skill}</span> • 
@@ -1521,6 +1701,7 @@
   </span> 
   <span class="time"><small>by ${modifiedBy}</small></span>
 </li>
+
   `;
       }
 
@@ -1643,335 +1824,7 @@
 
       // PRINTING......
 
-      function printFullTable() {
-        if (!allDocs || allDocs.length === 0) {
-          showToast("No data to print ❗", "error");
-          return;
-        }
 
-        let filteredDocs = [...allDocs];
-        // ==========================================================
-        // 1) MULTI-SKILL and SINGLE-SKILL FILTER (MUST COME FIRST)
-        // ==========================================================
-
-        // Build map: seq → unique skills
-        const seqSkillMap = {};
-        allDocs.forEach((d) => {
-          const seq = String(d.seq);
-          if (!seqSkillMap[seq]) seqSkillMap[seq] = new Set();
-          if (d.skill) seqSkillMap[seq].add(d.skill);
-        });
-
-        // --- MULTI-SKILL MODE ---
-        if (multiSkillActive) {
-          filteredDocs = filteredDocs.filter((d) => {
-            const sz = seqSkillMap[String(d.seq)]?.size || 0;
-            return sz > 1; // keep seqs with more than 1 skill
-          });
-
-          // highlight
-          filteredDocs = filteredDocs.map((d) => ({
-            ...d,
-            highlightTask: true,
-          }));
-        }
-
-        // --- SINGLE-SKILL MODE ---
-        else if (singleSkillActive) {
-          filteredDocs = filteredDocs.filter((d) => {
-            const sz = seqSkillMap[String(d.seq)]?.size || 0;
-            return sz === 1; // keep seqs with only 1 skill
-          });
-
-          filteredDocs = filteredDocs.map((d) => ({
-            ...d,
-            highlightTask: true,
-          }));
-        }
-
-        // Skill filter (clean version)
-        if (activeSkill !== "CLEAR") {
-          // If grouped skills (example: AVI includes AVI1, AVI2)
-          if (skillGroups[activeSkill]) {
-            filteredDocs = filteredDocs.filter((d) =>
-              skillGroups[activeSkill].includes(d.skill)
-            );
-          }
-
-          // Single skill
-          else {
-            filteredDocs = filteredDocs.filter((d) => d.skill === activeSkill);
-          }
-
-          // Highlight all tasks that remain
-          filteredDocs = filteredDocs.map((d) => ({
-            ...d,
-            highlightTask: true,
-          }));
-        }
-
-        if (seqFilterValues && seqFilterValues.length > 0) {
-          filteredDocs = filteredDocs.filter((d) =>
-            seqFilterValues.includes(String(d.seq))
-          );
-        }
-        if (activePhase) {
-          filteredDocs = filteredDocs.filter((d) => d.phase === activePhase);
-        }
-        document.querySelectorAll(".filter").forEach((input) => {
-          const field = input.dataset.field;
-          const value = input.value.trim().toLowerCase();
-          if (value) {
-            filteredDocs = filteredDocs.filter((d) =>
-              String(d[field] || "")
-                .toLowerCase()
-                .includes(value)
-            );
-          }
-        });
-
-        if (filteredDocs.length === 0) {
-          showToast("No data to print ❗", "error");
-          return;
-        }
-
-        // 🔹 Sort by Seq
-        filteredDocs.sort((a, b) => {
-          const seqA = String(a.seq ?? "");
-          const seqB = String(b.seq ?? "");
-          const numA = Number(seqA);
-          const numB = Number(seqB);
-          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-          return seqA.localeCompare(seqB);
-        });
-
-        // 🔹 Group by Seq
-        const grouped = {};
-        filteredDocs.forEach((d) => {
-          const seq = d.seq ?? "Unknown";
-          if (!grouped[seq]) grouped[seq] = [];
-          grouped[seq].push(d);
-        });
-
-        // 🔹 Build rows
-        const rows = Object.entries(grouped)
-          .map(([seq, tasks]) => {
-            tasks.sort((a, b) => {
-              const cardA = a.task_card ?? "";
-              const cardB = b.task_card ?? "";
-              return String(cardA).localeCompare(String(cardB), undefined, {
-                numeric: true,
-                sensitivity: "base",
-              });
-            });
-
-            const taskRows = tasks
-              .map((d, index) => {
-                const status = (d.status ?? "").toLowerCase();
-                let bgColor = "background-color: #ffebee;"; // Light red
-                let displayStatus = d.status ?? "";
-
-                if (status === "closed") {
-                  bgColor = "background-color: #e8f5e9;"; // Light green
-                  displayStatus = "Closed";
-                } else if (status === "cancel") {
-                  bgColor = "background-color: #e8f5e9;"; // Light green
-                  displayStatus = "Cancelled";
-                } else if (status === "open") {
-                  bgColor = "background-color: #ffebee;"; // Light red
-                  displayStatus = "Open";
-                }
-
-                return `
-            <tr class="${d.faded ? "faded" : ""}">
-              ${
-                index === 0
-                  ? `<td rowspan="${tasks.length}">${
-                      d.reference_task_card ?? ""
-                    }</td>`
-                  : ""
-              }
-              ${
-                index === 0
-                  ? `<td rowspan="${tasks.length}">${
-                      d.task_card_description ?? ""
-                    }</td>`
-                  : ""
-              }
-              ${index === 0 ? `<td rowspan="${tasks.length}">${seq}</td>` : ""}
-              <td class="taskcard-cell" style="${
-                d.highlightTask ? "background-color: #f1f3f5;" : ""
-              }">
-                ${d.task_card ?? ""}
-              </td>
-              <td>${d.comment ?? ""}</td>
-              <td>${d.status ?? ""}</td>
-              <td style="${d.phase === "PH" ? bgColor : ""}">${
-                  d.phase === "PH" ? d.skill : ""
-                }</td>
-              <td style="${d.phase === "P1" ? bgColor : ""}">${
-                  d.phase === "P1" ? d.skill : ""
-                }</td>
-              <td style="${d.phase === "P2" ? bgColor : ""}">${
-                  d.phase === "P2" ? d.skill : ""
-                }</td>
-              <td style="${d.phase === "P3" ? bgColor : ""}">${
-                  d.phase === "P3" ? d.skill : ""
-                }</td>
-              <td style="${d.phase === "P4" ? bgColor : ""}">${
-                  d.phase === "P4" ? d.skill : ""
-                }</td>
-              <td style="${d.phase === "P6" ? bgColor : ""}">${
-                  d.phase === "P6" ? d.skill : ""
-                }</td>
-              <td style="${d.phase === "P0" ? bgColor : ""}">${
-                  d.phase === "P0" ? d.skill : ""
-                }</td>
-            </tr>
-          `;
-              })
-              .join("");
-
-            return `
-      <tbody class="seq-group">
-        ${taskRows}
-      </tbody>
-    `;
-          })
-          .join("");
-
-        // 🔹 Get dynamic header content and add selected skill
-        const dynamicHeader =
-          document.getElementById("dynamicHeader")?.textContent || "";
-
-        let selectedSkillText = "";
-        if (activeSkill && activeSkill !== "CLEAR") {
-          selectedSkillText = ` - Selected Skill: <b>${activeSkill}</b>`;
-        }
-
-        // Build header additions
-        let headerFilters = "";
-
-        // Skill filter
-        if (activeSkill && activeSkill !== "CLEAR") {
-          headerFilters += ` | Skill: ${activeSkill}`;
-        }
-
-        // Multi / Single Skill
-        if (multiSkillActive) headerFilters += " | Multi-Skill MTC";
-        if (singleSkillActive) headerFilters += " | Single-Skill MTC";
-
-        // Phase filter
-        if (activePhase) headerFilters += ` | Phase: ${activePhase}`;
-
-        // Seq filter(s)
-        if (seqFilterValues && seqFilterValues.length > 0) {
-          headerFilters += ` | Seq: ${seqFilterValues.join(", ")}`;
-        }
-
-        // Text filters
-        document.querySelectorAll(".filter").forEach((input) => {
-          const field = input.dataset.field;
-          const value = input.value.trim();
-          if (value) {
-            headerFilters += ` | ${field}: "${value}"`;
-          }
-        });
-
-        // Final header
-        const fullHeader = `${dynamicHeader}${headerFilters}`;
-
-        const tableHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th colspan="13" style="text-align:center; font-size:14px; font-weight:bold; background:white; border-bottom: 2px solid #000;">
-              ${fullHeader}
-            </th>
-          </tr>
-          <tr>
-            <th>Reference</th>
-            <th>Description</th>
-            <th>Seq.No</th>
-            <th>TaskCard Items</th>
-            <th>Comments</th>
-            <th>Status</th>
-            <th>PH</th>
-            <th>P1</th>
-            <th>P2</th>
-            <th>P3</th>
-            <th>P4</th>
-            <th>P6</th>
-            <th>P0</th>
-          </tr>
-        </thead>
-        ${rows}
-      </table>
-    `;
-
-        // 🔹 Open print window
-        const printWindow = window.open("", "_blank");
-        printWindow.document.write(`
-      <html>
-        <head>
-          <title>Print Table</title>
-          <style>
-            @page { 
-              size: landscape;
-              margin: 15mm;
-              @bottom-right {
-                content: "Page " counter(page) " of " counter(pages);
-                font-size: 10px;
-                color: #555;
-                font-family: Arial, sans-serif;
-              }
-            }
-            body { 
-              font-family: Arial, sans-serif; 
-              margin: 0;
-              padding: 0;
-              font-size: 10px; 
-              counter-reset: page;
-            }
-            table { 
-              border-collapse: collapse; 
-              width: 100%;
-              font-size: 10px;
-            } 
-            th, td { 
-              border: 1px solid #000; 
-              padding: 4px; 
-              text-align: center; 
-              vertical-align: middle;
-              word-wrap: break-word;
-            }
-            td.taskcard-cell {
-              white-space: nowrap; 
-              text-overflow: ellipsis; 
-              overflow: hidden; 
-              max-width: 300px;
-            }
-            th { background: #f2f2f2; }
-            thead {
-              display: table-header-group;
-            }
-            .seq-group {
-              page-break-inside: avoid;
-            }
-            tbody.seq-group:not(:first-of-type) tr:first-child td {
-              border-top: 2px solid #000;
-            }
-          </style>
-        </head>
-        <body>
-          ${tableHTML}
-        </body>
-      </html>
-    `);
-        printWindow.document.close();
-      }
-
-      window.printFullTable = printFullTable;
 
       let prevDocsMap = new Map(); // 🧠 Cache to detect changes
       let commentFlashDuration = 1000; // highlight for 1 second
@@ -2391,8 +2244,20 @@
             : ""
         }
         <td style="text-align:center; vertical-align:middle; ${baseCellStyle}">
-          ${t.task_card ?? ""}
-        </td>
+  <span 
+    class="taskcard-click"
+    data-id="${t.id}"
+    data-wo="${t.wo}"
+    data-seq="${t.seq}"
+    data-task="${t.task_card}"
+    data-skill="${t.skill}"
+    data-phase="${t.phase}"
+    style="color: var(--lufthansa-blue); cursor:pointer; font-weight:600; text-decoration: underline;"
+  >
+    ${t.task_card ?? ""}
+  </span>
+</td>
+
 
         <td class="comment-cell">
           <textarea class="comment-input" data-id="${t.id}" rows="1">${
@@ -3076,6 +2941,7 @@
 
             // 🔹 Regenerate dynamic skill buttons
             populateDynamicSkillButtons();
+            listenToDiscrepancies(wo);
 
             hideLoading();
           },
@@ -3799,7 +3665,68 @@
           },
         });
       }
-      
+const APP_VERSION = "1.0.3"; // Change this every time you deploy
+const storedVersion = localStorage.getItem("app_version");
+
+if (storedVersion && storedVersion !== APP_VERSION) {
+  showUpdateNotification();
+}
+
+localStorage.setItem("app_version", APP_VERSION);
+
+function showUpdateNotification() {
+  const banner = document.createElement("div");
+  banner.innerHTML = `
+    <span style="color:#05164D;">New version available</span>
+    <button id="refreshBtn">Refresh</button>
+  `;
+
+  banner.style.position = "fixed";
+  banner.style.bottom = "20px";
+  banner.style.right = "20px";
+  banner.style.background = "#ffffff";
+  banner.style.padding = "8px 16px";
+  banner.style.borderRadius = "24px";
+  banner.style.display = "flex";
+  banner.style.alignItems = "center";
+  banner.style.gap = "12px";
+  banner.style.boxShadow = "0 4px 12px rgba(0,0,0,0.12)";
+  banner.style.fontSize = "13px";
+  banner.style.fontWeight = "500";
+  banner.style.zIndex = "9999";
+  banner.style.border = "1px solid #e5e5e5";
+
+  document.body.appendChild(banner);
+
+  const btn = document.getElementById("refreshBtn");
+
+  btn.style.background = "#05164D";   // Lufthansa blue
+  btn.style.color = "#ffffff";
+  btn.style.border = "none";
+  btn.style.padding = "6px 14px";
+  btn.style.borderRadius = "16px";
+  btn.style.cursor = "pointer";
+  btn.style.fontSize = "12px";
+
+  btn.onmouseenter = () => {
+    btn.style.background = "#FFCC00"; // Lufthansa yellow hover
+    btn.style.color = "#05164D";
+  };
+
+  btn.onmouseleave = () => {
+    btn.style.background = "#05164D";
+    btn.style.color = "#ffffff";
+  };
+
+  btn.onclick = () => location.reload();
+}
+
+
+
+
+
+
+
     </script>
   </body>
 </html>
