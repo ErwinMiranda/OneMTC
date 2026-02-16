@@ -1823,7 +1823,335 @@ dashboardBtn.addEventListener("click", () => {
       };
 
       // PRINTING......
+     function printFullTable() {
+        if (!allDocs || allDocs.length === 0) {
+          showToast("No data to print ❗", "error");
+          return;
+        }
 
+        let filteredDocs = [...allDocs];
+        // ==========================================================
+        // 1) MULTI-SKILL and SINGLE-SKILL FILTER (MUST COME FIRST)
+        // ==========================================================
+
+        // Build map: seq → unique skills
+        const seqSkillMap = {};
+        allDocs.forEach((d) => {
+          const seq = String(d.seq);
+          if (!seqSkillMap[seq]) seqSkillMap[seq] = new Set();
+          if (d.skill) seqSkillMap[seq].add(d.skill);
+        });
+
+        // --- MULTI-SKILL MODE ---
+        if (multiSkillActive) {
+          filteredDocs = filteredDocs.filter((d) => {
+            const sz = seqSkillMap[String(d.seq)]?.size || 0;
+            return sz > 1; // keep seqs with more than 1 skill
+          });
+
+          // highlight
+          filteredDocs = filteredDocs.map((d) => ({
+            ...d,
+            highlightTask: true,
+          }));
+        }
+
+        // --- SINGLE-SKILL MODE ---
+        else if (singleSkillActive) {
+          filteredDocs = filteredDocs.filter((d) => {
+            const sz = seqSkillMap[String(d.seq)]?.size || 0;
+            return sz === 1; // keep seqs with only 1 skill
+          });
+
+          filteredDocs = filteredDocs.map((d) => ({
+            ...d,
+            highlightTask: true,
+          }));
+        }
+
+        // Skill filter (clean version)
+        if (activeSkill !== "CLEAR") {
+          // If grouped skills (example: AVI includes AVI1, AVI2)
+          if (skillGroups[activeSkill]) {
+            filteredDocs = filteredDocs.filter((d) =>
+              skillGroups[activeSkill].includes(d.skill)
+            );
+          }
+
+          // Single skill
+          else {
+            filteredDocs = filteredDocs.filter((d) => d.skill === activeSkill);
+          }
+
+          // Highlight all tasks that remain
+          filteredDocs = filteredDocs.map((d) => ({
+            ...d,
+            highlightTask: true,
+          }));
+        }
+
+        if (seqFilterValues && seqFilterValues.length > 0) {
+          filteredDocs = filteredDocs.filter((d) =>
+            seqFilterValues.includes(String(d.seq))
+          );
+        }
+        if (activePhase) {
+          filteredDocs = filteredDocs.filter((d) => d.phase === activePhase);
+        }
+        document.querySelectorAll(".filter").forEach((input) => {
+          const field = input.dataset.field;
+          const value = input.value.trim().toLowerCase();
+          if (value) {
+            filteredDocs = filteredDocs.filter((d) =>
+              String(d[field] || "")
+                .toLowerCase()
+                .includes(value)
+            );
+          }
+        });
+
+        if (filteredDocs.length === 0) {
+          showToast("No data to print ❗", "error");
+          return;
+        }
+
+        // 🔹 Sort by Seq
+        filteredDocs.sort((a, b) => {
+          const seqA = String(a.seq ?? "");
+          const seqB = String(b.seq ?? "");
+          const numA = Number(seqA);
+          const numB = Number(seqB);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return seqA.localeCompare(seqB);
+        });
+
+        // 🔹 Group by Seq
+        const grouped = {};
+        filteredDocs.forEach((d) => {
+          const seq = d.seq ?? "Unknown";
+          if (!grouped[seq]) grouped[seq] = [];
+          grouped[seq].push(d);
+        });
+
+        // 🔹 Build rows
+        const rows = Object.entries(grouped)
+          .map(([seq, tasks]) => {
+            tasks.sort((a, b) => {
+              const cardA = a.task_card ?? "";
+              const cardB = b.task_card ?? "";
+              return String(cardA).localeCompare(String(cardB), undefined, {
+                numeric: true,
+                sensitivity: "base",
+              });
+            });
+
+            const taskRows = tasks
+              .map((d, index) => {
+                const status = (d.status ?? "").toLowerCase();
+                let bgColor = "background-color: #ffebee;"; // Light red
+                let displayStatus = d.status ?? "";
+
+                if (status === "closed") {
+                  bgColor = "background-color: #e8f5e9;"; // Light green
+                  displayStatus = "Closed";
+                } else if (status === "cancel") {
+                  bgColor = "background-color: #e8f5e9;"; // Light green
+                  displayStatus = "Cancelled";
+                } else if (status === "open") {
+                  bgColor = "background-color: #ffebee;"; // Light red
+                  displayStatus = "Open";
+                }
+
+                return `
+            <tr class="${d.faded ? "faded" : ""}">
+              ${
+                index === 0
+                  ? `<td rowspan="${tasks.length}">${
+                      d.reference_task_card ?? ""
+                    }</td>`
+                  : ""
+              }
+              ${
+                index === 0
+                  ? `<td rowspan="${tasks.length}">${
+                      d.task_card_description ?? ""
+                    }</td>`
+                  : ""
+              }
+              ${index === 0 ? `<td rowspan="${tasks.length}">${seq}</td>` : ""}
+              <td class="taskcard-cell" style="${
+                d.highlightTask ? "background-color: #f1f3f5;" : ""
+              }">
+                ${d.task_card ?? ""}
+              </td>
+              <td>${d.comment ?? ""}</td>
+              <td>${d.status ?? ""}</td>
+              <td style="${d.phase === "PH" ? bgColor : ""}">${
+                  d.phase === "PH" ? d.skill : ""
+                }</td>
+              <td style="${d.phase === "P1" ? bgColor : ""}">${
+                  d.phase === "P1" ? d.skill : ""
+                }</td>
+              <td style="${d.phase === "P2" ? bgColor : ""}">${
+                  d.phase === "P2" ? d.skill : ""
+                }</td>
+              <td style="${d.phase === "P3" ? bgColor : ""}">${
+                  d.phase === "P3" ? d.skill : ""
+                }</td>
+              <td style="${d.phase === "P4" ? bgColor : ""}">${
+                  d.phase === "P4" ? d.skill : ""
+                }</td>
+              <td style="${d.phase === "P6" ? bgColor : ""}">${
+                  d.phase === "P6" ? d.skill : ""
+                }</td>
+              <td style="${d.phase === "P0" ? bgColor : ""}">${
+                  d.phase === "P0" ? d.skill : ""
+                }</td>
+            </tr>
+          `;
+              })
+              .join("");
+
+            return `
+      <tbody class="seq-group">
+        ${taskRows}
+      </tbody>
+    `;
+          })
+          .join("");
+
+        // 🔹 Get dynamic header content and add selected skill
+        const dynamicHeader =
+          document.getElementById("dynamicHeader")?.textContent || "";
+
+        let selectedSkillText = "";
+        if (activeSkill && activeSkill !== "CLEAR") {
+          selectedSkillText = ` - Selected Skill: <b>${activeSkill}</b>`;
+        }
+
+        // Build header additions
+        let headerFilters = "";
+
+        // Skill filter
+        if (activeSkill && activeSkill !== "CLEAR") {
+          headerFilters += ` | Skill: ${activeSkill}`;
+        }
+
+        // Multi / Single Skill
+        if (multiSkillActive) headerFilters += " | Multi-Skill MTC";
+        if (singleSkillActive) headerFilters += " | Single-Skill MTC";
+
+        // Phase filter
+        if (activePhase) headerFilters += ` | Phase: ${activePhase}`;
+
+        // Seq filter(s)
+        if (seqFilterValues && seqFilterValues.length > 0) {
+          headerFilters += ` | Seq: ${seqFilterValues.join(", ")}`;
+        }
+
+        // Text filters
+        document.querySelectorAll(".filter").forEach((input) => {
+          const field = input.dataset.field;
+          const value = input.value.trim();
+          if (value) {
+            headerFilters += ` | ${field}: "${value}"`;
+          }
+        });
+
+        // Final header
+        const fullHeader = `${dynamicHeader}${headerFilters}`;
+
+        const tableHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th colspan="13" style="text-align:center; font-size:14px; font-weight:bold; background:white; border-bottom: 2px solid #000;">
+              ${fullHeader}
+            </th>
+          </tr>
+          <tr>
+            <th>Reference</th>
+            <th>Description</th>
+            <th>Seq.No</th>
+            <th>TaskCard Items</th>
+            <th>Comments</th>
+            <th>Status</th>
+            <th>PH</th>
+            <th>P1</th>
+            <th>P2</th>
+            <th>P3</th>
+            <th>P4</th>
+            <th>P6</th>
+            <th>P0</th>
+          </tr>
+        </thead>
+        ${rows}
+      </table>
+    `;
+
+        // 🔹 Open print window
+        const printWindow = window.open("", "_blank");
+        printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Table</title>
+          <style>
+            @page { 
+              size: landscape;
+              margin: 15mm;
+              @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 10px;
+                color: #555;
+                font-family: Arial, sans-serif;
+              }
+            }
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0;
+              padding: 0;
+              font-size: 10px; 
+              counter-reset: page;
+            }
+            table { 
+              border-collapse: collapse; 
+              width: 100%;
+              font-size: 10px;
+            } 
+            th, td { 
+              border: 1px solid #000; 
+              padding: 4px; 
+              text-align: center; 
+              vertical-align: middle;
+              word-wrap: break-word;
+            }
+            td.taskcard-cell {
+              white-space: nowrap; 
+              text-overflow: ellipsis; 
+              overflow: hidden; 
+              max-width: 300px;
+            }
+            th { background: #f2f2f2; }
+            thead {
+              display: table-header-group;
+            }
+            .seq-group {
+              page-break-inside: avoid;
+            }
+            tbody.seq-group:not(:first-of-type) tr:first-child td {
+              border-top: 2px solid #000;
+            }
+          </style>
+        </head>
+        <body>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
+        printWindow.document.close();
+      }
+
+      window.printFullTable = printFullTable;
 
 
       let prevDocsMap = new Map(); // 🧠 Cache to detect changes
