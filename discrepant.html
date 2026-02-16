@@ -1,14 +1,38 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>dashboard-react-project</title>
-    <script type="module" crossorigin src="/assets/index-Gp2rT9OK.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DQ3P1g1z.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <title>Discrepancy Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+  <h1>Discrepancy Dashboard</h1>
+  <div id="woHeader" style="font-size:14px; margin-top:5px;"></div>
+</header>
+
+<section class="table-section" style="padding:20px;">
+  <table>
+    <thead>
+      <tr>
+        <th>SEQ</th>
+        <th>Task Card</th>
+        <th>Skill</th>
+        <th>Phase</th>
+        <th>Type</th>
+        <th>Remarks</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="cardTable"></tbody>
+  </table>
+</section>
+
+<script type="module" src="app.js"></script>
+
+</body>
 </html>
