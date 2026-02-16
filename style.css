@@ -1,0 +1,96 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6f9;
+  margin: 0;
+}
+
+header {
+  background: #0a1f44;
+  color: white;
+  padding: 15px;
+}
+
+.controls {
+  padding: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+input, select {
+  padding: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th {
+  background: #1d3557;
+  color: white;
+  padding: 10px;
+}
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.mismatch {
+  background-color: #ffe5e5;
+}
+
+.high {
+  color: red;
+  font-weight: bold;
+}
+.kpi-container {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+}
+
+.kpi {
+  flex: 1;
+  background: #1d3557;
+  color: white;
+  text-align: center;
+  padding: 20px;
+  border-radius: 10px;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.kpi span {
+  display: block;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.red { background: #d62828; }
+.orange { background: #f77f00; }
+.green { background: #2a9d8f; }
+.alert {
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.alert.hidden {
+  display: none;
+}
+
+.alert.red {
+  background: #d62828;
+}
+
+.alert.orange {
+  background: #f77f00;
+}
+
+.alert.green {
+  background: #2a9d8f;
+}
