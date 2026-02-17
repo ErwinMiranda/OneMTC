@@ -1,57 +1,122 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Discrepancy Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="style.css">
-</head>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Discrepancy Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="discrepant.css" />
+  </head>
 
-<body>
+  <body>
+    <header>
+      <h1>Discrepancy Dashboard</h1>
+      <div
+        id="woHeader"
+        style="font-size: 14px; margin-top: 5px; margin-bottom: 5px"
+      ></div>
+      <section class="filter-bar">
+        <button id="showAllBtn" class="filterBtn active">Show All</button>
+        <button id="showOpenBtn" class="filterBtn">Show OPEN Only</button>
 
-<header>
-  <h1>Discrepancy Dashboard</h1>
-  <div id="woHeader" style="font-size:14px; margin-top:5px;"></div>
-</header>
-<section style="padding:15px;">
-  <button id="showAllBtn" class="filterBtn active">Show All</button>
-  <button id="showOpenBtn" class="filterBtn">Show OPEN Only</button>
+        <div class="skill-filter-container">
+          <button id="skillToggleBtn" class="filterBtn">Filter Skills ▼</button>
+          <div id="skillDropdown" class="skill-dropdown hidden"></div>
+        </div>
 
-  <div class="skill-filter-container">
-  <button id="skillToggleBtn" class="filterBtn">
-    Filter Skills ▼
-  </button>
+        <button id="addNRBtn" class="filterBtn primaryBtn">
+          + Add NR Discrepant
+        </button>
+      </section>
+    </header>
+    <section class="table-section">
+      <table>
+        <thead>
+          <tr>
+            <th>SEQ</th>
+            <th>Task Card</th>
+            <th>Skill</th>
+            <th>Phase</th>
+            <th>Type</th>
+            <th>Remarks</th>
+            <th>Aging</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="cardTable"></tbody>
+      </table>
+    </section>
+    <div id="nrModal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Add NR Discrepancy</h3>
 
-  <div id="skillDropdown" class="skill-dropdown hidden">
-    <!-- Dynamic checkboxes will be inserted here -->
-  </div>
-</div>
+        <label>N/R #</label>
+        <input type="text" id="nrSeq" />
 
-   
-  </select>
-</section>
+        <label>Discrepancy Type</label>
+        <select id="nrType">
+          <option value="Incomplete signature-stamp-date">
+            Incomplete signature-stamp-date
+          </option>
+          <option value="Incomplete forms">Incomplete forms</option>
+          <option value="Voiding and Card Handling Issues">
+            Voiding and Card Handling Issues
+          </option>
+          <option value="Customer Findings and Reporting Issues">
+            Customer Findings and Reporting Issues
+          </option>
+          <option value="Cards Status In Progress">
+            Cards Status In Progress
+          </option>
+          <option value="Document Quality Issues">
+            Document Quality Issues
+          </option>
+          <option value="Reopened/Pulled Out Tasks and Documents">
+            Reopened/Pulled Out Tasks and Documents
+          </option>
+          <option value="Missing-Incorrect Data">Missing-Incorrect Data</option>
+          <option value="NR Work Accomplishment not encoded">
+            NR Work Accomplishment not encoded
+          </option>
+          <option value="Other">Other</option>
+        </select>
 
+        <label>Skill</label>
+        <select id="nrSkill">
+          <option value="">-- Select Skill --</option>
+          <option value="AVI">AVI</option>
+          <option value="CAB">CAB</option>
+          <option value="CRG">CRG</option>
+          <option value="FLC-W">FLC-W</option>
+          <option value="FLC-T">FLC-T</option>
+          <option value="ENG-E">ENG-E</option>
+          <option value="ENG-F">ENG-F</option>
+          <option value="STR">STR</option>
+          <option value="LDG">LDG</option>
+          <option value="STS-F">STS-F</option>
+          <option value="INT-L">INT-L</option>
+          <option value="INT-G">INT-G</option>
+          <option value="INT-P">INT-P</option>
+          <option value="INT-U">INT-U</option>
+          <option value="INT-S">INT-S</option>
+          <option value="CMP">CMP</option>
+          <option value="PNT-E">PNT-E</option>
+          <option value="PNT-I">PNT-I</option>
+          <option value="PNT-C">PNT-C</option>
+          <option value="STS-M">STS-M</option>
+          <option value="NDT">NDT</option>
+        </select>
 
-<section class="table-section" style="padding:20px;">
-  <table>
-    <thead>
-      <tr>
-        <th>SEQ</th>
-        <th>Task Card</th>
-        <th>Skill</th>
-        <th>Phase</th>
-        <th>Type</th>
-        <th>Remarks</th>
-        <th>Aging</th>
-        <th>Status</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="cardTable"></tbody>
-  </table>
-</section>
+        <label>Remarks</label>
+        <textarea id="nrRemarks"></textarea>
 
-<script type="module" src="app.js"></script>
+        <div class="modal-actions">
+          <button id="cancelNRBtn" class="filterBtn">Cancel</button>
+          <button id="saveNRBtn" class="filterBtn primaryBtn">Save</button>
+        </div>
+      </div>
+    </div>
 
-</body>
+    <script type="module" src="discrepant.js"></script>
+  </body>
 </html>
