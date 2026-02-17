@@ -5,6 +5,7 @@ body {
 }
 
 header {
+  position: sticky;
   background: #0a1f44;
   color: white;
   padding: 15px;
@@ -16,7 +17,8 @@ header {
   gap: 10px;
 }
 
-input, select {
+input,
+select {
   padding: 8px;
 }
 
@@ -30,8 +32,13 @@ th {
   background: #1d3557;
   color: white;
   padding: 10px;
-    text-align: left;
+  text-align: left;
   padding-left: 12px;
+}
+.table-section {
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding: 20px;
 }
 
 td {
@@ -70,9 +77,15 @@ td {
   margin-top: 5px;
 }
 
-.red { background: #d62828; }
-.orange { background: #f77f00; }
-.green { background: #2a9d8f; }
+.red {
+  background: #d62828;
+}
+.orange {
+  background: #f77f00;
+}
+.green {
+  background: #2a9d8f;
+}
 .alert {
   padding: 15px;
   text-align: center;
@@ -99,15 +112,16 @@ td {
 .filterBtn {
   padding: 6px 14px;
   border: 1px solid #0a1f44;
-  background: white;
+  background: rgb(127, 125, 125);
   cursor: pointer;
   margin-right: 10px;
-   border-radius: 8px;
+  border-radius: 8px;
+  margin-top: 10px;
 }
 
 .filterBtn.active {
-  background: #0a1f44;
-  color: white;
+  background: #e8ecf0;
+  color: rgb(6, 5, 50);
 }
 .aging-orange {
   color: #f77f00;
@@ -127,15 +141,15 @@ td {
   position: absolute;
   top: 40px;
   left: 0;
-  background: white;
+  background: rgb(170, 165, 165);
   border: 1px solid #ccc;
   padding: 10px;
   border-radius: 8px;
   min-width: 150px;
   max-height: 200px;
   overflow-y: auto;
-  z-index: 999;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  z-index: 99999;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .skill-dropdown.hidden {
@@ -146,4 +160,51 @@ td {
   display: block;
   margin-bottom: 5px;
   cursor: pointer;
+}
+.primaryBtn {
+  background: #1d3557;
+  color: white;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-content input,
+.modal-content textarea {
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+.modal-content select {
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 }
