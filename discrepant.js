@@ -44,6 +44,8 @@ const addNRBtn = document.getElementById("addNRBtn");
 const nrModal = document.getElementById("nrModal");
 const cancelNRBtn = document.getElementById("cancelNRBtn");
 const saveNRBtn = document.getElementById("saveNRBtn");
+const openCountEl = document.getElementById("openCount");
+const openCounterBox = document.querySelector(".open-counter");
 
 /* ================================
    GLOBAL STATE
@@ -112,6 +114,18 @@ function setupFilterButtons() {
     skillDropdown.classList.add("hidden");
   });
 }
+// 🔥 Click OPEN counter to auto filter OPEN only
+if (openCounterBox) {
+  openCounterBox.addEventListener("click", () => {
+    showOpenOnly = true;
+
+    // Toggle active button styles
+    showOpenBtn.classList.add("active");
+    showAllBtn.classList.remove("active");
+
+    renderTable(currentSnapshotDocs);
+  });
+}
 
 /* ================================
    LOAD DISCREPANCIES (REALTIME)
@@ -132,6 +146,9 @@ function loadDiscrepancies(wo) {
    RENDER TABLE WITH AGING + FILTER
 ================================ */
 function renderTable(docs) {
+  const openCountEl = document.getElementById("openCount");
+  let openCounter = 0;
+
   table.innerHTML = "";
 
   if (!docs.length) {
@@ -150,6 +167,7 @@ function renderTable(docs) {
     const id = docSnap.id;
 
     const isOpen = (data.status || "").toUpperCase() === "OPEN";
+    if (isOpen) openCounter++;
 
     // 🔹 FILTER LOGIC
     if (showOpenOnly && !isOpen) return;
@@ -239,6 +257,10 @@ function renderTable(docs) {
 
     table.appendChild(row);
   });
+  // Update header counter
+  if (openCountEl) {
+    openCountEl.textContent = openCounter;
+  }
 }
 function populateSkillFilter(docs) {
   const skills = new Set();
