@@ -4,16 +4,24 @@
     <meta charset="UTF-8" />
     <title>Discrepancy Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="discrepant.css" />
   </head>
 
   <body>
     <header>
-      <h1>Discrepancy Dashboard</h1>
-      <div
-        id="woHeader"
-        style="font-size: 14px; margin-top: 5px; margin-bottom: 5px"
-      ></div>
+      <div class="header-top">
+        <div>
+          <h1>Discrepancy Dashboard</h1>
+          <div id="woHeader" class="wo-sub"></div>
+        </div>
+
+        <!-- 🔥 OPEN COUNTER -->
+        <div class="open-counter">
+          <span>OPEN</span>
+          <div id="openCount">0</div>
+        </div>
+      </div>
+
       <section class="filter-bar">
         <button id="showAllBtn" class="filterBtn active">Show All</button>
         <button id="showOpenBtn" class="filterBtn">Show OPEN Only</button>
@@ -28,6 +36,7 @@
         </button>
       </section>
     </header>
+
     <section class="table-section">
       <table>
         <thead>
@@ -117,6 +126,6 @@
       </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="discrepant.js"></script>
   </body>
 </html>
