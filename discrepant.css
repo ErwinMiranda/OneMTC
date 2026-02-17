@@ -279,3 +279,9 @@ td {
   transform: scale(1.05);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
+/* GREEN STATE WHEN ZERO */
+.open-counter.zero {
+  background: linear-gradient(135deg, #2a9d8f, #1b7f72);
+  animation: none;
+  box-shadow: 0 0 15px rgba(42, 157, 143, 0.6);
+}
