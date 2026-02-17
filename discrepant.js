@@ -258,8 +258,18 @@ function renderTable(docs) {
     table.appendChild(row);
   });
   // Update header counter
-  if (openCountEl) {
+if (openCountEl) {
     openCountEl.textContent = openCounter;
+
+    const openCounterBox = document.querySelector(".open-counter");
+
+    if (openCounterBox) {
+      if (openCounter === 0) {
+        openCounterBox.classList.add("zero");
+      } else {
+        openCounterBox.classList.remove("zero");
+      }
+    }
   }
 }
 function populateSkillFilter(docs) {
