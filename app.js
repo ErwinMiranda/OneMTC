@@ -1,18 +1,18 @@
-import { initializeApp } 
-from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 
-import { 
-  getAuth, 
-  onAuthStateChanged 
+import {
+  getAuth,
+  onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-import { 
-  getFirestore, 
-  collection, 
+import {
+  getFirestore,
+  collection,
   onSnapshot,
   doc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  addDoc,
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 /* ================================
@@ -40,6 +40,10 @@ const showAllBtn = document.getElementById("showAllBtn");
 const showOpenBtn = document.getElementById("showOpenBtn");
 const skillToggleBtn = document.getElementById("skillToggleBtn");
 const skillDropdown = document.getElementById("skillDropdown");
+const addNRBtn = document.getElementById("addNRBtn");
+const nrModal = document.getElementById("nrModal");
+const cancelNRBtn = document.getElementById("cancelNRBtn");
+const saveNRBtn = document.getElementById("saveNRBtn");
 
 /* ================================
    GLOBAL STATE
@@ -61,7 +65,6 @@ function getWOFromURL() {
    AUTH PROTECTION
 ================================ */
 onAuthStateChanged(auth, (user) => {
-
   if (!user) {
     window.location.href = "index.html";
     return;
@@ -86,7 +89,6 @@ onAuthStateChanged(auth, (user) => {
    FILTER BUTTON LOGIC
 ================================ */
 function setupFilterButtons() {
-
   showAllBtn.addEventListener("click", () => {
     showOpenOnly = false;
     showAllBtn.classList.add("active");
@@ -100,35 +102,29 @@ function setupFilterButtons() {
     showAllBtn.classList.remove("active");
     renderTable(currentSnapshotDocs);
   });
- 
-skillToggleBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  skillDropdown.classList.toggle("hidden");
-});
 
-document.addEventListener("click", () => {
-  skillDropdown.classList.add("hidden");
-});
+  skillToggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    skillDropdown.classList.toggle("hidden");
+  });
 
-
+  document.addEventListener("click", () => {
+    skillDropdown.classList.add("hidden");
+  });
 }
 
 /* ================================
    LOAD DISCREPANCIES (REALTIME)
 ================================ */
 function loadDiscrepancies(wo) {
-
   if (unsubscribe) unsubscribe();
 
   const discRef = collection(db, "discrepancies", String(wo), "items");
 
   unsubscribe = onSnapshot(discRef, (snapshot) => {
-
     currentSnapshotDocs = snapshot.docs;
-populateSkillFilter(currentSnapshotDocs);
-renderTable(currentSnapshotDocs);
-
-
+    populateSkillFilter(currentSnapshotDocs);
+    renderTable(currentSnapshotDocs);
   });
 }
 
@@ -136,7 +132,6 @@ renderTable(currentSnapshotDocs);
    RENDER TABLE WITH AGING + FILTER
 ================================ */
 function renderTable(docs) {
-
   table.innerHTML = "";
 
   if (!docs.length) {
@@ -151,17 +146,14 @@ function renderTable(docs) {
   }
 
   docs.forEach((docSnap) => {
-
     const data = docSnap.data();
     const id = docSnap.id;
 
     const isOpen = (data.status || "").toUpperCase() === "OPEN";
 
     // 🔹 FILTER LOGIC
- if (showOpenOnly && !isOpen) return;
-if (selectedSkills.size > 0 && !selectedSkills.has(data.skill)) return;
-
-
+    if (showOpenOnly && !isOpen) return;
+    if (selectedSkills.size > 0 && !selectedSkills.has(data.skill)) return;
 
     const row = document.createElement("tr");
 
@@ -177,7 +169,6 @@ if (selectedSkills.size > 0 && !selectedSkills.has(data.skill)) return;
     let agingClass = "";
 
     if (isOpen && data.created_at) {
-
       const created = new Date(data.created_at.seconds * 1000);
       const diffMs = now - created;
 
@@ -227,10 +218,16 @@ if (selectedSkills.size > 0 && !selectedSkills.has(data.skill)) return;
                  <div style="font-size:12px; color:#666;">
                    ${
                      data.resolved_at
-                       ? new Date(data.resolved_at.seconds * 1000)
-                           .toLocaleDateString() + " • " +
-                         new Date(data.resolved_at.seconds * 1000)
-                           .toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+                       ? new Date(
+                           data.resolved_at.seconds * 1000,
+                         ).toLocaleDateString() +
+                         " • " +
+                         new Date(
+                           data.resolved_at.seconds * 1000,
+                         ).toLocaleTimeString([], {
+                           hour: "2-digit",
+                           minute: "2-digit",
+                         })
                        : ""
                    }
                  </div>
@@ -241,19 +238,18 @@ if (selectedSkills.size > 0 && !selectedSkills.has(data.skill)) return;
     `;
 
     table.appendChild(row);
-
   });
 }
 function populateSkillFilter(docs) {
   const skills = new Set();
-  docs.forEach(docSnap => {
+  docs.forEach((docSnap) => {
     const data = docSnap.data();
     if (data.skill) {
       skills.add(data.skill);
     }
   });
   skillDropdown.innerHTML = "";
-  skills.forEach(skill => {
+  skills.forEach((skill) => {
     const isChecked = selectedSkills.has(skill);
     skillDropdown.innerHTML += `
       <label>
@@ -263,7 +259,7 @@ function populateSkillFilter(docs) {
     `;
   });
   // Attach listeners
-  skillDropdown.querySelectorAll("input").forEach(cb => {
+  skillDropdown.querySelectorAll("input").forEach((cb) => {
     cb.addEventListener("change", () => {
       if (cb.checked) {
         selectedSkills.add(cb.value);
@@ -275,12 +271,10 @@ function populateSkillFilter(docs) {
   });
 }
 
-
 /* ================================
    RESOLVE DISCREPANCY
 ================================ */
 document.addEventListener("click", async (e) => {
-
   if (!e.target.classList.contains("resolveBtn")) return;
 
   const id = e.target.dataset.id;
@@ -291,7 +285,44 @@ document.addEventListener("click", async (e) => {
   await updateDoc(docRef, {
     status: "CLOSED",
     resolved_by: currentUserEmail,
-    resolved_at: serverTimestamp()
+    resolved_at: serverTimestamp(),
+  });
+});
+addNRBtn.addEventListener("click", () => {
+  nrModal.classList.remove("hidden");
+});
+
+cancelNRBtn.addEventListener("click", () => {
+  nrModal.classList.add("hidden");
+});
+saveNRBtn.addEventListener("click", async () => {
+  const wo = getWOFromURL();
+  if (!wo) return;
+
+  const seq = document.getElementById("nrSeq").value;
+  const task = document.getElementById("nrSeq").value;
+  const skill = document.getElementById("nrSkill").value;
+  const type = document.getElementById("nrType").value;
+  const remarks = document.getElementById("nrRemarks").value;
+
+  if (!task || !skill) {
+    alert("Task Card and Skill required.");
+    return;
+  }
+
+  const discRef = collection(db, "discrepancies", String(wo), "items");
+
+  await addDoc(discRef, {
+    seq: seq || "-",
+    task_card: task,
+    skill: skill,
+    discrepancy_type: type || "NR Discrepancy",
+    remarks: remarks || "",
+    status: "OPEN",
+    created_at: serverTimestamp(),
+    created_by: currentUserEmail,
+    source: "NR",
   });
 
+  nrModal.classList.add("hidden");
 });
