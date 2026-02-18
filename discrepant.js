@@ -331,7 +331,7 @@ saveNRBtn.addEventListener("click", async () => {
   const wo = getWOFromURL();
   if (!wo) return;
 
-  const seq = document.getElementById("nrSeq").value;
+  
   const task = document.getElementById("nrSeq").value;
   const skill = document.getElementById("nrSkill").value;
   const type = document.getElementById("nrType").value;
@@ -345,7 +345,7 @@ saveNRBtn.addEventListener("click", async () => {
   const discRef = collection(db, "discrepancies", String(wo), "items");
 
   await addDoc(discRef, {
-    seq: seq || "-",
+   
     task_card: task,
     skill: skill,
     discrepancy_type: type || "NR Discrepancy",
