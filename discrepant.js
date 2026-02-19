@@ -183,29 +183,37 @@ function renderTable(docs) {
        AGING CALCULATION
     ================================= */
     const now = new Date();
-    let agingText = "-";
-    let agingClass = "";
-
-    if (isOpen && data.created_at) {
-      const created = new Date(data.created_at.seconds * 1000);
-      const diffMs = now - created;
-
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffDays = Math.floor(diffHours / 24);
-
-      if (diffDays >= 1) {
-        agingText = diffDays + " day(s)";
-      } else {
-        agingText = diffHours + " hr(s)";
-      }
-
-      // Escalation rules
-      if (diffDays >= 5) {
-        agingClass = "aging-red";
-      } else if (diffDays >= 2) {
-        agingClass = "aging-orange";
-      }
+let agingText = "-";
+let agingClass = "";
+if (data.created_at) {
+  const created = new Date(data.created_at.seconds * 1000);
+  let endDate;
+  if (isOpen) {
+    endDate = now;
+  } 
+else if (data.resolved_at?.seconds) {
+  endDate = new Date(data.resolved_at.seconds * 1000);
+}
+  if (endDate) {
+    const diffMs = endDate - created;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays >= 1) {
+      agingText = diffDays + " day(s)";
+    } else {
+      agingText = diffHours + " hr(s)";
     }
+    if (diffDays >= 5) {
+      agingClass = "aging-red";
+    } else if (diffDays >= 2) {
+      agingClass = "aging-orange";
+    }
+  }
+ if (!isOpen && agingText !== "-") {
+  agingText += " (Resolved)";
+}
+
+}
 
     row.innerHTML = `
       <td>${data.seq || ""}</td>
