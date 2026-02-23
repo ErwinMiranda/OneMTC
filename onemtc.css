@@ -1,0 +1,1046 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+/* === Lufthansa Theme & Modernization === */
+:root {
+  --lufthansa-blue: #05164d;
+  --lufthansa-yellow: #ffb81c;
+  --lufthansa-bg: #f8f9fa;
+  --lufthansa-card-bg: #ffffff;
+  --lufthansa-border: #dee2e6;
+  --lufthansa-text: #212529;
+  --lufthansa-text-light: #495057;
+  --lufthansa-danger: #dc3545;
+  --lufthansa-success: #28a745;
+  --lufthansa-radius: 8px; /* Standardized border radius */
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  margin: 0;
+  background: var(--lufthansa-bg);
+  color: var(--lufthansa-text);
+}
+
+/* === Header === */
+.plan-header {
+  top: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--lufthansa-blue);
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  color: white;
+}
+.plan-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--lufthansa-yellow);
+}
+.liveUpdate {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  margin-left: auto;
+  padding-right: 16px;
+}
+.logout-btn {
+  background: var(--lufthansa-yellow);
+  color: var(--lufthansa-blue);
+  border: none;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--lufthansa-radius);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.logout-btn:hover {
+  background: #ffca4d;
+}
+
+/* === Main Layout Wrappers === */
+.main-wrapper {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 0 20px 20px;
+}
+.main-content {
+  flex: 4;
+  min-width: 0;
+}
+.history {
+  flex: 1;
+  background: var(--lufthansa-card-bg);
+  border: 1px solid var(--lufthansa-border);
+  border-radius: var(--lufthansa-radius);
+  padding: 16px;
+  min-width: 250px;
+  max-width: 350px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  /* 🔽 ADD ALL OF THESE LINES 🔽 */
+  position: sticky;
+  top: 20px; /* This is the 20px padding from main-wrapper */
+
+  /* Set a max height based on the screen, not the content */
+  max-height: calc(100vh - 40px); /* 100% viewport height - 40px for padding */
+
+  /* Use flex to make the list inside fill the space */
+  display: flex;
+  flex-direction: column;
+}
+
+/* === Controls & Buttons === */
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+.controls input {
+  flex: 1;
+  min-width: 220px;
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: var(--lufthansa-radius);
+  border: 1px solid var(--lufthansa-border);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.btn {
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  color: #fff;
+  border-radius: var(--lufthansa-radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+#woSearchBtn {
+  background: var(--lufthansa-blue);
+}
+#woSearchBtn:hover {
+  background: #0a267c;
+}
+#startScanBtn {
+  background: var(--lufthansa-yellow);
+  color: var(--lufthansa-blue);
+  font-weight: 600;
+}
+#startScanBtn:hover {
+  background: #ffca4d;
+}
+#startScanBtn.scanning {
+  background: #f0b01a;
+  box-shadow: 0 0 0 3px rgba(255, 184, 28, 0.3);
+}
+#stopScanBtn {
+  background: var(--lufthansa-danger);
+}
+#stopScanBtn:hover {
+  background: #c82333;
+}
+
+/* === Skill Filters === */
+.skill-filters {
+  margin: 10px 0 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.skill-filters button {
+  position: relative;
+  padding: 6px 12px;
+  font-size: 14px;
+  background: #e9ecef;
+  color: var(--lufthansa-text-light);
+  border: 1px solid var(--lufthansa-border);
+  border-radius: 16px; /* Pill shape */
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.skill-filters button:hover {
+  background: #dee2e6;
+}
+.skill-filters button.active {
+  background: var(--lufthansa-blue);
+  border-color: var(--lufthansa-blue);
+  color: #fff;
+  font-weight: 600;
+}
+.comment-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--lufthansa-danger);
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 50%;
+  padding: 2px 5px;
+  display: none;
+  transition: transform 0.2s ease;
+  border: 1px solid white;
+}
+.comment-badge.pulse {
+  transform: scale(1.25);
+}
+
+/* === Counter & Pill Buttons === */
+#counter {
+  margin-bottom: 15px;
+  font-weight: 500;
+  color: var(--lufthansa-text-light);
+}
+#counter .highlight {
+  color: var(--lufthansa-blue);
+  font-weight: 600;
+}
+.pill-btn {
+  display: inline-block;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--lufthansa-card-bg);
+  border: 1px solid var(--lufthansa-border);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+}
+.pill-btn:hover {
+  background: #f1f3f5;
+}
+.pill-btn.active {
+  background: var(--lufthansa-blue);
+  color: white;
+  border-color: var(--lufthansa-blue);
+}
+.printable {
+  margin-top: 10px;
+  font-size: 14px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--lufthansa-radius);
+  cursor: pointer;
+}
+.logbook-btn {
+  background-color: var(--lufthansa-blue);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  margin-left: 8px;
+  border-radius: var(--lufthansa-radius);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+.logbook-btn:hover {
+  background-color: #0a267c;
+}
+
+/* === Main Layout (Tables & Charts) === */
+.layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+/* Moved inline styles to CSS */
+#phaseTotalsWrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  width: 100%; /* Ensure it takes full width to wrap children */
+}
+#phaseTotalsContainer {
+  flex: 1 1 400px;
+  min-width: 300px;
+}
+#phaseChartContainer,
+#jcChartContainer {
+  flex: 1 1 300px;
+  min-width: 250px;
+  background: var(--lufthansa-card-bg);
+  border: 1px solid var(--lufthansa-border);
+  border-radius: var(--lufthansa-radius);
+  padding: 10px;
+}
+#jcChartContainer {
+  height: 270px; /* Give jcChart a bit more space */
+}
+#phaseChartContainer {
+  height: 270px;
+}
+
+/* === Main Data Table === */
+#scrollArea {
+  flex: 1;
+  width: 100%;
+  height: 500px;
+  overflow-y: auto;
+  border: 1px solid var(--lufthansa-border);
+  background: var(--lufthansa-card-bg);
+  border-radius: var(--lufthansa-radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+th,
+td {
+  padding: 6px;
+  border: 1px solid var(--lufthansa-border);
+  font-size: 14px;
+  text-align: left;
+  overflow: hidden;
+}
+thead th {
+  background: #f1f3f5;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 6px;
+}
+thead input {
+  width: 95%;
+  padding: 4px 6px;
+  font-size: 12px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+}
+
+/* === Specific Table Overrides === */
+#phaseTotalsTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--lufthansa-card-bg);
+  border-radius: var(--lufthansa-radius);
+  border: 1px solid var(--lufthansa-border);
+  overflow: hidden;
+}
+#phaseTotalsTable th,
+#phaseTotalsTable td {
+  border: 1px solid var(--lufthansa-border);
+  font-size: 12px;
+  padding: 4px 6px;
+}
+#phaseTotalsTable th {
+  background: #f1f3f5;
+}
+#scrollArea th,
+#scrollArea td {
+  font-size: 11px;
+  padding: 2px 4px;
+}
+#scrollArea thead input {
+  font-size: 11px;
+  padding: 2px 4px;
+  height: 20px;
+}
+#clearSeqBtn {
+  display: none;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--lufthansa-danger);
+  padding: 0;
+  line-height: 1;
+}
+.cmnt-btn {
+  display: flex;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #f1f3f5;
+  border: 1px solid var(--lufthansa-border);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.cmnt-btn:hover {
+  background: #e9ecef;
+}
+.comment-cell {
+  vertical-align: top;
+  border: 1px solid var(--lufthansa-border);
+  padding: 2px 6px;
+}
+.comment-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.3;
+  resize: none;
+  overflow: hidden;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  min-height: 18px;
+}
+.comment-input:focus {
+  background-color: #f5f5f5;
+}
+
+/* === History Panel === */
+h3 {
+  font-size: 1rem;
+  padding: 6px 0;
+  margin-top: 0;
+  color: var(--lufthansa-blue);
+  font-weight: 600;
+}
+.history-list-scroll {
+  flex-grow: 1; /* 👈 Replaces height: 80vh */
+  min-height: 0; /* 👈 Add this for flex stability */
+  overflow-y: auto;
+  border: 1px solid var(--lufthansa-border);
+  border-radius: var(--lufthansa-radius);
+  background: #fff;
+}
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: none;
+  overflow-y: visible;
+  font-family: monospace;
+  font-size: 13px;
+}
+.history-list li {
+  border-bottom: 1px solid #eee;
+  padding: 8px 10px;
+  line-height: 1.5;
+}
+.history-list li span.time {
+  color: #777;
+  font-size: 12px;
+}
+.history-list li span.status {
+  font-weight: bold;
+}
+.history-list li span.closed {
+  color: var(--lufthansa-success);
+}
+.history-list li span.open {
+  color: var(--lufthansa-danger);
+}
+.history-list li span.modified {
+  color: var(--lufthansa-text-light);
+}
+
+/* === Loading Overlay === */
+#loadingOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  font-size: 18px;
+  color: var(--lufthansa-text);
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+#loadingOverlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+#loadingOverlay .spinner {
+  border: 4px solid #ccc;
+  border-top: 4px solid var(--lufthansa-blue);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === Scan Modal === */
+#scanModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+#scanModal .modal-content {
+  background: var(--lufthansa-card-bg);
+  padding: 20px;
+  border-radius: 12px;
+  width: 1000px;
+  max-width: 1200px;
+  max-height: 80vh;
+  overflow: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+#scanModal h3 {
+  color: var(--lufthansa-blue);
+  margin: 0 0 8px;
+}
+#manualInputContainer {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+#manualInputContainer input {
+  flex-grow: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--lufthansa-border);
+  border-radius: var(--lufthansa-radius);
+}
+#manualInputContainer button {
+  background: var(--lufthansa-blue);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--lufthansa-radius);
+  cursor: pointer;
+}
+.scan-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 6px;
+}
+.scan-table th,
+.scan-table td {
+  border: 1px solid var(--lufthansa-border);
+  padding: 6px 8px;
+  text-align: center;
+}
+.scan-table th {
+  background: #f1f3f5;
+  font-weight: bold;
+}
+.scan-table td button {
+  padding: 3px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: none;
+  color: white;
+  background: var(--lufthansa-success);
+}
+.scan-table td button[data-reopen] {
+  background: var(--lufthansa-yellow);
+  color: var(--lufthansa-blue);
+}
+.scan-table td button[data-remove] {
+  background: var(--lufthansa-danger);
+}
+.pill {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: #e9ecef;
+  border-radius: 10px;
+  color: var(--lufthansa-text-light);
+  display: inline-block;
+  font-weight: 500;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+#submitScanBtn {
+  background: var(--lufthansa-success);
+}
+#clearScanBtn {
+  background: #6c757d;
+}
+#closeScanBtn {
+  background: var(--lufthansa-danger);
+}
+
+/* Hidden barcode input */
+#barcodeInput {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+}
+
+/* === Toast Notifications === */
+#toastContainer {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 11000;
+}
+.toast {
+  background: var(--lufthansa-text);
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: var(--lufthansa-radius);
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: all 0.4s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+.toast.success {
+  background: var(--lufthansa-success);
+}
+.toast.error {
+  background: var(--lufthansa-danger);
+}
+.toast.info {
+  background: var(--lufthansa-blue);
+}
+
+/* === Toggle Switch === */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 12px;
+  vertical-align: middle;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 10px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 10px;
+  width: 10px;
+  left: 1px;
+  bottom: 1px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+input:checked + .slider {
+  background-color: var(--lufthansa-success);
+}
+input:checked + .slider:before {
+  transform: translateX(18px);
+}
+
+/* === History Glow Effects === */
+@keyframes pulseGlowGreen {
+  0%,
+  100% {
+    background-color: #e8f5e9;
+    box-shadow: 0 0 10px 2px #81c784;
+  }
+  50% {
+    background-color: #c8e6c9;
+    box-shadow: 0 0 20px 5px #66bb6a;
+  }
+}
+.pulse-glow-green {
+  animation: pulseGlowGreen 1.8s ease-in-out infinite;
+}
+@keyframes pulseGlowBlue {
+  0%,
+  100% {
+    background-color: #fde8e3;
+    box-shadow: 0 0 10px 2px #f66464;
+  }
+  50% {
+    background-color: #fbbbbb;
+    box-shadow: 0 0 20px 5px #f54242;
+  }
+}
+.pulse-glow-blue {
+  animation: pulseGlowBlue 1.8s ease-in-out infinite;
+}
+@keyframes pulseGlowAmber {
+  0%,
+  100% {
+    background-color: #fff8e1;
+    box-shadow: 0 0 10px 2px #ffca28;
+  }
+  50% {
+    background-color: #ffecb3;
+    box-shadow: 0 0 20px 5px #ffc107;
+  }
+}
+.pulse-glow-amber {
+  animation: pulseGlowAmber 1.8s ease-in-out infinite;
+}
+
+/* === Responsive (Merged) === */
+@media (max-width: 900px) {
+  body {
+    margin: 0;
+  }
+  .plan-header {
+    margin-bottom: 10px;
+    padding: 10px;
+  }
+  .plan-heading {
+    font-size: 1rem;
+  }
+  .main-wrapper {
+    flex-direction: column;
+    padding: 0 10px 10px;
+  }
+  .history {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+  }
+  .layout {
+    flex-direction: column;
+  }
+  .left-column,
+  #scrollArea {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+  #phaseTotalsContainer {
+    max-width: 100%;
+    width: 100%;
+  }
+  #phaseChartContainer,
+  #jcChartContainer {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+/* Example CSS - add this to your main stylesheet */
+.notification-badge {
+  background-color: var(--lufthansa-danger, #e53935);
+  color: white;
+  border-radius: 10px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: top;
+  margin-left: 8px;
+  cursor: pointer;
+}
+.skill-filters button.has-discrepancy {
+  background: #dc3545 !important;
+  color: white !important;
+  border-color: #dc3545 !important;
+}
+
+.skill-filters button.has-discrepancy .comment-badge {
+  background: white !important;
+  color: #dc3545 !important;
+}
+.seq-duplicate {
+  color: transparent;
+}
+
+.seq-duplicate a {
+  visibility: hidden;
+}
+.seq-duplicate {
+  color: transparent;
+}
+
+.seq-duplicate a {
+  visibility: hidden;
+}
+/* =========================
+   Modern Confirm Modal
+========================= */
+
+#modernConfirm {
+  display: none;
+  position: fixed;
+  inset: 0;
+  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.35);
+  justify-content: center;
+  align-items: center;
+  z-index: 100000;
+}
+
+.confirm-card {
+  background: rgba(255, 255, 255, 0.92);
+  padding: 28px;
+  border-radius: 16px;
+  width: 360px;
+  max-width: 90%;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+  animation: confirmFadeScaleIn 0.25s ease;
+  font-family: "Inter", sans-serif;
+}
+
+.confirm-card h3 {
+  margin: 0 0 10px;
+  color: var(--lufthansa-blue);
+  font-weight: 600;
+}
+
+.confirm-card p {
+  font-size: 14px;
+  margin-bottom: 20px;
+  color: var(--lufthansa-text);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.confirm-actions .primary {
+  background: var(--lufthansa-blue);
+  color: white;
+  border-color: var(--lufthansa-blue);
+}
+
+.confirm-actions .danger {
+  background: var(--lufthansa-danger);
+  color: white;
+  border-color: var(--lufthansa-danger);
+}
+
+@keyframes confirmFadeScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.confirm-actions button {
+  transition: all 0.2s ease;
+}
+
+.confirm-actions button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.confirm-actions button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+.seq-duplicate {
+  border-top: none !important;
+}
+
+.seq-row:not(:first-child) .seq-duplicate {
+  background: #f8f9fa;
+}
+
+.seq-ref:empty,
+.seq-desc:empty,
+.seq-link:empty,
+.seq-status:empty {
+  background: #f8f9fa;
+}
+/* =========================
+   Lufthansa Comment Modal
+========================= */
+/* Modal Overlay */
+#commentInputModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 22, 77, 0.45);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100000;
+}
+
+/* Modal Card */
+.comment-modal-card {
+  background: var(--lufthansa-card-bg);
+  width: 420px;
+  max-width: 90%;
+  padding: 28px;
+  border-radius: 20px;
+  box-shadow: 0 30px 70px rgba(5, 22, 77, 0.25);
+  animation: commentFadeScale 0.25s ease;
+}
+
+/* Header */
+.comment-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.comment-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--lufthansa-blue);
+}
+
+/* Close Button */
+.comment-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--lufthansa-text-light);
+  transition: 0.2s;
+}
+.comment-close:hover {
+  color: var(--lufthansa-blue);
+}
+
+/* Textarea */
+.comment-textarea {
+  width: 100%;
+  min-height: 120px;
+  border-radius: 16px;
+  border: 1.5px solid var(--lufthansa-border);
+  padding: 16px;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.comment-textarea:focus {
+  border-color: var(--lufthansa-blue);
+  box-shadow: 0 0 0 4px rgba(5, 22, 77, 0.15);
+}
+/* ============================= */
+/* Modern Discrepancy Modal */
+/* ============================= */
+
+.modern-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.45);
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+}
+
+.modern-modal-card {
+  background: #ffffff;
+  width: 420px;
+  max-width: 90%;
+  border-radius: 16px;
+  padding: 22px 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  animation: fadeInScale 0.2s ease;
+  font-family: "Inter", sans-serif;
+}
+
+.modern-modal-header h3 {
+  margin: 0 0 18px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--lufthansa-blue);
+}
+
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 6px;
+}
+
+#discrepancyModal select,
+#discrepancyModal textarea {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #dcdcdc;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+#discrepancyModal textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modern-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.btn-primary {
+  background: var(--lufthansa-blue);
+  color: white;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background: #e9ecef;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
