@@ -179,10 +179,12 @@ function renderTable(docs) {
       row.style.background = "#ffe5e5";
     }
 
+   
     /* ================================
-       AGING CALCULATION
-    ================================= */
-    const now = new Date();
+   AGING CALCULATION (OPEN + CLOSED)
+================================ */
+
+const now = new Date();
 let agingText = "-";
 let agingClass = "";
 if (data.created_at) {
@@ -214,7 +216,6 @@ else if (data.resolved_at?.seconds) {
 }
 
 }
-
     row.innerHTML = `
       <td>${data.seq || ""}</td>
       <td>${data.task_card || ""}</td>
@@ -311,7 +312,7 @@ function populateSkillFilter(docs) {
   });
 }
 
-/* ================================
+/* ===============================
    RESOLVE DISCREPANCY
 ================================ */
 document.addEventListener("click", async (e) => {
