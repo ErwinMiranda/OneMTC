@@ -2318,115 +2318,159 @@ async function renderJCChart(workorder, filteredDocs = []) {
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
+
   if (!workorder) {
     console.warn("⚠️ No workorder specified for JC chart.");
     return;
   }
-  if (!workorder) return;
+
   const woId = String(workorder);
+
+  // ============================
+  // 🔹 1. GET WO START/END DATE
+  // ============================
+  const woRef = doc(db, "work_orders", woId);
+  const woSnap = await getDoc(woRef);
+
+  if (!woSnap.exists()) {
+    console.warn("WO not found:", woId);
+    return;
+  }
+
+  const woData = woSnap.data();
+
+  const startRaw = woData.startdate?.toDate?.() || new Date(woData.startdate);
+  const endRaw = woData.enddate?.toDate?.() || new Date(woData.enddate);
+
+  if (!startRaw || !endRaw || isNaN(startRaw) || isNaN(endRaw)) {
+    console.warn("Invalid WO start/end date");
+    return;
+  }
+
+  startRaw.setHours(0, 0, 0, 0);
+  endRaw.setHours(0, 0, 0, 0);
+
+  // 🔹 Generate full date range
+  const sortedDates = [];
+  let current = new Date(startRaw);
+
+  while (current <= endRaw) {
+    sortedDates.push(getLocalDateKey(new Date(current)));
+    current.setDate(current.getDate() + 1);
+  }
+
+  if (!sortedDates.length) return;
+
+  // ============================
+  // 🔹 2. GET TARGET DATA
+  // ============================
   const targetRef = collection(db, "wo_jctargets", woId, "items");
-  const q = query(targetRef, orderBy("tdate"));
-  const snap = await getDocs(q);
-  const rawData = [];
-  snap.forEach((doc) => {
+  const targetSnap = await getDocs(query(targetRef, orderBy("tdate")));
+
+  const groupedTarget = {};
+
+  targetSnap.forEach((doc) => {
     const d = doc.data();
     if (!d.tdate || !d.tasktarget) return;
+
     const date = d.tdate.toDate?.() || new Date(d.tdate);
     const dateKey = getLocalDateKey(date);
     if (!dateKey) return;
-    const tasktarget = Number(d.tasktarget) || 0;
-    const skill = d.skill || "Unassigned";
-    rawData.push({ dateKey, tasktarget, skill });
+
+    if (state.activeSkill && state.activeSkill !== "CLEAR") {
+      const selectedSkills = skillGroups[state.activeSkill] || [
+        state.activeSkill,
+      ];
+      if (!selectedSkills.includes(d.skill)) return;
+    }
+
+    groupedTarget[dateKey] =
+      (groupedTarget[dateKey] || 0) + Number(d.tasktarget || 0);
   });
-  let filteredTarget = rawData;
-  if (state.activeSkill && state.activeSkill !== "CLEAR") {
-    const selectedSkills = skillGroups[state.activeSkill] || [
-      state.activeSkill,
-    ];
-    filteredTarget = rawData.filter((d) => selectedSkills.includes(d.skill));
-  }
-  const groupedTarget = {};
-  filteredTarget.forEach(({ dateKey, tasktarget }) => {
-    groupedTarget[dateKey] = (groupedTarget[dateKey] || 0) + tasktarget;
-  });
+
+  // ============================
+  // 🔹 3. GET ACTUAL CLOSED DATA
+  // ============================
   const historyRef = collection(db, "wo_history", woId, "items");
   const histSnap = await getDocs(historyRef);
-  const historyDocs = [];
+
+  const groupedActual = {};
   const uniqueTasks = new Set();
+
   histSnap.forEach((doc) => {
     const h = doc.data();
     if (!h.timestamp) return;
+
     if (state.activeSkill && state.activeSkill !== "CLEAR") {
       const selectedSkills = skillGroups[state.activeSkill] || [
         state.activeSkill,
       ];
       if (!selectedSkills.includes(h.skill)) return;
     }
+
     const status = (h.status || "").toLowerCase();
-    if (status !== "closed" && status !== "completed" && status !== "cancel") {
+    if (status !== "closed" && status !== "completed" && status !== "cancel")
       return;
-    }
-    const uniqueKey = `${h.seq || ""}-${h.task_card || ""}`.trim();
+
+    const uniqueKey = `${h.seq || ""}-${h.task_card || ""}`;
     if (uniqueTasks.has(uniqueKey)) return;
     uniqueTasks.add(uniqueKey);
+
     const date = h.timestamp.toDate?.() || new Date(h.timestamp);
     const dateKey = getLocalDateKey(date);
     if (!dateKey) return;
-    historyDocs.push({ dateKey });
-  });
-  const groupedActual = {};
-  historyDocs.forEach(({ dateKey }) => {
+
     groupedActual[dateKey] = (groupedActual[dateKey] || 0) + 1;
   });
-  const allDatesSet = new Set([
-    ...Object.keys(groupedTarget),
-    ...Object.keys(groupedActual),
-  ]);
-  const sortedDates = [...allDatesSet].sort(
-    (a, b) => new Date(a) - new Date(b),
-  );
-  if (sortedDates.length === 0) {
-    console.warn("ℹ️ No target or actual data found for WO:", workorder);
-    if (window.jcChartInstance) {
-      window.jcChartInstance.destroy();
-      window.jcChartInstance = null;
-    }
-    return;
-  }
+
+  // ============================
+  // 🔹 4. BUILD CUMULATIVE DATA
+  // ============================
   const labels = [];
   const cumulativeTargets = [];
-  let runningTarget = 0;
-  sortedDates.forEach((d, i) => {
-    runningTarget += groupedTarget[d] || 0;
-    labels.push(`Day ${i + 1} (${d.slice(5)})`);
-    cumulativeTargets.push(runningTarget);
-  });
   const cumulativeActual = [];
+
+  let runningTarget = 0;
   let runningActual = 0;
+
   const todayKey = getLocalDateKey(new Date());
-  sortedDates.forEach((d) => {
-    if (d <= todayKey) {
-      runningActual += groupedActual[d] || 0;
+
+  sortedDates.forEach((dateKey, i) => {
+    // Target
+    runningTarget += groupedTarget[dateKey] || 0;
+    cumulativeTargets.push(runningTarget);
+
+    // Actual (stop after today)
+    if (dateKey <= todayKey) {
+      runningActual += groupedActual[dateKey] || 0;
       cumulativeActual.push(runningActual);
     } else {
       cumulativeActual.push(null);
     }
+
+    labels.push(`Day ${i + 1} (${dateKey.slice(5)})`);
   });
+
+  // ============================
+  // 🔹 5. RENDER / UPDATE CHART
+  // ============================
   const chartTitle =
     state.activeSkill && state.activeSkill !== "CLEAR"
       ? `Target vs Actual Closed — ${state.activeSkill}`
       : "Target vs Actual Closed Tasks";
+
   const ctx =
     window.jcChartCtx ||
     (window.jcChartCtx = document.getElementById("jcChart").getContext("2d"));
+
   if (window.jcChartInstance) {
     window.jcChartInstance.data.labels = labels;
     window.jcChartInstance.data.datasets[0].data = cumulativeTargets;
     window.jcChartInstance.data.datasets[1].data = cumulativeActual;
-    window.jcChartInstance.options.plugins.title.text = chartTitle;
-    window.jcChartInstance.update("active");
+    window.jcChartInstance.update();
     return;
   }
+
   window.jcChartInstance = new Chart(ctx, {
     type: "line",
     data: {
