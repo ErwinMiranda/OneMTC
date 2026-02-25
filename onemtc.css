@@ -157,7 +157,7 @@ body {
   background: #e9ecef;
   color: var(--lufthansa-text-light);
   border: 1px solid var(--lufthansa-border);
-  border-radius: 16px; /* Pill shape */
+  border-radius: 8px; /* Pill shape */
   cursor: pointer;
   transition: all 0.2s;
 }
