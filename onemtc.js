@@ -119,7 +119,7 @@ const state = {
   unsubscribeDiscrepancies: null,
   unsubscribe: null,
   unsubscribeHistory: null,
-
+  historyIdSet: new Set(),
   allDocs: [],
   allHistoryData: [],
   newHistoryItems: [],
@@ -371,22 +371,30 @@ function listenToHistoryForWO(workorder) {
     state.unsubscribeHistory();
     state.unsubscribeHistory = null;
   }
+
   const woId = String(workorder);
+
   const badgeData = JSON.parse(
     localStorage.getItem("historyBadgeData") || "{}",
   );
+
   if (badgeData.wo === woId) {
     state.newHistoryItems = badgeData.items || [];
   } else {
     state.newHistoryItems = [];
   }
+
   updateHistoryBadge();
+
   historyClusterize.update([
     `<li class='clusterize-no-data'>Loading history for ${woId}...</li>`,
   ]);
+
   const historyRef = collection(db, "wo_history", woId, "items");
   const qHistory = query(historyRef, orderBy("timestamp", "desc"));
+
   let initialLoad = true;
+
   state.unsubscribeHistory = onSnapshot(
     qHistory,
     (snapshot) => {
@@ -396,50 +404,71 @@ function listenToHistoryForWO(workorder) {
         ]);
         return;
       }
+
       // ==============================
-      // INITIAL LOAD (Render Once)
+      // INITIAL LOAD
       // ==============================
       if (initialLoad) {
-        state.allHistoryData = snapshot.docs.map((docSnap) =>
-          renderHistoryItem(docSnap.data(), docSnap.id),
-        );
+        state.historyIdSet = new Set();
+
+        state.allHistoryData = snapshot.docs.map((docSnap) => {
+          state.historyIdSet.add(docSnap.id);
+          return renderHistoryItem(docSnap.data(), docSnap.id);
+        });
+
         historyClusterize.update(state.allHistoryData);
+
         restoreGlow();
         renderJCChart(state.currentWO || woId, state.allDocs);
+
         initialLoad = false;
         return;
       }
+
       // ==============================
-      // LIVE UPDATES ONLY
+      // LIVE UPDATES
       // ==============================
       snapshot.docChanges().forEach((change) => {
         const data = change.doc.data();
         const id = change.doc.id;
+
+        // -------- ADDED --------
         if (change.type === "added") {
-          const alreadyExists = state.allHistoryData.some((row) =>
-            row.includes(`data-id="${id}"`),
-          );
-          if (!alreadyExists) {
+          if (!state.historyIdSet.has(id)) {
             const liString = renderHistoryItem(data, id);
+
+            state.historyIdSet.add(id);
             state.allHistoryData.unshift(liString);
-            historyClusterize.prepend([liString]);
+
+            historyClusterize.update(state.allHistoryData);
+
             state.newHistoryItems.push(id);
             updateHistoryBadge();
           }
         }
+
+        // -------- REMOVED --------
         if (change.type === "removed") {
+          state.historyIdSet.delete(id);
+
           state.allHistoryData = state.allHistoryData.filter(
-            (rowString) => !rowString.includes(`data-id="${id}"`),
+            (rowString) => !rowString.includes(`data-id="${id}"`)
           );
+
           historyClusterize.update(state.allHistoryData);
         }
+
+        // -------- MODIFIED --------
         if (change.type === "modified") {
-          state.allHistoryData = state.allHistoryData.map((rowString) =>
-            rowString.includes(`data-id="${id}"`)
-              ? renderHistoryItem(data, id)
-              : rowString,
-          );
-          historyClusterize.update(state.allHistoryData);
+          if (state.historyIdSet.has(id)) {
+            state.allHistoryData = state.allHistoryData.map((rowString) =>
+              rowString.includes(`data-id="${id}"`)
+                ? renderHistoryItem(data, id)
+                : rowString
+            );
+
+            historyClusterize.update(state.allHistoryData);
+          }
         }
       });
     },
@@ -448,14 +477,16 @@ function listenToHistoryForWO(workorder) {
       historyClusterize.update([
         "<li class='clusterize-no-data'>Error loading history</li>",
       ]);
-    },
+    }
   );
+
   const removeGlowOnUserAction = () => {
     clearGlow();
     document.removeEventListener("click", removeGlowOnUserAction);
     document.removeEventListener("keydown", removeGlowOnUserAction);
     document.removeEventListener("scroll", removeGlowOnUserAction);
   };
+
   document.addEventListener("click", removeGlowOnUserAction);
   document.addEventListener("keydown", removeGlowOnUserAction);
   document.addEventListener("scroll", removeGlowOnUserAction);
@@ -943,17 +974,6 @@ state.commentPopup.addEventListener("click", (e) => {
   if (e.target === state.commentPopup) closePopup();
 });
 
-function formatComment(comment) {
-  const lines = comment.split("\n").reverse();
-  return lines
-    .map((line) => {
-      line = line.trim();
-      return line.startsWith("🕒") || line.startsWith("[")
-        ? line
-        : `[No Date] ${line}`;
-    })
-    .join("\n");
-}
 
 document.addEventListener("click", (e) => {
   const badge = e.target.closest(".comment-badge");
@@ -1647,6 +1667,8 @@ async function applyFilters() {
 
   renderRows(rowsToRender);
   updateCounters(finalFilteredDocs, skillBaseTotal);
+ 
+    listenToDiscrepancies(state.currentWO);
 
   if (typeof renderJCChart === "function" && state.currentWO) {
     await renderJCChart(state.currentWO, skillFilteredDocs);
