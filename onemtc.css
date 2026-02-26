@@ -1044,3 +1044,12 @@ input:checked + .slider:before {
     transform: scale(1);
   }
 }
+#dashboardToggleBtn {
+  position: relative;
+}
+
+#dashboardToggleBtn .notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+}
