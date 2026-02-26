@@ -292,20 +292,40 @@ function listenToDiscrepancies(wo) {
   if (state.unsubscribeDiscrepancies) {
     state.unsubscribeDiscrepancies();
   }
+
   const discRef = collection(db, "discrepancies", String(wo), "items");
+
   state.unsubscribeDiscrepancies = onSnapshot(discRef, (snapshot) => {
     const skillDiscMap = {};
+    let totalOpenCount = 0;
+
     snapshot.forEach((doc) => {
       const data = doc.data();
+
       if (data.status === "OPEN") {
+        totalOpenCount++;
+
         const skill = data.skill;
         skillDiscMap[skill] = (skillDiscMap[skill] || 0) + 1;
       }
     });
+
     updateSkillDiscrepancyIndicators(skillDiscMap);
+    updateDashboardBadge(totalOpenCount);
   });
 }
+function updateDashboardBadge(count) {
+  const badge = document.getElementById("discrepancyBadge");
+  if (!badge) return;
 
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = "inline-block";
+  } else {
+    badge.style.display = "none";
+    badge.textContent = "";
+  }
+}
 function updateSkillDiscrepancyIndicators(skillDiscMap) {
   document.querySelectorAll(".skill-filters button").forEach((btn) => {
     const buttonSkill = btn.dataset.skill;
@@ -579,7 +599,7 @@ async function logHistoryEntry(task, newStatus) {
       modified_by: modifiedBy,
       timestamp: serverTimestamp(),
     });
-    console.log(`✅ History logged under WO ${woId}`);
+    
   } catch (err) {
     console.error("❌ Error logging history:", err);
   }
@@ -1891,6 +1911,7 @@ async function searchWorkorder(workorder) {
   } finally {
     setTimeout(() => hideLoading(), 300);
   }
+  listenToDiscrepancies(workorder);
 }
 function processSnapshot(snapshot) {
   // 🔥 Build once
