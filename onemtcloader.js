@@ -239,7 +239,7 @@ function renderTable(rows) {
     total: "Total Taskcards",
     uploadedBy: "Uploaded By",
     uploadedAt: "Uploaded At",
-    delete: "Delete",
+    delete: "Delete no SEQ",
   };
 
   // Render table header
@@ -271,7 +271,7 @@ function renderTable(rows) {
 
       if (h === "delete" && isAdmin) {
         const btn = document.createElement("button");
-        btn.textContent = "🗑 Delete";
+        btn.textContent = "Del No Seq";
         btn.className =
           "delete-btn bg-red-500 text-white rounded px-2 py-1 text-sm hover:bg-red-600";
         btn.addEventListener("click", () => handleDeleteWO(row.wo));
@@ -292,30 +292,56 @@ function renderTable(rows) {
 }
 
 async function handleDeleteWO(wo) {
-  if (!confirm(`Delete all taskcards for WO: ${wo}?`)) return;
+  if (!confirm(`Delete taskcards without sequence in WO: ${wo}?`)) return;
 
   try {
-    showLoading(`Deleting ${wo}…`);
+    showLoading(`Cleaning WO ${wo}...`);
 
     const woRef = doc(db, TASKS_COLLECTION, wo);
     const taskcardsRef = collection(woRef, "taskcards");
+
     const snapshot = await getDocs(taskcardsRef);
 
-    const batch = writeBatch(db);
+    let batch = writeBatch(db);
+    let operationCount = 0;
+    const BATCH_LIMIT = 400;
 
-    snapshot.forEach((docSnap) => {
-      batch.delete(docSnap.ref);
-    });
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
+      const id = docSnap.id;
 
-    batch.delete(woRef);
+      if (!data.seq || id.startsWith("null_")) {
+        batch.delete(docSnap.ref);
+        operationCount++;
 
-    await batch.commit();
+        if (operationCount === BATCH_LIMIT) {
+          await batch.commit();
+          batch = writeBatch(db);
+          operationCount = 0;
+        }
+      }
+    }
+
+    if (operationCount > 0) {
+      await batch.commit();
+    }
+
+    // 🔹 Recalculate remaining taskcards
+    const remaining = await getDocs(taskcardsRef);
+
+    await setDoc(
+      woRef,
+      {
+        totalTaskcards: remaining.size,
+      },
+      { merge: true },
+    );
 
     hideLoading();
-    alert(`✅ Deleted WO: ${wo}`);
+    alert(`✅ Cleanup complete for WO ${wo}`);
   } catch (err) {
     hideLoading();
-    alert("❌ Delete failed: " + err.message);
+    alert("❌ Cleanup failed: " + err.message);
   }
 }
 
@@ -350,7 +376,6 @@ async function uploadRowsToFirestore(mappedRows) {
   }
 
   for (const wo of Object.keys(grouped)) {
-
     const woRef = doc(db, TASKS_COLLECTION, wo);
     const rows = grouped[wo];
 
@@ -358,7 +383,7 @@ async function uploadRowsToFirestore(mappedRows) {
     const existingSnapshot = await getDocs(collection(woRef, "taskcards"));
 
     const existingMap = {};
-    existingSnapshot.forEach(docSnap => {
+    existingSnapshot.forEach((docSnap) => {
       existingMap[docSnap.id] = docSnap.data();
     });
 
@@ -366,7 +391,6 @@ async function uploadRowsToFirestore(mappedRows) {
     let operationCount = 0;
 
     for (const row of rows) {
-
       const combinedId = `${row.seq}_${row.task_card}`;
       const safeTaskCardId = sanitizeId(combinedId);
       const taskRef = doc(collection(woRef, "taskcards"), safeTaskCardId);
@@ -437,7 +461,7 @@ async function uploadRowsToFirestore(mappedRows) {
         totalTaskcards: realCount,
         updatedAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
   }
 
@@ -479,15 +503,15 @@ uploadBtn.addEventListener("click", async () => {
 
   try {
     showLoading("Uploading to Firestore...");
-   let rows;
+    let rows;
 
-if (file.name.endsWith(".json")) {
-  const text = await file.text();
-  const jsonData = JSON.parse(text);
-  rows = jsonData.map((r) => mapRow(r));
-} else {
-  rows = (await parseFileToRows(file)).map((r) => mapRow(r));
-}
+    if (file.name.endsWith(".json")) {
+      const text = await file.text();
+      const jsonData = JSON.parse(text);
+      rows = jsonData.map((r) => mapRow(r));
+    } else {
+      rows = (await parseFileToRows(file)).map((r) => mapRow(r));
+    }
     await uploadRowsToFirestore(rows);
 
     // ✅ Clear chosen file after successful upload
