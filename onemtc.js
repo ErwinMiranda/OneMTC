@@ -2780,3 +2780,51 @@ function modernConfirm(title, message, type = "primary") {
 window.addEventListener("load", () => {
   commentInputModal.style.display = "none";
 });
+function downloadExcel() {
+
+  if (!state.allDocs || state.allDocs.length === 0) {
+    showToast("No data to export ❗", "error");
+    return;
+  }
+
+  let filteredDocs = [...state.allDocs];
+
+  // apply same filters used in print
+  document.querySelectorAll(".filter").forEach((input) => {
+    const field = input.dataset.field;
+    const value = input.value.trim().toLowerCase();
+
+    if (value) {
+      filteredDocs = filteredDocs.filter((d) =>
+        String(d[field] || "")
+          .toLowerCase()
+          .includes(value)
+      );
+    }
+  });
+
+  if (filteredDocs.length === 0) {
+    showToast("No data to export ❗", "error");
+    return;
+  }
+
+  const excelData = filteredDocs.map((d) => ({
+    Reference: d.reference_task_card || "",
+    Description: d.task_card_description || "",
+    Seq: d.seq || "",
+    TaskCard: d.task_card || "",
+    Comment: d.comment || "",
+    Status: d.status || "",
+    Phase: d.phase || "",
+    Skill: d.skill || ""
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(excelData);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "MTC");
+
+  XLSX.writeFile(workbook, `OneMTC_${state.currentWO || "data"}.xlsx`);
+}
+
+window.downloadExcel = downloadExcel;
