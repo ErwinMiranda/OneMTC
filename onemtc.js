@@ -1904,7 +1904,7 @@ async function searchWorkorder(workorder) {
       },
     );
 
-    listenToDiscrepancies(workorder);
+    //listenToDiscrepancies(workorder);
   } catch (err) {
     console.error("Search error:", err);
     showToast("Error loading Work Order", "error");
