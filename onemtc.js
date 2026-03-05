@@ -1688,7 +1688,7 @@ async function applyFilters() {
   renderRows(rowsToRender);
   updateCounters(finalFilteredDocs, skillBaseTotal);
  
-    listenToDiscrepancies(state.currentWO);
+    //listenToDiscrepancies(state.currentWO);
 
   if (typeof renderJCChart === "function" && state.currentWO) {
     await renderJCChart(state.currentWO, skillFilteredDocs);
