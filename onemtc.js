@@ -139,9 +139,80 @@ const state = {
   commentPopup: document.getElementById("commentListPopup"),
   badgeCounts: JSON.parse(localStorage.getItem("badgeCounts")) || {},
   commentReadCounts:
-    JSON.parse(localStorage.getItem("commentReadCounts")) || {},
+  JSON.parse(localStorage.getItem("commentReadCounts")) || {},
+  taskCache: new Map(), 
+  groupedBySeq: new Map(),
+  skillIndex: {},
+  phaseIndex: {},
+  seqSkillCount: {}, 
 };
+/* =======================
+   Pause Firestore when tab hidden
+======================= */
+document.addEventListener("visibilitychange", () => {
 
+  // When tab hidden → pause listeners
+  if (document.hidden) {
+
+    if (state.unsubscribe) {
+      state.unsubscribe();
+      state.unsubscribe = null;
+    }
+
+    if (state.unsubscribeHistory) {
+      state.unsubscribeHistory();
+      state.unsubscribeHistory = null;
+    }
+
+    if (state.unsubscribeDiscrepancies) {
+      state.unsubscribeDiscrepancies();
+      state.unsubscribeDiscrepancies = null;
+    }
+
+  }
+
+  // When tab visible → resume only if not active
+  else {
+
+    if (!state.currentWO) return;
+
+    if (!state.unsubscribe) {
+      attachTaskcardListener(state.currentWO);
+    }
+
+    if (!state.unsubscribeHistory) {
+      listenToHistoryForWO(state.currentWO);
+    }
+
+    if (!state.unsubscribeDiscrepancies) {
+      listenToDiscrepancies(state.currentWO);
+    }
+
+  }
+
+});
+function attachTaskcardListener(workorder) {
+
+  const taskcardsRef = collection(
+    db,
+    "work_orders",
+    String(workorder),
+    "taskcards"
+  );
+
+  const q = query(taskcardsRef, orderBy("seq"));
+
+  state.unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      processSnapshot(snapshot);
+    },
+    (error) => {
+      console.error("Snapshot error:", error);
+      showToast("Realtime listener error", "error");
+    }
+  );
+}
 if (!state.commentPopup) {
   state.commentPopup = document.createElement("div");
   state.commentPopup.id = "commentListPopup";
@@ -411,7 +482,14 @@ function listenToHistoryForWO(workorder) {
   ]);
 
   const historyRef = collection(db, "wo_history", woId, "items");
-  const qHistory = query(historyRef, orderBy("timestamp", "desc"));
+ const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const qHistory = query(
+  historyRef,
+  where("timestamp", ">=", today),
+  orderBy("timestamp", "desc")
+);
 
   let initialLoad = true;
 
@@ -1779,25 +1857,40 @@ function buildSeqSkillMapIfNeeded() {
   return map;
 }
 function updateCounters(skillFilteredDocs, skillBaseTotal) {
-  const pctClosed = getClosedPercentage(skillFilteredDocs);
+
+  // 🔥 Remove duplicate docs by ID (prevents double counting)
+  const uniqueDocs = Array.from(
+    new Map(skillFilteredDocs.map(d => [d.id, d])).values()
+  );
+
+  const pctClosed = getClosedPercentage(uniqueDocs);
+
   const seqGroups = {};
-  skillFilteredDocs.forEach((d) => {
+
+  uniqueDocs.forEach((d) => {
     const seq = String(d.seq);
     if (!seqGroups[seq]) seqGroups[seq] = [];
     seqGroups[seq].push(d.status?.toLowerCase());
   });
+
   let totalMTC = 0,
-    closedMTC = 0,
-    openMTC = 0;
+      closedMTC = 0,
+      openMTC = 0;
+
   Object.keys(seqGroups).forEach((seq) => {
+
     totalMTC++;
+
     const allClosed = seqGroups[seq].every(
-      (s) => s === "closed" || s === "cancel" || s === "completed",
+      (s) => s === "closed" || s === "cancel" || s === "completed"
     );
+
     if (allClosed) closedMTC++;
     else openMTC++;
+
   });
-  let counterText = `Showing ${skillFilteredDocs.length} of ${skillBaseTotal} tasks • 
+
+  let counterText = `Showing ${uniqueDocs.length} of ${skillBaseTotal} tasks • 
     <span class="highlight">${pctClosed}% Closed</span>
     &nbsp;&nbsp;&nbsp; 
     Total MTC ${totalMTC} • 
@@ -1810,27 +1903,39 @@ function updateCounters(skillFilteredDocs, skillBaseTotal) {
         Clear
       </button>`;
   }
+
   if (state.activeSkill && state.activeSkill !== "CLEAR") {
     counterText += ` • Skill: <span class="highlight">${state.activeSkill}</span>`;
   }
+
   counterEl.innerHTML = counterText;
+
   document.getElementById("clearPhaseBtn")?.addEventListener("click", () => {
     state.activePhase = null;
     applyFilters();
   });
+
   const clearSeqBtn = document.getElementById("clearSeqBtn");
+
   clearSeqBtn.style.display =
     state.seqFilterValues.length > 0 || state.scannedSeqs.length > 0
       ? "inline"
       : "none";
+
   clearSeqBtn.onclick = () => {
+
     state.scannedSeqs = [];
     state.seqFilterValues = [];
+
     const seqInput = document.querySelector('.filter[data-field="seq"]');
+
     if (seqInput) seqInput.value = "";
+
     applyFilters();
   };
-  renderPhaseTotals(skillFilteredDocs);
+
+  // 🔥 Send deduplicated docs to totals renderer
+  renderPhaseTotals(uniqueDocs);
 }
 
 seqInput.addEventListener("keydown", (e) => {
@@ -1882,93 +1987,124 @@ async function searchWorkorder(workorder) {
     }
 
     // 🔥 Unsubscribe previous listener
-    if (state.unsubscribe) state.unsubscribe();
+    if (state.unsubscribe) {
+      state.unsubscribe();
+      state.unsubscribe = null;
+    }
+
+    // 🔥 Reset state caches (IMPORTANT)
+    state.allDocs = [];
+    state.groupedBySeq = new Map();
+    state.skillIndex = {};
+    state.phaseIndex = {};
+    state.seqSkillCount = {};
+
+    // 🔥 Reset UI related state
+    state.prevDocsMap = new Map();
+    state.scannedSeqs = [];
+    state.seqFilterValues = [];
+
+    // Optional: clear table UI before new data arrives
+    clusterize.clear();
 
     const taskcardsRef = collection(
       db,
       "work_orders",
       String(workorder),
-      "taskcards",
+      "taskcards"
     );
 
     const q = query(taskcardsRef, orderBy("seq"));
 
-    state.unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        processSnapshot(snapshot);
-      },
-      (error) => {
-        console.error("Snapshot error:", error);
-        showToast("Realtime listener error", "error");
-      },
-    );
+    // 🔥 Attach realtime listener
+    attachTaskcardListener(workorder);
 
-    //listenToDiscrepancies(workorder);
   } catch (err) {
     console.error("Search error:", err);
     showToast("Error loading Work Order", "error");
   } finally {
     setTimeout(() => hideLoading(), 300);
   }
+
   listenToDiscrepancies(workorder);
 }
 function processSnapshot(snapshot) {
-  // 🔥 Build once
-  const allDocs = [];
-  const groupedBySeq = new Map();
-  const skillIndex = {};
-  const phaseIndex = {};
-  const seqSkillCount = {};
-
-  for (const docSnap of snapshot.docs) {
+  let hasChanges = false;
+  snapshot.docChanges().forEach((change) => {
+    const docSnap = change.doc;
     const data = docSnap.data();
     const docObj = { id: docSnap.id, ...data };
-    allDocs.push(docObj);
-
     const seq = String(docObj.seq);
 
-    // Group by sequence
-    if (!groupedBySeq.has(seq)) {
-      groupedBySeq.set(seq, []);
+    // ADDED
+    if (change.type === "added") {
+       hasChanges = true;
+      state.taskCache.set(docObj.id, docObj);
+
+      if (!state.groupedBySeq.has(seq)) {
+        state.groupedBySeq.set(seq, []);
+      }
+      state.groupedBySeq.get(seq).push(docObj);
+
+      if (!state.skillIndex[docObj.skill]) {
+        state.skillIndex[docObj.skill] = [];
+      }
+      state.skillIndex[docObj.skill].push(docObj);
+
+      if (!state.phaseIndex[docObj.phase]) {
+        state.phaseIndex[docObj.phase] = [];
+      }
+      state.phaseIndex[docObj.phase].push(docObj);
+
+      if (!state.seqSkillCount[seq]) {
+        state.seqSkillCount[seq] = new Set();
+      }
+      state.seqSkillCount[seq].add(docObj.skill);
     }
-    groupedBySeq.get(seq).push(docObj);
 
-    // Skill index
-    if (!skillIndex[docObj.skill]) {
-      skillIndex[docObj.skill] = [];
+    // MODIFIED
+ if (change.type === "modified") {
+   hasChanges = true;
+  state.taskCache.set(docObj.id, docObj);
     }
-    skillIndex[docObj.skill].push(docObj);
 
-    // Phase index
-    if (!phaseIndex[docObj.phase]) {
-      phaseIndex[docObj.phase] = [];
+    // REMOVED
+    if (change.type === "removed") {
+ hasChanges = true;
+      state.taskCache.delete(docObj.id);
+
+      if (state.groupedBySeq.has(seq)) {
+        state.groupedBySeq.set(
+          seq,
+          state.groupedBySeq.get(seq).filter(d => d.id !== docObj.id)
+        );
+      }
+
+      if (state.skillIndex[docObj.skill]) {
+        state.skillIndex[docObj.skill] =
+          state.skillIndex[docObj.skill].filter(d => d.id !== docObj.id);
+      }
+
+      if (state.phaseIndex[docObj.phase]) {
+        state.phaseIndex[docObj.phase] =
+          state.phaseIndex[docObj.phase].filter(d => d.id !== docObj.id);
+      }
     }
-    phaseIndex[docObj.phase].push(docObj);
-
-    // Seq skill count
-    if (!seqSkillCount[seq]) {
-      seqSkillCount[seq] = new Set();
-    }
-    seqSkillCount[seq].add(docObj.skill);
-  }
-
-  // 🔥 Assign once
-  state.allDocs = allDocs;
-  state.groupedBySeq = groupedBySeq;
-  state.skillIndex = skillIndex;
-  state.phaseIndex = phaseIndex;
-  state.seqSkillCount = seqSkillCount;
-
-  // 🔥 UI updates AFTER data ready
-  buildDynamicSkillButtons(allDocs);
-
-  // 🔥 Non-blocking heavy calculations
-  requestIdleCallback(() => {
-    handleCommentBadgeUpdates(snapshot);
   });
 
-  applyFilters();
+  // UI updates
+// rebuild array from cache FIRST
+if (!hasChanges) return;
+state.allDocs = Array.from(state.taskCache.values());
+
+// now UI updates
+buildDynamicSkillButtons(state.allDocs);
+
+requestIdleCallback(() => {
+  handleCommentBadgeUpdates(snapshot);
+});
+
+applyFilters();
 }
 /* =======================
   Scan Modal + Scanner
