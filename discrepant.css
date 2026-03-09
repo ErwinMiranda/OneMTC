@@ -285,3 +285,9 @@ td {
   animation: none;
   box-shadow: 0 0 15px rgba(42, 157, 143, 0.6);
 }
+#searchInput {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  width: 220px;
+}
