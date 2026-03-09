@@ -46,7 +46,7 @@ const cancelNRBtn = document.getElementById("cancelNRBtn");
 const saveNRBtn = document.getElementById("saveNRBtn");
 const openCountEl = document.getElementById("openCount");
 const openCounterBox = document.querySelector(".open-counter");
-
+const searchInput = document.getElementById("searchInput");
 /* ================================
    GLOBAL STATE
 ================================ */
@@ -55,6 +55,7 @@ let currentUserEmail = null;
 let showOpenOnly = false;
 let currentSnapshotDocs = [];
 let selectedSkills = new Set(); // multi-select
+let searchText = "";
 /* ================================
    GET WO FROM URL
 ================================ */
@@ -114,6 +115,10 @@ function setupFilterButtons() {
     skillDropdown.classList.add("hidden");
   });
 }
+searchInput.addEventListener("input", () => {
+  searchText = searchInput.value.toLowerCase();
+  renderTable(currentSnapshotDocs);
+});
 // 🔥 Click OPEN counter to auto filter OPEN only
 if (openCounterBox) {
   openCounterBox.addEventListener("click", () => {
@@ -169,9 +174,29 @@ function renderTable(docs) {
     const isOpen = (data.status || "").toUpperCase() === "OPEN";
     if (isOpen) openCounter++;
 
-    // 🔹 FILTER LOGIC
-    if (showOpenOnly && !isOpen) return;
-    if (selectedSkills.size > 0 && !selectedSkills.has(data.skill)) return;
+// 🔹 FILTER LOGIC
+if (showOpenOnly && !isOpen) return;
+if (selectedSkills.size > 0 && !selectedSkills.has(data.skill)) return;
+
+// 🔎 SEARCH FILTER (SEQ + TASK CARD)
+
+// 🔎 SEARCH FILTER (Exact match for SEQ, partial for Task Card)
+
+const seq = String(data.seq || "").toLowerCase();
+const taskCard = String(data.task_card || "").toLowerCase();
+
+if (searchText) {
+
+  // If the user types only numbers → treat as SEQ exact search
+  if (!isNaN(searchText)) {
+    if (seq !== searchText) return;
+  } 
+  // Otherwise search Task Card normally
+  else {
+    if (!taskCard.includes(searchText)) return;
+  }
+
+}
 
     const row = document.createElement("tr");
 
