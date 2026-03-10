@@ -31,7 +31,17 @@ const firebaseConfig = {
   appId: "1:447271556426:web:562ba4d72e40b754599db3",
 };
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
 const auth = getAuth(app);
 
 window.logout = function () {
@@ -1959,9 +1969,24 @@ document
   Firestore Query by WO
 ======================== */
 async function searchWorkorder(workorder) {
+  const cached = localStorage.getItem(`wo_cache_${workorder}`);
+
+if (cached) {
+  state.allDocs = JSON.parse(cached);
+
+  state.allDocs.forEach(doc => {
+    state.taskCache.set(doc.id, doc);
+  });
+
+  buildDynamicSkillButtons(state.allDocs);
+  applyFilters();
+
+  console.log("Loaded from local cache");
+}
   showLoading();
 
   try {
+
     state.currentWO = workorder;
     localStorage.setItem("lastWorkorder", workorder);
 
@@ -1983,29 +2008,51 @@ async function searchWorkorder(workorder) {
       `MTC Status for ${ac} ${dayProgress || ""}`;
 
     if (lastUpdateEl) {
-      lastUpdateEl.textContent = "Live • " + new Date().toLocaleString();
+      lastUpdateEl.textContent =
+        "Loaded • " + new Date().toLocaleString();
     }
 
-    // 🔥 Unsubscribe previous listener
+    // -----------------------------------
+    // STOP PREVIOUS LISTENERS
+    // -----------------------------------
+
     if (state.unsubscribe) {
       state.unsubscribe();
       state.unsubscribe = null;
     }
 
-    // 🔥 Reset state caches (IMPORTANT)
+    if (state.unsubscribeHistory) {
+      state.unsubscribeHistory();
+      state.unsubscribeHistory = null;
+    }
+
+    if (state.unsubscribeDiscrepancies) {
+      state.unsubscribeDiscrepancies();
+      state.unsubscribeDiscrepancies = null;
+    }
+
+    // -----------------------------------
+    // RESET STATE CACHE
+    // -----------------------------------
+
     state.allDocs = [];
+    state.taskCache.clear();
+
     state.groupedBySeq = new Map();
     state.skillIndex = {};
     state.phaseIndex = {};
     state.seqSkillCount = {};
 
-    // 🔥 Reset UI related state
     state.prevDocsMap = new Map();
     state.scannedSeqs = [];
     state.seqFilterValues = [];
 
-    // Optional: clear table UI before new data arrives
+    // clear UI
     clusterize.clear();
+
+    // -----------------------------------
+    // LOAD TASKCARDS ONCE (BIG READ SAVER)
+    // -----------------------------------
 
     const taskcardsRef = collection(
       db,
@@ -2016,17 +2063,63 @@ async function searchWorkorder(workorder) {
 
     const q = query(taskcardsRef, orderBy("seq"));
 
-    // 🔥 Attach realtime listener
-    attachTaskcardListener(workorder);
+    const snapshot = await getDocs(q);
+
+    snapshot.forEach((docSnap) => {
+
+      const data = docSnap.data();
+
+      const docObj = {
+        id: docSnap.id,
+        ...data
+      };
+
+      state.taskCache.set(docObj.id, docObj);
+
+    });
+
+    state.allDocs = Array.from(state.taskCache.values());
+    // Save to local cache
+      localStorage.setItem(
+        `wo_cache_${workorder}`,
+        JSON.stringify(state.allDocs)
+      );
+    // -----------------------------------
+    // BUILD UI
+    // -----------------------------------
+
+    buildDynamicSkillButtons(state.allDocs);
+
+    applyFilters();
+
+    if (lastUpdateEl) {
+      lastUpdateEl.textContent =
+        `Loaded ${state.allDocs.length} tasks • ` +
+        new Date().toLocaleString();
+    }
 
   } catch (err) {
+
     console.error("Search error:", err);
+
     showToast("Error loading Work Order", "error");
+
   } finally {
+
     setTimeout(() => hideLoading(), 300);
+
   }
 
+  // -----------------------------------
+  // LIGHT REALTIME LISTENERS
+  // -----------------------------------
+
   listenToDiscrepancies(workorder);
+
+  listenToHistoryForWO(workorder);
+
+  listenDashboardSummary(workorder);
+
 }
 function processSnapshot(snapshot) {
   let hasChanges = false;
@@ -2111,31 +2204,76 @@ applyFilters();
 ======================== */
 async function updateTaskStatus(taskId, newStatus) {
   try {
+
+    // find task in local cache
     const task = state.allDocs.find((d) => d.id === taskId);
+
     if (!task) {
       showToast("Task not found in cache", "error");
       return false;
     }
+
+    // reference to taskcard
     const taskRef = doc(
       db,
       "work_orders",
       String(task.wo),
       "taskcards",
-      taskId,
+      taskId
     );
+
+    // update task status
     await updateDoc(taskRef, {
       status: newStatus,
       modified_at: serverTimestamp(),
       modified_by: loginUser || "Unknown",
     });
+
+    // ------------------------------------------------
+    // DASHBOARD SUMMARY UPDATE (99.9% reads trick)
+    // ------------------------------------------------
+
+    const summaryRef = doc(
+      db,
+      "work_orders",
+      String(task.wo),
+      "dashboard",
+      "summary"
+    );
+
+    await setDoc(
+      summaryRef,
+      {
+        last_updated: serverTimestamp(),
+        last_modified_task: taskId,
+        last_status: newStatus,
+        modified_by: loginUser || "Unknown",
+      },
+      { merge: true }
+    );
+
+    // ------------------------------------------------
+    // UPDATE LOCAL CACHE
+    // ------------------------------------------------
+
     const idx = state.allDocs.findIndex((d) => d.id === taskId);
+
     if (idx !== -1) {
-      state.allDocs[idx] = { ...state.allDocs[idx], status: newStatus };
+      state.allDocs[idx] = {
+        ...state.allDocs[idx],
+        status: newStatus,
+      };
+
       await logHistoryEntry(state.allDocs[idx], newStatus);
     }
+
+    // refresh UI
     applyFilters();
+
     showToast(`Status updated to ${newStatus}`, "success");
+
     return true;
+
   } catch (err) {
     console.error(err);
     showToast(`Failed to update task ${taskId}`, "error");
@@ -2964,3 +3102,49 @@ function downloadExcel() {
 }
 
 window.downloadExcel = downloadExcel;
+function listenDashboardSummary(workorder) {
+
+  const summaryRef = doc(
+    db,
+    "work_orders",
+    String(workorder),
+    "dashboard",
+    "summary"
+  );
+
+  onSnapshot(summaryRef, async (snap) => {
+
+    if (!snap.exists()) return;
+
+    const data = snap.data();
+
+    const taskId = data.last_modified_task;
+
+    if (!taskId) return;
+
+    const taskRef = doc(
+      db,
+      "work_orders",
+      String(workorder),
+      "taskcards",
+      taskId
+    );
+
+    const taskSnap = await getDoc(taskRef);
+
+    if (!taskSnap.exists()) return;
+
+    const updatedTask = {
+      id: taskSnap.id,
+      ...taskSnap.data()
+    };
+
+    state.taskCache.set(updatedTask.id, updatedTask);
+
+    state.allDocs = Array.from(state.taskCache.values());
+
+    applyFilters();
+
+  });
+
+}
