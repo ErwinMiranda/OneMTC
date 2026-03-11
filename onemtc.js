@@ -34,13 +34,13 @@ const app = initializeApp(firebaseConfig);
 import {
   initializeFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
+    tabManager: persistentMultipleTabManager(),
+  }),
 });
 const auth = getAuth(app);
 
@@ -149,21 +149,19 @@ const state = {
   commentPopup: document.getElementById("commentListPopup"),
   badgeCounts: JSON.parse(localStorage.getItem("badgeCounts")) || {},
   commentReadCounts:
-  JSON.parse(localStorage.getItem("commentReadCounts")) || {},
-  taskCache: new Map(), 
+    JSON.parse(localStorage.getItem("commentReadCounts")) || {},
+  taskCache: new Map(),
   groupedBySeq: new Map(),
   skillIndex: {},
   phaseIndex: {},
-  seqSkillCount: {}, 
+  seqSkillCount: {},
 };
 /* =======================
    Pause Firestore when tab hidden
 ======================= */
 document.addEventListener("visibilitychange", () => {
-
   // When tab hidden → pause listeners
   if (document.hidden) {
-
     if (state.unsubscribe) {
       state.unsubscribe();
       state.unsubscribe = null;
@@ -178,12 +176,10 @@ document.addEventListener("visibilitychange", () => {
       state.unsubscribeDiscrepancies();
       state.unsubscribeDiscrepancies = null;
     }
-
   }
 
   // When tab visible → resume only if not active
   else {
-
     if (!state.currentWO) return;
 
     if (!state.unsubscribe) {
@@ -197,17 +193,14 @@ document.addEventListener("visibilitychange", () => {
     if (!state.unsubscribeDiscrepancies) {
       listenToDiscrepancies(state.currentWO);
     }
-
   }
-
 });
 function attachTaskcardListener(workorder) {
-
   const taskcardsRef = collection(
     db,
     "work_orders",
     String(workorder),
-    "taskcards"
+    "taskcards",
   );
 
   const q = query(taskcardsRef, orderBy("seq"));
@@ -220,7 +213,7 @@ function attachTaskcardListener(workorder) {
     (error) => {
       console.error("Snapshot error:", error);
       showToast("Realtime listener error", "error");
-    }
+    },
   );
 }
 if (!state.commentPopup) {
@@ -492,14 +485,14 @@ function listenToHistoryForWO(workorder) {
   ]);
 
   const historyRef = collection(db, "wo_history", woId, "items");
- const today = new Date();
-today.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-const qHistory = query(
-  historyRef,
-  where("timestamp", ">=", today),
-  orderBy("timestamp", "desc")
-);
+  const qHistory = query(
+    historyRef,
+    where("timestamp", ">=", today),
+    orderBy("timestamp", "desc"),
+  );
 
   let initialLoad = true;
 
@@ -560,7 +553,7 @@ const qHistory = query(
           state.historyIdSet.delete(id);
 
           state.allHistoryData = state.allHistoryData.filter(
-            (rowString) => !rowString.includes(`data-id="${id}"`)
+            (rowString) => !rowString.includes(`data-id="${id}"`),
           );
 
           historyClusterize.update(state.allHistoryData);
@@ -572,7 +565,7 @@ const qHistory = query(
             state.allHistoryData = state.allHistoryData.map((rowString) =>
               rowString.includes(`data-id="${id}"`)
                 ? renderHistoryItem(data, id)
-                : rowString
+                : rowString,
             );
 
             historyClusterize.update(state.allHistoryData);
@@ -585,7 +578,7 @@ const qHistory = query(
       historyClusterize.update([
         "<li class='clusterize-no-data'>Error loading history</li>",
       ]);
-    }
+    },
   );
 
   const removeGlowOnUserAction = () => {
@@ -687,7 +680,6 @@ async function logHistoryEntry(task, newStatus) {
       modified_by: modifiedBy,
       timestamp: serverTimestamp(),
     });
-    
   } catch (err) {
     console.error("❌ Error logging history:", err);
   }
@@ -1082,7 +1074,6 @@ state.commentPopup.addEventListener("click", (e) => {
   if (e.target === state.commentPopup) closePopup();
 });
 
-
 document.addEventListener("click", (e) => {
   const badge = e.target.closest(".comment-badge");
   if (!badge) return;
@@ -1203,6 +1194,7 @@ document.addEventListener("mousedown", (e) => {
   commentInputModal.dataset.taskId = taskId;
 
   document.getElementById("newCommentInput").value = "";
+  document.getElementById("commentStatusSelect").value = "";
   commentInputModal.style.display = "flex";
 
   setTimeout(() => {
@@ -1214,11 +1206,21 @@ document.addEventListener("mousedown", (e) => {
 // =======================
 const commentInputModal = document.createElement("div");
 commentInputModal.id = "commentInputModal";
-
 commentInputModal.innerHTML = `
   <div class="comment-modal-card">
     <div class="comment-modal-header">
       <h3>Add Comment</h3>
+
+      <select id="commentStatusSelect" class="comment-dropdown">
+        <option value="">Select comments here!</option>
+         <option value="Submitted to JCC">Submitted to JCC</option>
+        <option value="Received by JCC">Received by JCC</option>
+        <option value="Inspection done, for documentation">Inspection done, for documentation</option>
+        <option value="Routed to next skill">Routed to next skill</option>
+        <option value="Closed">Closed</option>
+        <option value="For Pick-up">For Pick-up</option>
+      </select>
+
       <button id="cancelCommentBtn" class="comment-close">&times;</button>
     </div>
 
@@ -1231,7 +1233,15 @@ commentInputModal.innerHTML = `
 `;
 
 document.body.appendChild(commentInputModal);
+const textarea = document.getElementById("newCommentInput");
+const dropdown = document.getElementById("commentStatusSelect");
 
+dropdown.addEventListener("change", function () {
+  if (this.value) {
+    textarea.value = this.value;
+    textarea.focus();
+  }
+});
 document.getElementById("cancelCommentBtn").onclick = () => {
   commentInputModal.style.display = "none";
 };
@@ -1775,8 +1785,8 @@ async function applyFilters() {
 
   renderRows(rowsToRender);
   updateCounters(finalFilteredDocs, skillBaseTotal);
- 
-    //listenToDiscrepancies(state.currentWO);
+
+  //listenToDiscrepancies(state.currentWO);
 
   if (typeof renderJCChart === "function" && state.currentWO) {
     await renderJCChart(state.currentWO, skillFilteredDocs);
@@ -1867,10 +1877,9 @@ function buildSeqSkillMapIfNeeded() {
   return map;
 }
 function updateCounters(skillFilteredDocs, skillBaseTotal) {
-
   // 🔥 Remove duplicate docs by ID (prevents double counting)
   const uniqueDocs = Array.from(
-    new Map(skillFilteredDocs.map(d => [d.id, d])).values()
+    new Map(skillFilteredDocs.map((d) => [d.id, d])).values(),
   );
 
   const pctClosed = getClosedPercentage(uniqueDocs);
@@ -1884,20 +1893,18 @@ function updateCounters(skillFilteredDocs, skillBaseTotal) {
   });
 
   let totalMTC = 0,
-      closedMTC = 0,
-      openMTC = 0;
+    closedMTC = 0,
+    openMTC = 0;
 
   Object.keys(seqGroups).forEach((seq) => {
-
     totalMTC++;
 
     const allClosed = seqGroups[seq].every(
-      (s) => s === "closed" || s === "cancel" || s === "completed"
+      (s) => s === "closed" || s === "cancel" || s === "completed",
     );
 
     if (allClosed) closedMTC++;
     else openMTC++;
-
   });
 
   let counterText = `Showing ${uniqueDocs.length} of ${skillBaseTotal} tasks • 
@@ -1933,7 +1940,6 @@ function updateCounters(skillFilteredDocs, skillBaseTotal) {
       : "none";
 
   clearSeqBtn.onclick = () => {
-
     state.scannedSeqs = [];
     state.seqFilterValues = [];
 
@@ -1971,22 +1977,21 @@ document
 async function searchWorkorder(workorder) {
   const cached = localStorage.getItem(`wo_cache_${workorder}`);
 
-if (cached) {
-  state.allDocs = JSON.parse(cached);
+  if (cached) {
+    state.allDocs = JSON.parse(cached);
 
-  state.allDocs.forEach(doc => {
-    state.taskCache.set(doc.id, doc);
-  });
+    state.allDocs.forEach((doc) => {
+      state.taskCache.set(doc.id, doc);
+    });
 
-  buildDynamicSkillButtons(state.allDocs);
-  applyFilters();
+    buildDynamicSkillButtons(state.allDocs);
+    applyFilters();
 
-  console.log("Loaded from local cache");
-}
+    console.log("Loaded from local cache");
+  }
   showLoading();
 
   try {
-
     state.currentWO = workorder;
     localStorage.setItem("lastWorkorder", workorder);
 
@@ -2008,8 +2013,7 @@ if (cached) {
       `MTC Status for ${ac} ${dayProgress || ""}`;
 
     if (lastUpdateEl) {
-      lastUpdateEl.textContent =
-        "Loaded • " + new Date().toLocaleString();
+      lastUpdateEl.textContent = "Loaded • " + new Date().toLocaleString();
     }
 
     // -----------------------------------
@@ -2058,7 +2062,7 @@ if (cached) {
       db,
       "work_orders",
       String(workorder),
-      "taskcards"
+      "taskcards",
     );
 
     const q = query(taskcardsRef, orderBy("seq"));
@@ -2066,24 +2070,22 @@ if (cached) {
     const snapshot = await getDocs(q);
 
     snapshot.forEach((docSnap) => {
-
       const data = docSnap.data();
 
       const docObj = {
         id: docSnap.id,
-        ...data
+        ...data,
       };
 
       state.taskCache.set(docObj.id, docObj);
-
     });
 
     state.allDocs = Array.from(state.taskCache.values());
     // Save to local cache
-      localStorage.setItem(
-        `wo_cache_${workorder}`,
-        JSON.stringify(state.allDocs)
-      );
+    localStorage.setItem(
+      `wo_cache_${workorder}`,
+      JSON.stringify(state.allDocs),
+    );
     // -----------------------------------
     // BUILD UI
     // -----------------------------------
@@ -2094,20 +2096,14 @@ if (cached) {
 
     if (lastUpdateEl) {
       lastUpdateEl.textContent =
-        `Loaded ${state.allDocs.length} tasks • ` +
-        new Date().toLocaleString();
+        `Loaded ${state.allDocs.length} tasks • ` + new Date().toLocaleString();
     }
-
   } catch (err) {
-
     console.error("Search error:", err);
 
     showToast("Error loading Work Order", "error");
-
   } finally {
-
     setTimeout(() => hideLoading(), 300);
-
   }
 
   // -----------------------------------
@@ -2119,7 +2115,6 @@ if (cached) {
   listenToHistoryForWO(workorder);
 
   listenDashboardSummary(workorder);
-
 }
 function processSnapshot(snapshot) {
   let hasChanges = false;
@@ -2131,7 +2126,7 @@ function processSnapshot(snapshot) {
 
     // ADDED
     if (change.type === "added") {
-       hasChanges = true;
+      hasChanges = true;
       state.taskCache.set(docObj.id, docObj);
 
       if (!state.groupedBySeq.has(seq)) {
@@ -2156,55 +2151,56 @@ function processSnapshot(snapshot) {
     }
 
     // MODIFIED
- if (change.type === "modified") {
-   hasChanges = true;
-  state.taskCache.set(docObj.id, docObj);
+    if (change.type === "modified") {
+      hasChanges = true;
+      state.taskCache.set(docObj.id, docObj);
     }
 
     // REMOVED
     if (change.type === "removed") {
- hasChanges = true;
+      hasChanges = true;
       state.taskCache.delete(docObj.id);
 
       if (state.groupedBySeq.has(seq)) {
         state.groupedBySeq.set(
           seq,
-          state.groupedBySeq.get(seq).filter(d => d.id !== docObj.id)
+          state.groupedBySeq.get(seq).filter((d) => d.id !== docObj.id),
         );
       }
 
       if (state.skillIndex[docObj.skill]) {
-        state.skillIndex[docObj.skill] =
-          state.skillIndex[docObj.skill].filter(d => d.id !== docObj.id);
+        state.skillIndex[docObj.skill] = state.skillIndex[docObj.skill].filter(
+          (d) => d.id !== docObj.id,
+        );
       }
 
       if (state.phaseIndex[docObj.phase]) {
-        state.phaseIndex[docObj.phase] =
-          state.phaseIndex[docObj.phase].filter(d => d.id !== docObj.id);
+        state.phaseIndex[docObj.phase] = state.phaseIndex[docObj.phase].filter(
+          (d) => d.id !== docObj.id,
+        );
       }
     }
   });
 
   // UI updates
-// rebuild array from cache FIRST
-if (!hasChanges) return;
-state.allDocs = Array.from(state.taskCache.values());
+  // rebuild array from cache FIRST
+  if (!hasChanges) return;
+  state.allDocs = Array.from(state.taskCache.values());
 
-// now UI updates
-buildDynamicSkillButtons(state.allDocs);
+  // now UI updates
+  buildDynamicSkillButtons(state.allDocs);
 
-requestIdleCallback(() => {
-  handleCommentBadgeUpdates(snapshot);
-});
+  requestIdleCallback(() => {
+    handleCommentBadgeUpdates(snapshot);
+  });
 
-applyFilters();
+  applyFilters();
 }
 /* =======================
   Scan Modal + Scanner
 ======================== */
 async function updateTaskStatus(taskId, newStatus) {
   try {
-
     // find task in local cache
     const task = state.allDocs.find((d) => d.id === taskId);
 
@@ -2219,7 +2215,7 @@ async function updateTaskStatus(taskId, newStatus) {
       "work_orders",
       String(task.wo),
       "taskcards",
-      taskId
+      taskId,
     );
 
     // update task status
@@ -2238,7 +2234,7 @@ async function updateTaskStatus(taskId, newStatus) {
       "work_orders",
       String(task.wo),
       "dashboard",
-      "summary"
+      "summary",
     );
 
     await setDoc(
@@ -2249,7 +2245,7 @@ async function updateTaskStatus(taskId, newStatus) {
         last_status: newStatus,
         modified_by: loginUser || "Unknown",
       },
-      { merge: true }
+      { merge: true },
     );
 
     // ------------------------------------------------
@@ -2273,7 +2269,6 @@ async function updateTaskStatus(taskId, newStatus) {
     showToast(`Status updated to ${newStatus}`, "success");
 
     return true;
-
   } catch (err) {
     console.error(err);
     showToast(`Failed to update task ${taskId}`, "error");
@@ -3055,7 +3050,6 @@ window.addEventListener("load", () => {
   commentInputModal.style.display = "none";
 });
 function downloadExcel() {
-
   if (!state.allDocs || state.allDocs.length === 0) {
     showToast("No data to export ❗", "error");
     return;
@@ -3072,7 +3066,7 @@ function downloadExcel() {
       filteredDocs = filteredDocs.filter((d) =>
         String(d[field] || "")
           .toLowerCase()
-          .includes(value)
+          .includes(value),
       );
     }
   });
@@ -3090,7 +3084,7 @@ function downloadExcel() {
     Comment: d.comment || "",
     Status: d.status || "",
     Phase: d.phase || "",
-    Skill: d.skill || ""
+    Skill: d.skill || "",
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -3103,17 +3097,15 @@ function downloadExcel() {
 
 window.downloadExcel = downloadExcel;
 function listenDashboardSummary(workorder) {
-
   const summaryRef = doc(
     db,
     "work_orders",
     String(workorder),
     "dashboard",
-    "summary"
+    "summary",
   );
 
   onSnapshot(summaryRef, async (snap) => {
-
     if (!snap.exists()) return;
 
     const data = snap.data();
@@ -3127,7 +3119,7 @@ function listenDashboardSummary(workorder) {
       "work_orders",
       String(workorder),
       "taskcards",
-      taskId
+      taskId,
     );
 
     const taskSnap = await getDoc(taskRef);
@@ -3136,7 +3128,7 @@ function listenDashboardSummary(workorder) {
 
     const updatedTask = {
       id: taskSnap.id,
-      ...taskSnap.data()
+      ...taskSnap.data(),
     };
 
     state.taskCache.set(updatedTask.id, updatedTask);
@@ -3144,7 +3136,5 @@ function listenDashboardSummary(workorder) {
     state.allDocs = Array.from(state.taskCache.values());
 
     applyFilters();
-
   });
-
 }
