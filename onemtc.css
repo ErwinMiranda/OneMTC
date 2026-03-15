@@ -207,7 +207,7 @@ body {
   font-weight: 500;
   background: var(--lufthansa-card-bg);
   border: 1px solid var(--lufthansa-border);
-  border-radius: 20px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
   margin-right: 8px;
